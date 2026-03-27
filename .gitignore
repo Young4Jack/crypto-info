@@ -34,3 +34,6 @@ frontend/.env
 # --- 其他 ---
 *.log
 temp/
+README.md
+PROJECT_PLAN.md
+ISSUES_LOG.md
