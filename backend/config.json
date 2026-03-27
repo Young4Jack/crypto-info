@@ -1,0 +1,22 @@
+{
+  "api_settings": {
+    "primary_api_url": "https://www.okx.com",
+    "backup_api_url": "https://api.binance.com",
+    "api_key": "",
+    "api_secret": ""
+  },
+  "notification_settings": {
+    "api_url": "https://push.gosu.cc/push/jacket",
+    "auth_token": "DC7487AFB01F9EEB1B3EC6A42F40B6A0",
+    "channel": "yes"
+  },
+  "system_settings": {
+    "refresh_interval": 5,
+    "enable_captcha": false,
+    "site_title": "Crypto-info",
+    "site_description": "数字货币价格监控和预警系统",
+    "log_level": "ERROR",
+    "enable_logging": true,
+    "timezone": "Asia/Shanghai"
+  }
+}

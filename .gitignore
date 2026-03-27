@@ -1,0 +1,27 @@
+# --- 系统与编辑器 ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- 后端 (Python/Backend) ---
+backend/venv/              # 虚拟环境，别人运行代码时会自己生成
+backend/__pycache__/       # 编译缓存
+backend/*.pyc
+backend/logs/              # 日志文件，不需要上传
+backend/.env               # 【非常重要】包含 API 密钥和数据库密码，严禁上传
+
+# --- 数据库 (SQLite) ---
+backend/*.db               # 你的数据文件 crypto.db
+backend/*.db.bak           # 备份文件
+backend/alembic/           # 如果你还没开始做数据库迁移，这个可以留着，但里面的 versions/ 需要保留
+
+# --- 前端 (Frontend/Node) ---
+frontend/node_modules/     # 【体积最大】绝对不要上传，别人 npm install 即可
+frontend/dist/             # 编译产物
+frontend/.vscode/
+frontend/.env.local
+frontend/.env
+
+# --- 其他 ---
+*.log
+temp/
