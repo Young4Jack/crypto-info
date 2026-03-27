@@ -8,6 +8,7 @@ from app.models.asset import Asset
 from app.models.cryptocurrency import Cryptocurrency
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.services.price_service_refactored import fetch_crypto_prices
 from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_name
 from datetime import datetime
 from app.config_manager import config_manager
@@ -37,6 +38,7 @@ class AssetResponse(BaseModel):
     quantity: float
     notes: Optional[str] = None
     total_value: float
+    current_price: float = 0.0
     created_at: str
 
 @router.get("/", response_model=List[AssetResponse])
@@ -49,12 +51,21 @@ async def get_assets(
         Asset.user_id == current_user.id
     ).all()
     
+    # 获取所有币种的当前价格
+    try:
+        current_prices = await fetch_crypto_prices()
+    except Exception as e:
+        current_prices = {}
+    
     result = []
     for asset in assets:
         # 获取对应的币种信息
         crypto = db.query(Cryptocurrency).filter(
             Cryptocurrency.id == asset.crypto_id
         ).first()
+        
+        # 获取当前价格
+        current_price = current_prices.get(crypto.symbol, 0) if crypto else 0
         
         result.append(AssetResponse(
             id=asset.id,
@@ -65,6 +76,7 @@ async def get_assets(
             quantity=asset.quantity,
             notes=asset.notes,
             total_value=asset.buy_price * asset.quantity,
+            current_price=current_price,
             created_at=asset.created_at.isoformat() if asset.created_at else None
         ))
     

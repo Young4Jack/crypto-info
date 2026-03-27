@@ -1,7 +1,7 @@
 <template>
   <div class="public-watchlist-container">
     <el-container>
-      <el-header class="public-watchlist-header">
+      <el-header class="public-watchlist-header" height="auto">
         <div class="header-left">
           <h1>{{ siteTitle }}</h1>
           <p>{{ siteDescription }}</p>
@@ -29,15 +29,15 @@
             style="width: 100%"
             v-loading="loading"
           >
-            <el-table-column prop="crypto_symbol" label="交易对" width="120">
+            <el-table-column prop="crypto_symbol" label="交易对" min-width="100">
               <template #default="{ row }">
                 <el-tag>{{ row.crypto_symbol }}</el-tag>
               </template>
             </el-table-column>
             
-            <el-table-column prop="crypto_name" label="币种名称" width="120" />
+            <el-table-column prop="crypto_name" label="币种名称" min-width="100" />
             
-            <el-table-column prop="current_price" label="当前价格" width="120">
+            <el-table-column prop="current_price" label="当前价格" min-width="100">
               <template #default="{ row }">
                 <span class="price">${{ row.current_price ? row.current_price.toFixed(2) : '0.00' }}</span>
               </template>
@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue' // 新增了 onUnmounted
 import { useRouter } from 'vue-router'
 import { watchlistApi, systemSettingsApi } from '../api'
 
@@ -73,15 +73,23 @@ const publicWatchlist = ref<any[]>([])
 const siteTitle = ref('Crypto-info')
 const siteDescription = ref('数字货币价格监控和预警系统')
 
-const loadPublicWatchlist = async () => {
-  loading.value = true
+// 新增：用于保存定时器的变量
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+// 修改：增加 isBackground 参数。如果是后台自动刷新，就不显示 loading 动画
+const loadPublicWatchlist = async (isBackground = false) => {
+  if (!isBackground) {
+    loading.value = true
+  }
   try {
     const response = await watchlistApi.getPublic()
     publicWatchlist.value = response.data
   } catch (error) {
     console.error('加载公开关注列表失败:', error)
   } finally {
-    loading.value = false
+    if (!isBackground) {
+      loading.value = false
+    }
   }
 }
 
@@ -102,8 +110,21 @@ const goToLogin = () => {
 }
 
 onMounted(() => {
-  loadPublicWatchlist()
+  loadPublicWatchlist(false) // 首次加载，显示 loading 动画
   loadPublicSettings()
+  
+  // 新增：设置定时器，每 5000 毫秒（5秒）在后台静默请求一次最新数据
+  refreshTimer = setInterval(() => {
+    loadPublicWatchlist(true)
+  }, 5000)
+})
+
+// 新增：当用户离开这个页面时，必须销毁定时器，否则会导致内存泄漏和网络请求泛滥
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 
@@ -111,6 +132,10 @@ onMounted(() => {
 .public-watchlist-container {
   min-height: 100vh;
   background-color: #f5f5f5;
+  width: 100vw;
+  max-width: 100%;
+  overflow-x: hidden; /* 防止整个页面出现左右滑动 */
+  box-sizing: border-box;
 }
 
 .public-watchlist-header {
@@ -118,8 +143,9 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: 10px 20px; /* 上下加点 padding 因为去掉了固定高度 */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .header-left h1 {
@@ -275,14 +301,5 @@ onMounted(() => {
   }
 }
 
-/* 禁止左右滚动 */
-@media (max-width: 768px) {
-  .el-table {
-    overflow-x: hidden;
-  }
-  
-  .el-table__body-wrapper {
-    overflow-x: hidden !important;
-  }
-}
+
 </style>

@@ -258,6 +258,9 @@ export const systemSettingsApi = {
     enable_captcha?: boolean
     site_title?: string
     site_description?: string
+    log_level?: string
+    enable_logging?: boolean
+    timezone?: string
   }) => {
     return request.post('/api/system-settings/', data)
   },
@@ -268,6 +271,9 @@ export const systemSettingsApi = {
     enable_captcha?: boolean
     site_title?: string
     site_description?: string
+    log_level?: string
+    enable_logging?: boolean
+    timezone?: string
   }) => {
     return request.put('/api/system-settings/', data)
   },

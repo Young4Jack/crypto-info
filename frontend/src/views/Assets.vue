@@ -1,224 +1,210 @@
 <template>
-  <div class="assets-container">
-    <el-container>
-      <el-header class="assets-header">
+  <div class="page-container">
+    <el-header class="page-header" height="auto">
+      <div class="header-content">
         <div class="header-left">
-          <h1>资产管理</h1>
+          <h1>我的资产</h1>
+          <p>管理数字货币持仓组合与盈亏监控</p>
         </div>
         <div class="header-right">
-          <span>欢迎，{{ authStore.user?.username || '用户' }}</span>
-          <el-button @click="goToDashboard">返回仪表盘</el-button>
-          <el-button type="danger" @click="handleLogout">退出登录</el-button>
+          <el-button-group class="action-buttons">
+            <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="() => loadAssets(false)" :loading="loading">刷新价格</el-button>
+            <el-button type="primary" :icon="Plus" @click="openAddDialog">添加资产</el-button>
+          </el-button-group>
         </div>
-      </el-header>
-      
-      <el-main class="assets-main">
-        <!-- 添加资产表单 -->
-        <el-card class="create-asset-card">
-          <template #header>
-            <div class="card-header">
-              <span>添加新资产</span>
-            </div>
-          </template>
-          
-          <el-form
-            ref="createFormRef"
-            :model="createForm"
-            :rules="createRules"
-            label-width="120px"
-            @submit.prevent="handleCreateAsset"
-          >
-            <el-row :gutter="20">
-              <el-col :span="6">
-                <el-form-item label="交易对" prop="crypto_symbol">
-                  <el-input
-                    v-model="createForm.crypto_symbol"
-                    placeholder="请输入交易对，如：BTCUSDT"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-              </el-col>
-              
-              <el-col :span="6">
-                <el-form-item label="买入价格" prop="buy_price">
-                  <el-input-number
-                    v-model="createForm.buy_price"
-                    :precision="2"
-                    :min="0"
-                    placeholder="请输入买入价格"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-              </el-col>
-              
-              <el-col :span="6">
-                <el-form-item label="持有数量" prop="quantity">
-                  <el-input-number
-                    v-model="createForm.quantity"
-                    :precision="8"
-                    :min="0"
-                    placeholder="请输入持有数量"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-              </el-col>
-              
-              <el-col :span="6">
-                <el-form-item>
-                  <el-button
-                    type="primary"
-                    :loading="createLoading"
-                    @click="handleCreateAsset"
-                  >
-                    添加资产
-                  </el-button>
-                </el-form-item>
-              </el-col>
-            </el-row>
+      </div>
+    </el-header>
+
+    <el-main class="page-main">
+      <el-card class="form-card" shadow="never">
+        <el-form
+          ref="inlineFormRef"
+          :model="inlineForm"
+          :rules="formRules"
+          label-position="top"
+          @submit.prevent="submitInlineForm"
+        >
+          <div class="form-responsive-row">
+            <el-form-item label="交易对 (容错: 填 btc 自动转 BTCUSDT)" prop="crypto_symbol" class="flex-item-large">
+              <el-input v-model="inlineForm.crypto_symbol" placeholder="如: BTCUSDT" clearable />
+            </el-form-item>
             
-            <el-row>
-              <el-col :span="24">
-                <el-form-item label="备注" prop="notes">
-                  <el-input
-                    v-model="createForm.notes"
-                    placeholder="请输入备注（可选）"
-                    type="textarea"
-                    :rows="2"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-          </el-form>
-        </el-card>
-        
-        <!-- 资产列表 -->
-        <el-card class="assets-list-card">
-          <template #header>
-            <div class="card-header">
-              <span>我的资产</span>
-              <div class="header-actions">
-                <span class="total-value">总资产价值: ${{ totalValue.toLocaleString() }}</span>
-                <el-button @click="loadAssets" :loading="loading">刷新</el-button>
-              </div>
-            </div>
-          </template>
-          
-          <el-table
-            :data="assets"
-            style="width: 100%"
-            v-loading="loading"
-          >
-            <el-table-column prop="crypto_symbol" label="交易对" width="120">
-              <template #default="{ row }">
-                <el-tag>{{ row.crypto_symbol }}</el-tag>
-              </template>
-            </el-table-column>
+            <el-form-item label="持仓数量" prop="quantity" class="flex-item-small">
+              <el-input-number v-model="inlineForm.quantity" :min="0" :precision="6" :controls="false" style="width: 100%" placeholder="数量" />
+            </el-form-item>
             
-            <el-table-column prop="crypto_name" label="币种名称" width="150" />
+            <el-form-item label="持仓均价 ($)" prop="buy_price" class="flex-item-small">
+              <el-input-number v-model="inlineForm.buy_price" :min="0" :precision="4" :controls="false" style="width: 100%" placeholder="均价" />
+            </el-form-item>
             
-            <el-table-column prop="buy_price" label="买入价格" width="150">
-              <template #default="{ row }">
-                <span class="price">${{ row.buy_price.toLocaleString() }}</span>
-              </template>
-            </el-table-column>
+            <el-form-item label="备注说明 (可选)" prop="notes" class="flex-item-large">
+              <el-input v-model="inlineForm.notes" placeholder="买入逻辑或来源" clearable />
+            </el-form-item>
             
-            <el-table-column prop="quantity" label="持有数量" width="150">
-              <template #default="{ row }">
-                <span class="quantity">{{ row.quantity }}</span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column label="总价值" width="180">
-              <template #default="{ row }">
-                <span class="total-value">${{ row.total_value.toLocaleString() }}</span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column prop="notes" label="备注" min-width="150">
-              <template #default="{ row }">
-                <span class="notes">{{ row.notes || '-' }}</span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column prop="created_at" label="添加时间" width="180">
-              <template #default="{ row }">
-                {{ formatTime(row.created_at) }}
-              </template>
-            </el-table-column>
-            
-            <el-table-column label="操作" width="200" fixed="right">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  @click="handleEditAsset(row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="handleDeleteAsset(row)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          
-          <div v-if="!loading && assets.length === 0" class="empty-state">
-            <p>暂无资产记录</p>
-            <p>请添加您的数字货币资产开始跟踪</p>
+            <el-form-item label="&nbsp;" class="flex-btn">
+              <el-button type="primary" :loading="submitLoading" @click="submitInlineForm" style="width: 100%;">
+                快捷添加
+              </el-button>
+            </el-form-item>
           </div>
-        </el-card>
-      </el-main>
-    </el-container>
-    
-    <!-- 编辑对话框 -->
+        </el-form>
+      </el-card>
+
+      <div class="view-wrapper" v-loading="loading">
+        
+        <div class="desktop-view">
+          <el-card shadow="never" class="table-card">
+            <el-table :data="assets" stripe hover style="width: 100%">
+              <el-table-column label="交易对" min-width="110">
+                <template #default="{ row }">
+                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ row._symbol }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="_name" label="币种名称" min-width="110" show-overflow-tooltip />
+              
+              <el-table-column label="持仓数量" min-width="110" align="right">
+                <template #default="{ row }">
+                  <span class="crypto-amount">{{ formatNum(row._qty, 4) }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="平均持仓价" min-width="120" align="right">
+                <template #default="{ row }">
+                  <span class="base-price">${{ formatNum(row._bp, 4) }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="当前价格" min-width="120" align="right">
+                <template #default="{ row }">
+                  <span class="price-text">${{ formatNum(row._cp, 4) }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="当前市值" min-width="130" align="right">
+                <template #default="{ row }">
+                  <b class="market-value">${{ formatNum(row._currentValue, 2) }}</b>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="盈亏" min-width="140" align="right">
+                <template #default="{ row }">
+                  <span :class="row._profitLoss >= 0 ? 'text-up' : 'text-down'">
+                    {{ row._profitLoss >= 0 ? '+' : '' }}{{ formatNum(row._profitLoss, 2) }}
+                    ({{ formatNum(row._profitLossPercent, 2) }}%)
+                  </span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="操作" width="140" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button-group>
+                    <el-button size="small" :icon="Edit" @click="openEditDialog(row)" />
+                    <el-button size="small" type="danger" :icon="Delete" @click="handleDelete(row)" />
+                  </el-button-group>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="assets.length === 0" description="暂无资产记录，请在上方快捷添加" />
+          </el-card>
+        </div>
+
+        <div class="mobile-view">
+          <el-empty v-if="assets.length === 0" description="暂无资产记录，请在上方添加" />
+          <div v-else class="card-list">
+            <el-card v-for="item in assets" :key="item.id" shadow="hover" class="mobile-data-card">
+              <div class="card-header-row">
+                <div class="coin-info">
+                  <el-tag effect="dark" round class="symbol-tag">{{ item._symbol }}</el-tag>
+                  <span class="coin-name">{{ item._name }}</span>
+                </div>
+                <div :class="['p-l-badge', item._profitLoss >= 0 ? 'bg-profit' : 'bg-loss']">
+                  {{ item._profitLoss >= 0 ? '+' : '' }}{{ formatNum(item._profitLossPercent, 2) }}%
+                </div>
+              </div>
+
+              <el-divider class="compact-divider" />
+
+              <div class="card-body">
+                <div class="data-row main-data">
+                  <span class="data-label">当前总市值</span>
+                  <span class="market-value-large">${{ formatNum(item._currentValue, 2) }}</span>
+                </div>
+                
+                <div class="data-grid">
+                  <div class="data-item">
+                    <span class="data-label">持仓数量</span>
+                    <span class="data-value crypto-amount">{{ formatNum(item._qty, 4) }}</span>
+                  </div>
+                  <div class="data-item">
+                    <span class="data-label">持仓均价</span>
+                    <span class="data-value">${{ formatNum(item._bp, 4) }}</span>
+                  </div>
+                  <div class="data-item">
+                    <span class="data-label">当前价格</span>
+                    <span class="data-value price-text">${{ formatNum(item._cp, 4) }}</span>
+                  </div>
+                  <div class="data-item">
+                    <span class="data-label">盈亏金额</span>
+                    <span :class="['data-value', item._profitLoss >= 0 ? 'text-up' : 'text-down']">
+                      {{ item._profitLoss >= 0 ? '+' : '' }}${{ formatNum(item._profitLoss, 2) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="item.notes" class="notes-box">
+                  <el-icon><Notebook /></el-icon>
+                  <span>{{ item.notes }}</span>
+                </div>
+              </div>
+
+              <el-divider class="compact-divider" />
+
+              <div class="card-footer">
+                <el-button size="default" :icon="Edit" @click="openEditDialog(item)" plain style="flex:1">修改数据</el-button>
+                <el-button size="default" type="danger" :icon="Delete" @click="handleDelete(item)" plain style="flex:1">删除记录</el-button>
+              </div>
+            </el-card>
+          </div>
+        </div>
+
+      </div>
+    </el-main>
+
     <el-dialog
-      v-model="editDialogVisible"
-      title="编辑资产"
-      width="500px"
+      v-model="dialogVisible"
+      :title="isEditing ? '修改资产数据' : '添加新资产 (弹窗模式)'"
+      class="responsive-dialog"
+      @close="handleDialogClose"
     >
-      <el-form
-        ref="editFormRef"
-        :model="editForm"
-        :rules="editRules"
-        label-width="100px"
-      >
-        <el-form-item label="买入价格" prop="buy_price">
-          <el-input-number
-            v-model="editForm.buy_price"
-            :precision="2"
-            :min="0"
-            placeholder="请输入买入价格"
-            style="width: 100%"
-          />
+      <el-form :model="dialogForm" :rules="formRules" ref="dialogFormRef" label-position="top">
+        <el-form-item label="交易对 (容错: 填 eth 自动转 ETHUSDT)" prop="crypto_symbol">
+          <el-input v-model="dialogForm.crypto_symbol" placeholder="输入要添加的交易对" clearable :disabled="isEditing" />
         </el-form-item>
         
-        <el-form-item label="持有数量" prop="quantity">
-          <el-input-number
-            v-model="editForm.quantity"
-            :precision="8"
-            :min="0"
-            placeholder="请输入持有数量"
-            style="width: 100%"
-          />
-        </el-form-item>
+        <div class="form-row-2">
+          <el-form-item label="持仓数量" prop="quantity">
+            <el-input-number v-model="dialogForm.quantity" :min="0" :precision="6" :step="0.01" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="平均持仓均价 ($)" prop="buy_price">
+            <el-input-number v-model="dialogForm.buy_price" :min="0" :precision="4" :step="1" style="width: 100%" />
+          </el-form-item>
+        </div>
         
-        <el-form-item label="备注" prop="notes">
-          <el-input
-            v-model="editForm.notes"
-            placeholder="请输入备注"
-            type="textarea"
-            :rows="2"
-          />
+        <el-form-item label="备注说明 (可选)" prop="notes">
+          <el-input v-model="dialogForm.notes" type="textarea" placeholder="记录购买理由或来源" rows="2" clearable />
         </el-form-item>
       </el-form>
       
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSaveEdit">保存</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button v-if="!isEditing" type="success" @click="submitDialogForm(true)" :loading="submitLoading" plain>
+            保存并继续添加
+          </el-button>
+          <el-button type="primary" @click="submitDialogForm(false)" :loading="submitLoading">
+            {{ isEditing ? '保存修改' : '确认添加' }}
+          </el-button>
         </span>
       </template>
     </el-dialog>
@@ -226,280 +212,316 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Plus, Edit, Delete, Notebook } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { useAuthStore } from '../stores/auth'
-import { cryptocurrenciesApi, assetsApi } from '../api'
+import { assetsApi } from '../api'
 
 const router = useRouter()
-const authStore = useAuthStore()
-
 const loading = ref(false)
-const createLoading = ref(false)
-const cryptocurrencies = ref<any[]>([])
+const submitLoading = ref(false)
 const assets = ref<any[]>([])
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-const createFormRef = ref<FormInstance>()
-const editFormRef = ref<FormInstance>()
-const editDialogVisible = ref(false)
-const editingAssetId = ref<number | null>(null)
+// 为两个独立的输入渠道创建隔离的 Ref 和数据源
+const inlineFormRef = ref<FormInstance>()
+const dialogFormRef = ref<FormInstance>()
 
-const createForm = reactive({
-  crypto_symbol: '',
-  buy_price: null as number | null,
-  quantity: null as number | null,
-  notes: ''
-})
+const inlineForm = reactive({ crypto_symbol: '', quantity: undefined as number|undefined, buy_price: undefined as number|undefined, notes: '' })
+const dialogForm = reactive({ id: null as number|null, crypto_symbol: '', quantity: 0, buy_price: 0, notes: '' })
 
-const editForm = reactive({
-  buy_price: null as number | null,
-  quantity: null as number | null,
-  notes: ''
-})
+const dialogVisible = ref(false)
+const isEditing = ref(false) // 区分弹窗是"新建"还是"修改"
 
-const createRules: FormRules = {
-  crypto_symbol: [
-    { required: true, message: '请选择或输入币种', trigger: 'change' }
-  ],
-  buy_price: [
-    { required: true, message: '请输入买入价格', trigger: 'blur' },
-    { type: 'number', min: 0.01, message: '价格必须大于0', trigger: 'blur' }
-  ],
-  quantity: [
-    { required: true, message: '请输入持有数量', trigger: 'blur' },
-    { type: 'number', min: 0.00000001, message: '数量必须大于0', trigger: 'blur' }
-  ]
+// 统一的表单校验规则
+const formRules: FormRules = {
+  crypto_symbol: [{ required: true, message: '请输入交易对', trigger: 'blur' }],
+  quantity: [{ required: true, message: '请输入持仓数量', trigger: 'blur' }],
+  buy_price: [{ required: true, message: '请输入持仓均价', trigger: 'blur' }]
 }
 
-const editRules: FormRules = {
-  buy_price: [
-    { required: true, message: '请输入买入价格', trigger: 'blur' },
-    { type: 'number', min: 0.01, message: '价格必须大于0', trigger: 'blur' }
-  ],
-  quantity: [
-    { required: true, message: '请输入持有数量', trigger: 'blur' },
-    { type: 'number', min: 0.00000001, message: '数量必须大于0', trigger: 'blur' }
-  ]
+// 核心功能：数字安全格式化
+const formatNum = (val: any, decimals: number) => {
+  const num = Number(val)
+  return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals)
 }
 
-const totalValue = computed(() => {
-  return assets.value.reduce((sum, asset) => sum + asset.total_value, 0)
-})
-
-const loadCryptocurrencies = async () => {
-  try {
-    const response = await cryptocurrenciesApi.getAll()
-    cryptocurrencies.value = response.data
-  } catch (error) {
-    console.error('加载币种失败:', error)
-    ElMessage.error('加载币种失败')
+// 核心功能：智能输入容错清洗引擎 (例如：btc -> BTCUSDT)
+const formatSymbolInput = (rawSymbol: string) => {
+  let formatted = rawSymbol.trim().toUpperCase()
+  if (!formatted) return ''
+  // 如果输入不包含基础计价货币后缀，自动补全 USDT
+  if (!formatted.endsWith('USDT') && !formatted.endsWith('USDC') && !formatted.endsWith('BTC') && !formatted.endsWith('ETH')) {
+    formatted += 'USDT'
   }
+  return formatted
 }
 
-const loadAssets = async () => {
-  loading.value = true
+// 数据拉取与安全计算引擎 (包含前端去重保护)
+const loadAssets = async (isBackground = false) => {
+  if (!isBackground) loading.value = true
   try {
     const response = await assetsApi.getAll()
-    assets.value = response.data
+    
+    const uniqueData: any[] = []
+    const seenSymbols = new Set()
+    
+    for (const item of response.data) {
+      const rawSymbol = item.crypto_symbol || (item.crypto && item.crypto.symbol) || 'UNKNOWN'
+      if (!seenSymbols.has(rawSymbol)) {
+        seenSymbols.add(rawSymbol)
+        uniqueData.push(item)
+      }
+    }
+
+    assets.value = uniqueData.map((asset: any) => {
+      const cp = Number(asset.current_price || (asset.crypto && asset.crypto.current_price) || 0)
+      const qty = Number(asset.quantity || 0)
+      const bp = Number(asset.buy_price || 0)
+      const totalCost = bp * qty
+      const currentValue = cp * qty
+      const profitLoss = currentValue - totalCost
+      const profitLossPercent = totalCost > 0 ? (profitLoss / totalCost) * 100 : 0
+      
+      return { 
+        ...asset, 
+        _symbol: asset.crypto_symbol || (asset.crypto && asset.crypto.symbol) || '未知',
+        _name: asset.crypto_name || (asset.crypto && asset.crypto.name) || '-',
+        _cp: cp, _qty: qty, _bp: bp,
+        _totalCost: totalCost, _currentValue: currentValue,
+        _profitLoss: profitLoss, _profitLossPercent: profitLossPercent
+      }
+    })
   } catch (error) {
-    console.error('加载资产失败:', error)
-    ElMessage.error('加载资产失败')
+    if (!isBackground) ElMessage.error('加载资产数据失败')
   } finally {
-    loading.value = false
+    if (!isBackground) loading.value = false
   }
 }
 
-const handleCreateAsset = async () => {
-  if (!createFormRef.value) return
-  
-  await createFormRef.value.validate(async (valid) => {
+// 提交处理：渠道一 (页面快捷录入)
+const submitInlineForm = async () => {
+  if (!inlineFormRef.value) return
+  await inlineFormRef.value.validate(async (valid) => {
     if (valid) {
-      createLoading.value = true
+      submitLoading.value = true
       try {
+        const formattedSymbol = formatSymbolInput(inlineForm.crypto_symbol)
         await assetsApi.create({
-          crypto_symbol: createForm.crypto_symbol,
-          buy_price: createForm.buy_price!,
-          quantity: createForm.quantity!,
-          notes: createForm.notes || undefined
+          crypto_symbol: formattedSymbol,
+          quantity: Number(inlineForm.quantity),
+          buy_price: Number(inlineForm.buy_price),
+          notes: inlineForm.notes
         })
-        
-        ElMessage.success('资产添加成功')
-        
-        createForm.crypto_symbol = ''
-        createForm.buy_price = null
-        createForm.quantity = null
-        createForm.notes = ''
-        createFormRef.value?.resetFields()
-        
-        await loadAssets()
-      } catch (error) {
-        console.error('添加资产失败:', error)
-        ElMessage.error('添加资产失败')
+        ElMessage.success(`成功录入资产: ${formattedSymbol}`)
+        inlineFormRef.value?.resetFields()
+        loadAssets(true)
+      } catch (error: any) {
+        ElMessage.error(error.message || '录入失败，可能已存在记录')
       } finally {
-        createLoading.value = false
+        submitLoading.value = false
       }
     }
   })
 }
 
-const handleEditAsset = (asset: any) => {
-  editingAssetId.value = asset.id
-  editForm.buy_price = asset.buy_price
-  editForm.quantity = asset.quantity
-  editForm.notes = asset.notes || ''
-  editDialogVisible.value = true
-}
-
-const handleSaveEdit = async () => {
-  if (!editFormRef.value || !editingAssetId.value) return
-  
-  await editFormRef.value.validate(async (valid) => {
+// 提交处理：渠道二 (弹窗录入与编辑)
+const submitDialogForm = async (keepOpen = false) => {
+  if (!dialogFormRef.value) return
+  await dialogFormRef.value.validate(async (valid) => {
     if (valid) {
+      submitLoading.value = true
       try {
-        await assetsApi.update(editingAssetId.value!, {
-          buy_price: editForm.buy_price!,
-          quantity: editForm.quantity!,
-          notes: editForm.notes || undefined
-        })
-        
-        ElMessage.success('资产更新成功')
-        editDialogVisible.value = false
-        
-        await loadAssets()
-      } catch (error) {
-        console.error('更新资产失败:', error)
-        ElMessage.error('更新资产失败')
+        const payload = {
+          crypto_symbol: formatSymbolInput(dialogForm.crypto_symbol),
+          quantity: Number(dialogForm.quantity),
+          buy_price: Number(dialogForm.buy_price),
+          notes: dialogForm.notes
+        }
+
+        if (isEditing.value && dialogForm.id) {
+          // 修改逻辑
+          await assetsApi.update(dialogForm.id, payload)
+          ElMessage.success('资产数据更新成功')
+          dialogVisible.value = false
+        } else {
+          // 新增逻辑
+          await assetsApi.create(payload)
+          ElMessage.success(`成功添加资产: ${payload.crypto_symbol}`)
+          
+          if (keepOpen) {
+            // 保存并继续添加：只清空数据，不关弹窗
+            dialogFormRef.value?.resetFields()
+          } else {
+            dialogVisible.value = false
+          }
+        }
+        loadAssets(true)
+      } catch (error: any) {
+        ElMessage.error(error.message || '操作失败')
+      } finally {
+        submitLoading.value = false
       }
     }
   })
 }
 
-const handleDeleteAsset = async (asset: any) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除 ${asset.crypto_name} 的资产记录吗？此操作不可恢复。`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    await assetsApi.delete(asset.id)
-    
-    ElMessage.success('资产已删除')
-    
-    await loadAssets()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除资产失败:', error)
+// 弹窗状态管理
+const openAddDialog = () => {
+  isEditing.value = false
+  dialogForm.id = null
+  dialogForm.crypto_symbol = ''
+  dialogForm.quantity = 0
+  dialogForm.buy_price = 0
+  dialogForm.notes = ''
+  // 确保打开前清除可能的校验红框
+  setTimeout(() => dialogFormRef.value?.clearValidate(), 0)
+  dialogVisible.value = true
+}
+
+const openEditDialog = (row: any) => {
+  isEditing.value = true
+  dialogForm.id = row.id
+  dialogForm.crypto_symbol = row._symbol
+  dialogForm.quantity = row._qty
+  dialogForm.buy_price = row._bp
+  dialogForm.notes = row.notes || ''
+  dialogVisible.value = true
+}
+
+const handleDialogClose = () => {
+  dialogFormRef.value?.resetFields()
+}
+
+// 数据删除
+const handleDelete = (row: any) => {
+  ElMessageBox.confirm(`确定要彻底删除 ${row._symbol} 的持仓记录吗？`, '危险操作', {
+    confirmButtonText: '强制删除', cancelButtonText: '取消', type: 'error'
+  }).then(async () => {
+    try {
+      await assetsApi.delete(row.id)
+      ElMessage.success('资产记录已抹除')
+      loadAssets(true)
+    } catch (error) {
       ElMessage.error('删除资产失败')
     }
-  }
+  }).catch(() => {})
 }
 
-const formatTime = (timeStr: string) => {
-  return new Date(timeStr).toLocaleString('zh-CN')
-}
-
-const goToDashboard = () => {
-  router.push('/dashboard')
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/login')
-}
+const goToDashboard = () => router.push('/dashboard')
 
 onMounted(() => {
-  loadCryptocurrencies()
-  loadAssets()
+  loadAssets(false)
+  refreshTimer = setInterval(() => loadAssets(true), 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
 <style scoped>
-.assets-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+/* =========================================
+   UI 架构层：与 Watchlist/Alerts 绝对统一
+   ========================================= */
+.page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; }
+.page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
+.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; width: 100%; }
+.header-left h1 { margin: 0; font-size: 22px; color: #1f2f3d; font-weight: 600; letter-spacing: 0.5px; }
+.header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
+.page-main { padding: 20px 25px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+.form-card { margin-bottom: 20px; border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); }
+.table-card { border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); overflow: hidden; }
+
+/* 字体与颜色语义 (专为金融数据强化) */
+.symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
+.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
+.market-value { color: #1f2f3d; font-size: 16px; font-family: 'Monaco', monospace; }
+.crypto-amount { color: #5e6d82; font-family: 'Monaco', monospace; }
+.base-price { color: #909399; font-family: 'Monaco', monospace; }
+.text-up { color: #f56c6c; font-weight: bold; font-family: 'Monaco', monospace; }
+.text-down { color: #67c23a; font-weight: bold; font-family: 'Monaco', monospace; }
+
+/* =========================================
+   PC端视图 (> 768px)
+   ========================================= */
+@media (min-width: 769px) {
+  .desktop-view { display: block; }
+  .mobile-view { display: none !important; }
+  
+  :deep(.el-table th.el-table__cell) { background-color: #fafafa; color: #606266; font-weight: 600; height: 50px; }
+  
+  .form-responsive-row { display: flex; gap: 20px; align-items: flex-end; }
+  .flex-item-large { flex: 2; margin-bottom: 0; }
+  .flex-item-small { flex: 1.2; margin-bottom: 0; }
+  .flex-btn { width: 120px; margin-bottom: 0; }
+  
+  .form-row-2 { display: flex; gap: 20px; }
+  .form-row-2 > .el-form-item { flex: 1; }
 }
 
-.assets-header {
-  background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+/* =========================================
+   移动端视图 (<= 768px)
+   ========================================= */
+@media (max-width: 768px) {
+  .desktop-view { display: none !important; }
+  .mobile-view { display: block; }
+  
+  .page-container { padding-bottom: 80px; }
+  .page-main { padding: 12px; }
+  
+  .page-header { padding: 15px; }
+  .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .header-right { width: 100%; }
+  
+  :deep(.action-buttons) { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; }
+  :deep(.action-buttons .el-button) { flex: 1 1 auto; margin: 0 !important; border-radius: 6px !important; }
 
-.header-left h1 {
-  margin: 0;
-  color: #409eff;
-}
+  .form-responsive-row { display: flex; flex-direction: column; gap: 0; }
+  .flex-item-large, .flex-item-small { margin-bottom: 16px; }
+  .flex-btn { margin-bottom: 4px; }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
+  /* 移动端高级卡片设计 */
+  .card-list { display: flex; flex-direction: column; gap: 12px; }
+  .mobile-data-card { 
+    border-radius: 12px; border: none; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+    transition: transform 0.2s ease;
+  }
+  .mobile-data-card:active { transform: scale(0.98); }
+  :deep(.mobile-data-card .el-card__body) { padding: 16px; }
+  
+  .card-header-row { display: flex; justify-content: space-between; align-items: center; }
+  .coin-info { display: flex; align-items: center; gap: 10px; }
+  .coin-name { font-weight: 600; font-size: 15px; color: #303133; }
+  
+  .p-l-badge { padding: 4px 10px; border-radius: 20px; color: white; font-size: 12px; font-weight: bold; font-family: 'Monaco', monospace;}
+  .bg-profit { background-color: #f56c6c; } /* 国内习惯红涨绿跌 */
+  .bg-loss { background-color: #67c23a; }
 
-.assets-main {
-  padding: 20px;
-}
+  .compact-divider { margin: 14px 0; border-color: #ebeef5; opacity: 0.6; }
+  
+  .card-body { display: flex; flex-direction: column; gap: 12px; }
+  .data-label { font-size: 12px; color: #909399; margin-bottom: 4px; display: block; }
+  .data-value { font-size: 15px; font-weight: 500; }
 
-.create-asset-card {
-  margin-bottom: 20px;
-}
+  .main-data { background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #f0f2f5;}
+  .market-value-large { font-size: 22px; font-weight: bold; color: #1f2f3d; font-family: 'Monaco', monospace;}
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+  .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  
+  .notes-box { display: flex; align-items: flex-start; gap: 6px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px dashed #e4e7ed; font-size: 13px; color: #5e6d82;}
+  .notes-box .el-icon { margin-top: 2px; color: #a8abb2; }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
+  .card-footer { display: flex; gap: 12px; margin-top: 6px; }
+  .card-footer .el-button { border-radius: 6px; }
 
-.total-value {
-  font-weight: bold;
-  color: #e6a23c;
-  font-size: 16px;
-}
-
-.price {
-  font-weight: bold;
-  color: #409eff;
-}
-
-.quantity {
-  font-weight: bold;
-  color: #67c23a;
-}
-
-.notes {
-  color: #666;
-  font-size: 12px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-}
-
-.empty-state p {
-  margin: 10px 0;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  /* 对话框适配 */
+  :deep(.responsive-dialog) { width: 95% !important; max-width: 400px; margin: 5vh auto !important; border-radius: 12px; }
+  .form-row-2 { display: flex; flex-direction: column; gap: 0; }
+  :deep(.dialog-footer) { display: flex; flex-wrap: wrap; gap: 10px; }
+  :deep(.dialog-footer .el-button) { flex: 1 1 100%; margin-left: 0 !important; }
 }
 </style>

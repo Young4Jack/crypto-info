@@ -1,198 +1,224 @@
 <template>
-  <div class="watchlist-container">
-    <el-container>
-      <el-header class="watchlist-header">
+  <div class="page-container">
+    <el-header class="page-header" height="auto">
+      <div class="header-content">
         <div class="header-left">
           <h1>关注列表</h1>
+          <p>实时监控您感兴趣的数字货币行情</p>
         </div>
         <div class="header-right">
-          <span>欢迎，{{ authStore.user?.username || '用户' }}</span>
-          <el-button @click="goToDashboard">返回仪表盘</el-button>
-          <el-button type="danger" @click="handleLogout">退出登录</el-button>
+          <el-button-group class="action-buttons">
+            <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="() => loadWatchlist(false)" :loading="loading">刷新行情</el-button>
+            <el-button type="primary" :icon="Plus" @click="dialogVisible = true">添加关注</el-button>
+          </el-button-group>
         </div>
-      </el-header>
+      </div>
+    </el-header>
       
-      <el-main class="watchlist-main">
-        <el-card class="create-watchlist-card">
-          <template #header>
-            <div class="card-header">
-              <span>添加关注</span>
-            </div>
-          </template>
-          
-          <el-form
-            ref="createFormRef"
-            :model="createForm"
-            :rules="createRules"
-            label-width="120px"
-            @submit.prevent="handleCreateWatchlist"
-          >
-            <el-row :gutter="20">
-              <el-col :span="8">
-                <el-form-item label="交易对" prop="crypto_symbol">
-                  <el-input
-                    v-model="createForm.crypto_symbol"
-                    placeholder="请输入交易对，如：BTCUSDT"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-              </el-col>
-              
-              <el-col :span="8">
-                <el-form-item label="备注" prop="notes">
-                  <el-input
-                    v-model="createForm.notes"
-                    placeholder="请输入备注（可选）"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-              </el-col>
-              
-              <el-col :span="8">
-                <el-form-item>
-                  <el-button
-                    type="primary"
-                    :loading="createLoading"
-                    @click="handleCreateWatchlist"
-                  >
-                    添加关注
-                  </el-button>
-                </el-form-item>
-              </el-col>
-            </el-row>
-          </el-form>
-        </el-card>
-        
-        <el-card class="watchlist-list-card">
-          <template #header>
-            <div class="card-header">
-              <span>我的关注</span>
-              <el-button @click="loadWatchlist" :loading="loading">刷新</el-button>
-            </div>
-          </template>
-          
-          <el-table
-            :data="watchlist"
-            style="width: 100%"
-            v-loading="loading"
-          >
-            <el-table-column prop="crypto_symbol" label="交易对" width="120">
-              <template #default="{ row }">
-                <el-tag>{{ row.crypto_symbol }}</el-tag>
-              </template>
-            </el-table-column>
+    <el-main class="page-main">
+      <el-card class="form-card" shadow="never">
+        <el-form
+          ref="createFormRef"
+          :model="createForm"
+          :rules="createRules"
+          label-position="top"
+          @submit.prevent="handleCreateWatchlist('page', false)"
+        >
+          <div class="form-responsive-row">
+            <el-form-item label="交易对 (容错输入: 填 btc 会自动转为 BTCUSDT)" prop="crypto_symbol" class="flex-item">
+              <el-input v-model="createForm.crypto_symbol" placeholder="输入要关注的币种或交易对" clearable />
+            </el-form-item>
             
-            <el-table-column prop="crypto_name" label="币种名称" width="120" />
+            <el-form-item label="备注说明 (可选)" prop="notes" class="flex-item">
+              <el-input v-model="createForm.notes" placeholder="输入关注理由或预期" clearable />
+            </el-form-item>
             
-            <el-table-column prop="current_price" label="当前价格" width="120">
-              <template #default="{ row }">
-                <span class="price">${{ row.current_price ? row.current_price.toFixed(2) : '0.00' }}</span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column prop="notes" label="备注" min-width="120">
-              <template #default="{ row }">
-                <span class="notes">{{ row.notes || '-' }}</span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column prop="created_at" label="添加时间" width="150">
-              <template #default="{ row }">
-                {{ formatTime(row.created_at) }}
-              </template>
-            </el-table-column>
-            
-            <el-table-column label="操作" width="200" fixed="right">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  @click="handleEditWatchlist(row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="handleDeleteWatchlist(row)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          
-          <div v-if="!loading && watchlist.length === 0" class="empty-state">
-            <p>暂无关注项</p>
-            <p>请添加新的关注项开始监控价格</p>
+            <el-form-item label="&nbsp;" class="flex-btn">
+              <el-button type="primary" :loading="createLoading" @click="handleCreateWatchlist('page', false)" style="width: 100%;">
+                页面内添加
+              </el-button>
+            </el-form-item>
           </div>
-        </el-card>
-      </el-main>
-    </el-container>
+        </el-form>
+      </el-card>
+      
+      <div class="view-wrapper" v-loading="loading">
+        <div class="desktop-view">
+          <el-card shadow="never" class="table-card">
+            <el-table :data="watchlist" stripe hover style="width: 100%">
+              <el-table-column prop="crypto_symbol" label="交易对" min-width="120">
+                <template #default="{ row }">
+                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ row.crypto_symbol }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="crypto_name" label="币种名称" min-width="120" />
+              <el-table-column prop="current_price" label="当前价格" min-width="120" align="right">
+                <template #default="{ row }">
+                  <span class="price-text">${{ row.current_price ? row.current_price.toFixed(4) : '0.0000' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="notes" label="备注" min-width="180" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="notes-text">{{ row.notes || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="添加时间" min-width="160">
+                <template #default="{ row }">
+                  <span class="time-text">{{ formatTime(row.created_at) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button-group>
+                    <el-button size="small" @click="handleEditWatchlist(row)">编辑</el-button>
+                    <el-button size="small" type="danger" @click="handleDeleteWatchlist(row)">删除</el-button>
+                  </el-button-group>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="watchlist.length === 0" description="暂无关注项，请在上方添加" />
+          </el-card>
+        </div>
+
+        <div class="mobile-view">
+          <el-empty v-if="watchlist.length === 0" description="暂无关注项，请在上方添加" />
+          <div v-else class="card-list">
+            <el-card v-for="item in watchlist" :key="item.id" shadow="hover" class="mobile-data-card">
+              <div class="card-header-row">
+                <div class="coin-info">
+                  <el-tag effect="dark" round class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
+                  <span class="coin-name">{{ item.crypto_name }}</span>
+                </div>
+                <div class="price-highlight">
+                  ${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}
+                </div>
+              </div>
+              <el-divider class="compact-divider" />
+              <div class="card-body">
+                <div v-if="item.notes" class="notes-box">
+                  <span class="notes-label">备注：</span>{{ item.notes }}
+                </div>
+                <div class="time-box">
+                  收录于 {{ formatTime(item.created_at) }}
+                </div>
+              </div>
+              <el-divider class="compact-divider" />
+              <div class="card-footer">
+                <el-button size="default" @click="handleEditWatchlist(item)" plain style="flex:1">修改备注</el-button>
+                <el-button size="default" type="danger" @click="handleDeleteWatchlist(item)" plain style="flex:1">取消关注</el-button>
+              </div>
+            </el-card>
+          </div>
+        </div>
+      </div>
+    </el-main>
+
+    <el-dialog
+      v-model="dialogVisible"
+      title="添加新关注 (弹窗模式)"
+      class="responsive-dialog"
+      @close="handleDialogClose"
+    >
+      <el-form :model="createForm" :rules="createRules" ref="dialogFormRef" label-position="top">
+        <el-form-item label="交易对 (容错输入: 填 eth 自动转为 ETHUSDT)" prop="crypto_symbol">
+          <el-input v-model="createForm.crypto_symbol" placeholder="输入要关注的币种或交易对" clearable />
+        </el-form-item>
+        
+        <el-form-item label="备注说明 (可选)" prop="notes">
+          <el-input v-model="createForm.notes" type="textarea" placeholder="输入关注理由或预期" rows="3" clearable />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="success" @click="handleCreateWatchlist('dialog', true)" :loading="createLoading" plain>保存并继续添加</el-button>
+          <el-button type="primary" @click="handleCreateWatchlist('dialog', false)" :loading="createLoading">确认添加</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { useAuthStore } from '../stores/auth'
 import { watchlistApi } from '../api'
 
 const router = useRouter()
-const authStore = useAuthStore()
-
 const loading = ref(false)
 const createLoading = ref(false)
 const watchlist = ref<any[]>([])
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
+const dialogVisible = ref(false)
 const createFormRef = ref<FormInstance>()
+const dialogFormRef = ref<FormInstance>()
 
-const createForm = reactive({
-  crypto_symbol: '',
-  notes: ''
-})
-
+const createForm = reactive({ crypto_symbol: '', notes: '' })
 const createRules: FormRules = {
-  crypto_symbol: [
-    { required: true, message: '请输入交易对', trigger: 'change' }
-  ]
+  crypto_symbol: [{ required: true, message: '请输入交易对或币种名称', trigger: 'blur' }]
 }
 
-const loadWatchlist = async () => {
-  loading.value = true
+const loadWatchlist = async (isBackground = false) => {
+  if (!isBackground) loading.value = true
   try {
     const response = await watchlistApi.getAll()
-    watchlist.value = response.data
+    const uniqueData = []
+    const seen = new Set()
+    for (const item of response.data) {
+      if (!seen.has(item.crypto_symbol)) {
+        seen.add(item.crypto_symbol)
+        uniqueData.push(item)
+      }
+    }
+    watchlist.value = uniqueData
   } catch (error) {
-    console.error('加载关注列表失败:', error)
-    ElMessage.error('加载关注列表失败')
+    if (!isBackground) ElMessage.error('加载关注列表失败')
   } finally {
-    loading.value = false
+    if (!isBackground) loading.value = false
   }
 }
 
-const handleCreateWatchlist = async () => {
-  if (!createFormRef.value) return
+// 核心逻辑：增加容错清洗与连续添加控制
+const handleCreateWatchlist = async (source: 'page' | 'dialog', keepOpen = false) => {
+  const targetFormRef = source === 'page' ? createFormRef.value : dialogFormRef.value
   
-  await createFormRef.value.validate(async (valid) => {
+  if (!targetFormRef) return
+  
+  await targetFormRef.validate(async (valid) => {
     if (valid) {
       createLoading.value = true
       try {
+        // 数据清洗与容错引擎
+        let formattedSymbol = createForm.crypto_symbol.trim().toUpperCase()
+        // 自动补全基础计价对逻辑
+        if (!formattedSymbol.endsWith('USDT') && !formattedSymbol.endsWith('USDC') && !formattedSymbol.endsWith('BTC') && !formattedSymbol.endsWith('ETH')) {
+          formattedSymbol += 'USDT'
+        }
+
         await watchlistApi.create({
-          crypto_symbol: createForm.crypto_symbol,
+          crypto_symbol: formattedSymbol,
           notes: createForm.notes || undefined
         })
+        ElMessage.success(`关注项 ${formattedSymbol} 添加成功`)
         
-        ElMessage.success('关注项添加成功')
-        
+        // 状态重置
         createForm.crypto_symbol = ''
         createForm.notes = ''
-        createFormRef.value?.resetFields()
+        targetFormRef.resetFields()
         
-        await loadWatchlist()
+        // 判断是否需要关闭弹窗
+        if (source === 'dialog' && !keepOpen) {
+          dialogVisible.value = false
+        }
+        
+        loadWatchlist(true)
       } catch (error) {
-        console.error('添加关注项失败:', error)
-        ElMessage.error('添加关注项失败')
+        ElMessage.error('添加失败，可能是已存在该关注项')
       } finally {
         createLoading.value = false
       }
@@ -200,173 +226,145 @@ const handleCreateWatchlist = async () => {
   })
 }
 
+const handleDialogClose = () => {
+  createForm.crypto_symbol = ''
+  createForm.notes = ''
+  dialogFormRef.value?.resetFields()
+}
+
 const handleEditWatchlist = (item: any) => {
-  // 显示编辑对话框
   ElMessageBox.prompt('请输入新的备注', '编辑关注项', {
-    confirmButtonText: '确定',
+    confirmButtonText: '保存',
     cancelButtonText: '取消',
     inputValue: item.notes || '',
     inputPlaceholder: '请输入备注'
   }).then(async ({ value }) => {
     try {
       await watchlistApi.update(item.id, { notes: value })
-      ElMessage.success('关注项更新成功')
-      await loadWatchlist()
+      ElMessage.success('更新成功')
+      loadWatchlist(true)
     } catch (error) {
-      console.error('更新关注项失败:', error)
-      ElMessage.error('更新关注项失败')
+      ElMessage.error('更新失败')
     }
-  }).catch(() => {
-    // 用户取消
-  })
+  }).catch(() => {})
 }
 
 const handleDeleteWatchlist = async (item: any) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除关注项 ${item.crypto_symbol} 吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
+    await ElMessageBox.confirm(`确定不再关注 ${item.crypto_symbol} 吗？`, '确认操作', {
+      confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
+    })
     await watchlistApi.delete(item.id)
-    
-    ElMessage.success('关注项已删除')
-    
-    await loadWatchlist()
+    ElMessage.success('已取消关注')
+    loadWatchlist(true)
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除关注项失败:', error)
-      ElMessage.error('删除关注项失败')
-    }
+    if (error !== 'cancel') ElMessage.error('操作失败')
   }
 }
 
 const formatTime = (timeStr: string) => {
-  return new Date(timeStr).toLocaleString('zh-CN')
+  if (!timeStr) return '-'
+  const dateStr = timeStr.endsWith('Z') || timeStr.includes('+') ? timeStr : timeStr + 'Z'
+  return new Date(dateStr).toLocaleString('zh-CN', { 
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+  })
 }
 
-const goToDashboard = () => {
-  router.push('/dashboard')
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/login')
-}
+const goToDashboard = () => router.push('/dashboard')
 
 onMounted(() => {
-  loadWatchlist()
+  loadWatchlist(false)
+  refreshTimer = setInterval(() => loadWatchlist(true), 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
 <style scoped>
-.watchlist-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+.page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; }
+.page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
+.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; width: 100%; }
+.header-left h1 { margin: 0; font-size: 22px; color: #1f2f3d; font-weight: 600; letter-spacing: 0.5px; }
+.header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
+.page-main { padding: 20px 25px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+.form-card { margin-bottom: 20px; border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); }
+.table-card { border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); overflow: hidden; }
+
+.symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
+.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
+.notes-text { color: #5e6d82; }
+.time-text { color: #909399; font-size: 13px; }
+
+@media (min-width: 769px) {
+  .desktop-view { display: block; }
+  .mobile-view { display: none !important; }
+  
+  :deep(.el-table th.el-table__cell) { background-color: #fafafa; color: #606266; font-weight: 600; height: 50px; }
+  
+  .form-responsive-row { display: flex; gap: 24px; align-items: flex-end; }
+  .flex-item { flex: 1; margin-bottom: 0; }
+  .flex-btn { width: 140px; margin-bottom: 0; }
 }
 
-.watchlist-header {
-  background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.header-left h1 {
-  margin: 0;
-  color: #409eff;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.watchlist-main {
-  padding: 15px;
-}
-
-.create-watchlist-card {
-  margin-bottom: 15px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.notes {
-  color: #666;
-  font-size: 12px;
-}
-
-.price {
-  color: #e6a23c;
-  font-weight: bold;
-  font-size: 12px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 30px;
-  color: #999;
-}
-
-.empty-state p {
-  margin: 8px 0;
-}
-
-/* 移动端适配 */
 @media (max-width: 768px) {
-  .watchlist-header {
-    padding: 10px 15px;
-    flex-direction: column;
+  .desktop-view { display: none !important; }
+  .mobile-view { display: block; }
+  
+  .page-container { padding-bottom: 80px; }
+  .page-main { padding: 12px; }
+  
+  .page-header { padding: 15px; }
+  .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .header-right { width: 100%; }
+  
+  :deep(.action-buttons) { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; }
+  :deep(.action-buttons .el-button) { flex: 1 1 auto; margin: 0 !important; border-radius: 6px !important; }
+
+  .form-responsive-row { display: flex; flex-direction: column; gap: 0; }
+  .flex-item { margin-bottom: 16px; }
+  .flex-btn { margin-bottom: 4px; }
+
+  .card-list { display: flex; flex-direction: column; gap: 12px; }
+  .mobile-data-card { 
+    border-radius: 12px; 
+    border: none; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+    transition: transform 0.2s ease;
+  }
+  .mobile-data-card:active { transform: scale(0.98); }
+  :deep(.mobile-data-card .el-card__body) { padding: 16px; }
+  
+  .card-header-row { display: flex; justify-content: space-between; align-items: center; }
+  .coin-info { display: flex; align-items: center; gap: 10px; }
+  .coin-name { font-weight: 600; font-size: 15px; color: #303133; }
+  .price-highlight { font-size: 18px; font-weight: 700; color: #409eff; font-family: 'Monaco', monospace; }
+  
+  .compact-divider { margin: 14px 0; border-color: #ebeef5; opacity: 0.6; }
+  
+  .notes-box { background: #f8f9fa; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; color: #5e6d82; line-height: 1.4; }
+  .notes-label { color: #909399; font-weight: 500; }
+  .time-box { font-size: 12px; color: #a8abb2; text-align: right; }
+  
+  .card-footer { display: flex; gap: 12px; margin-top: 6px; }
+  .card-footer .el-button { border-radius: 6px; }
+
+  :deep(.responsive-dialog) {
+    width: 95% !important;
+    max-width: 400px;
+    margin: 10vh auto !important;
+    border-radius: 12px;
+  }
+  :deep(.dialog-footer) {
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
   }
-  
-  .header-left h1 {
-    font-size: 1.2rem;
-  }
-  
-  .header-right {
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .watchlist-main {
-    padding: 10px;
-  }
-  
-  .create-watchlist-card {
-    margin-bottom: 10px;
-  }
-  
-  .el-form-item {
-    margin-bottom: 10px;
-  }
-  
-  .el-table {
-    font-size: 12px;
-  }
-  
-  .el-table-column {
-    min-width: 80px;
-  }
-  
-  .empty-state {
-    padding: 20px;
-    font-size: 12px;
+  :deep(.dialog-footer .el-button) {
+    flex: 1 1 100%;
+    margin-left: 0 !important;
   }
 }
 </style>

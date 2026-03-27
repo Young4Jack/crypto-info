@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-container">
     <el-container>
-      <el-header class="dashboard-header">
+      <el-header class="dashboard-header" height="auto">
         <div class="header-left">
           <h1>{{ siteTitle }}</h1>
         </div>
@@ -20,7 +20,7 @@
       <el-main class="dashboard-main">
         <!-- 资产配置 -->
         <el-row :gutter="20" class="stats-row">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-card class="stat-card">
               <div class="stat-content">
                 <div class="stat-number">${{ dashboardData.total_value?.toLocaleString() || '0' }}</div>
@@ -29,7 +29,7 @@
             </el-card>
           </el-col>
           
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-card class="stat-card" :class="{ 'profit': dashboardData.total_profit_loss > 0, 'loss': dashboardData.total_profit_loss < 0 }">
               <div class="stat-content">
                 <div class="stat-number">
@@ -40,7 +40,7 @@
             </el-card>
           </el-col>
           
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-card class="stat-card">
               <div class="stat-content">
                 <div class="stat-number">{{ dashboardData.active_alerts_count || 0 }}</div>
@@ -53,7 +53,7 @@
         <!-- 新的三列布局 -->
         <el-row :gutter="20">
           <!-- 第一列：资产配置和资产详情 -->
-          <el-col :span="8">
+          <el-col :xs="24" :sm="24" :md="8">
             <!-- 资产配置 -->
             <el-card class="chart-card">
               <template #header>
@@ -99,7 +99,7 @@
           </el-col>
           
           <!-- 第二列：关注列表 -->
-          <el-col :span="8">
+          <el-col :xs="24" :sm="24" :md="8">
             <el-card class="watchlist-card">
               <template #header>
                 <div class="card-header">
@@ -127,7 +127,7 @@
           </el-col>
           
           <!-- 第三列：预警记录 -->
-          <el-col :span="8">
+          <el-col :xs="24" :sm="24" :md="8">
             <el-card class="alerts-card">
               <template #header>
                 <div class="card-header">
@@ -614,6 +614,28 @@ onMounted(() => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap; /* 允许元素换行 */
+    justify-content: center;
+  }
+
+  /* 解除按钮组的强制在一行排列，允许其在移动端自动换行 */
+  :deep(.el-button-group) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+  
+  :deep(.el-button-group > .el-button) {
+    float: none;
+    border-radius: 4px !important; /* 取消首尾按钮的特殊圆角，让折行后的按钮更美观 */
+    margin: 2px;
+  }
+
   .dashboard-container {
     min-height: 100vh;
     background-color: #f5f5f5;

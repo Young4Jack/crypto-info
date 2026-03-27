@@ -9,6 +9,7 @@ from app.models.cryptocurrency import Cryptocurrency
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.alert_service import create_alert, update_alert, delete_alert, get_user_alerts
+from app.services.price_service_refactored import fetch_crypto_prices
 from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_name
 from datetime import datetime
 from app.config_manager import config_manager
@@ -37,6 +38,7 @@ class AlertResponse(BaseModel):
     crypto_name: str
     alert_type: str
     threshold_price: float
+    current_price: Optional[float] = None
     is_active: bool
     triggered_at: Optional[str] = None
     created_at: str
@@ -49,12 +51,21 @@ async def get_alerts(
     """获取当前用户的所有预警规则"""
     alerts = get_user_alerts(db, current_user.id)
     
+    # 获取所有币种的当前价格
+    try:
+        current_prices = await fetch_crypto_prices()
+    except Exception as e:
+        current_prices = {}
+    
     result = []
     for alert in alerts:
         # 获取对应的币种信息
         crypto = db.query(Cryptocurrency).filter(
             Cryptocurrency.id == alert.crypto_id
         ).first()
+        
+        # 获取当前价格
+        current_price = current_prices.get(crypto.symbol, 0) if crypto else 0
         
         result.append(AlertResponse(
             id=alert.id,
@@ -63,6 +74,7 @@ async def get_alerts(
             crypto_name=crypto.name if crypto else "Unknown",
             alert_type=alert.alert_type.value,
             threshold_price=alert.threshold_price,
+            current_price=current_price,
             webhook_url=alert.webhook_url,
             is_active=alert.is_active,
             triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,

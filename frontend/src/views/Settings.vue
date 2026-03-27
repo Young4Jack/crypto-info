@@ -210,7 +210,7 @@
                     :min="5"
                     :max="3600"
                     placeholder="请输入刷新间隔"
-                    style="width: 200px"
+                    style="width: 100%; max-width: 300px;"
                   />
                   <span class="setting-unit">秒</span>
                 </div>
@@ -232,6 +232,62 @@
                   <span class="setting-status">{{ systemForm.enable_captcha ? '已启用' : '已禁用' }}</span>
                 </div>
                 <div class="form-tip">开启后每次登录需要完成简单的数学验证，有效防止恶意登录尝试</div>
+              </el-form-item>
+            </div>
+            
+            <el-divider />
+            
+            <div class="setting-group">
+              <div class="setting-group-title">日志设置</div>
+              <el-form-item label="日志级别">
+                <el-select
+                  v-model="systemForm.log_level"
+                  placeholder="请选择日志级别"
+                  style="width: 100%; max-width: 300px;"
+                >
+                  <el-option label="DEBUG" value="DEBUG" />
+                  <el-option label="INFO" value="INFO" />
+                  <el-option label="WARNING" value="WARNING" />
+                  <el-option label="ERROR" value="ERROR" />
+                  <el-option label="CRITICAL" value="CRITICAL" />
+                </el-select>
+                <div class="form-tip">设置系统日志的详细程度，DEBUG最详细，CRITICAL只记录严重错误</div>
+              </el-form-item>
+              
+              <el-form-item label="启用日志">
+                <div class="setting-switch-group">
+                  <el-switch
+                    v-model="systemForm.enable_logging"
+                    active-text="启用"
+                    inactive-text="禁用"
+                  />
+                  <span class="setting-status">{{ systemForm.enable_logging ? '已启用' : '已禁用' }}</span>
+                </div>
+                <div class="form-tip">开启后系统会记录运行日志，便于排查问题和监控系统状态</div>
+              </el-form-item>
+            </div>
+            
+            <el-divider />
+            
+            <div class="setting-group">
+              <div class="setting-group-title">时区设置</div>
+              <el-form-item label="系统时区">
+                <el-select
+                  v-model="systemForm.timezone"
+                  placeholder="请选择时区"
+                  style="width: 100%; max-width: 300px;"
+                >
+                  <el-option label="亚洲/上海 (UTC+8)" value="Asia/Shanghai" />
+                  <el-option label="亚洲/东京 (UTC+9)" value="Asia/Tokyo" />
+                  <el-option label="亚洲/新加坡 (UTC+8)" value="Asia/Singapore" />
+                  <el-option label="亚洲/香港 (UTC+8)" value="Asia/Hong_Kong" />
+                  <el-option label="美国/纽约 (UTC-5)" value="America/New_York" />
+                  <el-option label="美国/洛杉矶 (UTC-8)" value="America/Los_Angeles" />
+                  <el-option label="欧洲/伦敦 (UTC+0)" value="Europe/London" />
+                  <el-option label="欧洲/巴黎 (UTC+1)" value="Europe/Paris" />
+                  <el-option label="UTC (UTC+0)" value="UTC" />
+                </el-select>
+                <div class="form-tip">设置系统使用的时区，影响日志时间戳和定时任务的执行时间</div>
               </el-form-item>
             </div>
             
@@ -393,7 +449,10 @@ const systemForm = reactive({
   refresh_interval: 5,
   enable_captcha: false,
   site_title: 'Crypto-info',
-  site_description: '数字货币价格监控和预警系统'
+  site_description: '数字货币价格监控和预警系统',
+  log_level: 'INFO',
+  enable_logging: true,
+  timezone: 'Asia/Shanghai'
 })
 
 const accountForm = reactive({
@@ -676,12 +735,15 @@ const handleSaveSystem = async () => {
     if (valid) {
       systemSaveLoading.value = true
       try {
-        // 调用系统设置API
+        // 调用系统设置API，包含新增的日志和时区设置
         await systemSettingsApi.createSystemSetting({
           refresh_interval: systemForm.refresh_interval,
           enable_captcha: systemForm.enable_captcha,
           site_title: systemForm.site_title,
-          site_description: systemForm.site_description
+          site_description: systemForm.site_description,
+          log_level: systemForm.log_level,
+          enable_logging: systemForm.enable_logging,
+          timezone: systemForm.timezone
         })
         ElMessage.success('系统设置保存成功')
       } catch (error) {
@@ -903,9 +965,6 @@ onMounted(() => {
     gap: 10px;
   }
   
-  :deep(.el-form) {
-    label-position: top;
-  }
   
   :deep(.el-form-item__label) {
     font-size: 14px;
@@ -971,6 +1030,33 @@ onMounted(() => {
   
   .info-content p {
     font-size: 13px;
+  }
+}
+@media (max-width: 768px) {
+  /* 强制表单元素转为纵向排列 */
+  :deep(.el-form-item) {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+  
+  /* 取消 Label 的固定宽度并靠左对齐 */
+  :deep(.el-form-item__label) {
+    width: 100% !important;
+    text-align: left;
+    padding-bottom: 5px;
+    line-height: 1.2;
+  }
+  
+  /* 输入控件容器占满整行，并清除默认的左边距 */
+  :deep(.el-form-item__content) {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  /* 修复页签选项卡（Tabs）在手机端过长被截断的问题 */
+  :deep(.el-tabs__nav-scroll) {
+    overflow-x: auto; /* 允许页签栏横向滑动 */
   }
 }
 </style>

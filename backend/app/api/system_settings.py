@@ -16,6 +16,9 @@ class SystemSettingCreate(BaseModel):
     enable_captcha: bool = False
     site_title: str = "Crypto-info"
     site_description: str = "数字货币价格监控和预警系统"
+    log_level: str = "INFO"
+    enable_logging: bool = True
+    timezone: str = "Asia/Shanghai"
 
 class SystemSettingUpdate(BaseModel):
     """更新系统设置请求"""
@@ -23,6 +26,9 @@ class SystemSettingUpdate(BaseModel):
     enable_captcha: Optional[bool] = None
     site_title: Optional[str] = None
     site_description: Optional[str] = None
+    log_level: Optional[str] = None
+    enable_logging: Optional[bool] = None
+    timezone: Optional[str] = None
 
 class SystemSettingResponse(BaseModel):
     """系统设置响应"""
@@ -30,6 +36,9 @@ class SystemSettingResponse(BaseModel):
     enable_captcha: bool
     site_title: str
     site_description: str
+    log_level: str
+    enable_logging: bool
+    timezone: str
 
 @router.get("/", response_model=SystemSettingResponse)
 async def get_system_setting():
@@ -39,7 +48,10 @@ async def get_system_setting():
         refresh_interval=system_settings.get("refresh_interval", 5),
         enable_captcha=system_settings.get("enable_captcha", False),
         site_title=system_settings.get("site_title", "Crypto-info"),
-        site_description=system_settings.get("site_description", "数字货币价格监控和预警系统")
+        site_description=system_settings.get("site_description", "数字货币价格监控和预警系统"),
+        log_level=system_settings.get("log_level", "INFO"),
+        enable_logging=system_settings.get("enable_logging", True),
+        timezone=system_settings.get("timezone", "Asia/Shanghai")
     )
 
 @router.post("/", response_model=SystemSettingResponse)
@@ -49,20 +61,26 @@ async def create_system_setting(setting_data: SystemSettingCreate):
         "refresh_interval": setting_data.refresh_interval,
         "enable_captcha": setting_data.enable_captcha,
         "site_title": setting_data.site_title,
-        "site_description": setting_data.site_description
+        "site_description": setting_data.site_description,
+        "log_level": setting_data.log_level,
+        "enable_logging": setting_data.enable_logging,
+        "timezone": setting_data.timezone
     }
     
     success = config_manager.save_system_settings(system_settings)
     if not success:
         raise HTTPException(status_code=500, detail="保存系统设置失败")
     
-    logger.info(f"更新系统设置: refresh_interval={system_settings['refresh_interval']}, enable_captcha={system_settings['enable_captcha']}, site_title={system_settings['site_title']}")
+    logger.info(f"更新系统设置: refresh_interval={system_settings['refresh_interval']}, enable_captcha={system_settings['enable_captcha']}, site_title={system_settings['site_title']}, log_level={system_settings['log_level']}, enable_logging={system_settings['enable_logging']}, timezone={system_settings['timezone']}")
     
     return SystemSettingResponse(
         refresh_interval=system_settings["refresh_interval"],
         enable_captcha=system_settings["enable_captcha"],
         site_title=system_settings["site_title"],
-        site_description=system_settings["site_description"]
+        site_description=system_settings["site_description"],
+        log_level=system_settings["log_level"],
+        enable_logging=system_settings["enable_logging"],
+        timezone=system_settings["timezone"]
     )
 
 @router.put("/", response_model=SystemSettingResponse)
@@ -80,18 +98,27 @@ async def update_system_setting(setting_data: SystemSettingUpdate):
         current_settings["site_title"] = setting_data.site_title
     if setting_data.site_description is not None:
         current_settings["site_description"] = setting_data.site_description
+    if setting_data.log_level is not None:
+        current_settings["log_level"] = setting_data.log_level
+    if setting_data.enable_logging is not None:
+        current_settings["enable_logging"] = setting_data.enable_logging
+    if setting_data.timezone is not None:
+        current_settings["timezone"] = setting_data.timezone
     
     success = config_manager.save_system_settings(current_settings)
     if not success:
         raise HTTPException(status_code=500, detail="更新系统设置失败")
     
-    logger.info(f"更新系统设置: refresh_interval={current_settings['refresh_interval']}, enable_captcha={current_settings['enable_captcha']}, site_title={current_settings['site_title']}")
+    logger.info(f"更新系统设置: refresh_interval={current_settings['refresh_interval']}, enable_captcha={current_settings['enable_captcha']}, site_title={current_settings['site_title']}, log_level={current_settings['log_level']}, enable_logging={current_settings['enable_logging']}, timezone={current_settings['timezone']}")
     
     return SystemSettingResponse(
         refresh_interval=current_settings["refresh_interval"],
         enable_captcha=current_settings["enable_captcha"],
         site_title=current_settings["site_title"],
-        site_description=current_settings["site_description"]
+        site_description=current_settings["site_description"],
+        log_level=current_settings["log_level"],
+        enable_logging=current_settings["enable_logging"],
+        timezone=current_settings["timezone"]
     )
 
 @router.delete("/")

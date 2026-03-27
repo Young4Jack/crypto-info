@@ -30,7 +30,8 @@ class ConfigManager:
                 "site_title": "Crypto-info",
                 "site_description": "数字货币价格监控和预警系统",
                 "log_level": "INFO",
-                "enable_logging": True
+                "enable_logging": True,
+                "timezone": "Asia/Shanghai"
             }
         }
     
