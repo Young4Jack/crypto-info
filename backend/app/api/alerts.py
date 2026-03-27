@@ -10,6 +10,8 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.alert_service import create_alert, update_alert, delete_alert, get_user_alerts
 from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_name
+from datetime import datetime
+from app.config_manager import config_manager
 
 router = APIRouter(prefix="/api/alerts", tags=["预警管理"])
 
@@ -239,20 +241,16 @@ async def delete_alert_rule(
     # 检查资产管理中是否还有该交易对，如果没有则删除币种
     if crypto:
         from app.models.asset import Asset
-        asset_using_crypto = db.query(Asset).filter(
-            Asset.crypto_id == crypto.id,
-            Asset.user_id == current_user.id
-        ).first()
+        from app.models.watchlist import Watchlist
         
-        other_alerts = db.query(PriceAlert).filter(
-            PriceAlert.crypto_id == crypto.id,
-            PriceAlert.user_id == current_user.id
-        ).first()
+        has_asset = db.query(Asset).filter(Asset.crypto_id == crypto.id).first()
+        has_watchlist = db.query(Watchlist).filter(Watchlist.crypto_id == crypto.id).first()
         
-        # 如果没有其他资产和预警使用该币种，则删除币种
-        if not asset_using_crypto and not other_alerts:
+        # 只有在三个表都彻底无人使用时，才安全删除币种字典
+        if not has_asset and not has_watchlist:
             db.delete(crypto)
             db.commit()
-            return {"message": "预警规则和币种已删除"}
+            return {"message": "记录及冗余币种已删除"}
     
-    return {"message": "预警规则已删除"}
+    return {"message": "记录已删除"}
+

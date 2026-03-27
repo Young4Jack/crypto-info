@@ -3,60 +3,54 @@ import httpx
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
-from app.database import SessionLocal
-from app.models.system_setting import NotificationSetting
 from app.config_manager import config_manager
 
 logger = logging.getLogger(__name__)
 
 async def send_webhook_alert(title: str, description: str, content: str, user_id: int = None):
     """
-    发送 Webhook 预警通知
+    发送 Webhook 预警通知 (完全从 config.json 读取配置，不再依赖数据库表)
     
     Args:
         title: 预警标题
         description: 预警描述
         content: 预警详细内容
-        user_id: 用户ID（用于获取通知配置）
+        user_id: 用户ID（保留参数以兼容原有调用，但在此逻辑中不再使用）
     """
-    # 如果没有指定用户ID，记录警告并中止
-    if user_id is None:
-        logger.warning("未指定用户ID，无法发送预警通知")
-        return
-    
-    # 查询用户的通知设置
-    db = SessionLocal()
     try:
-        setting = db.query(NotificationSetting).filter(
-            NotificationSetting.user_id == user_id
-        ).first()
+        # 1. 直接通过 config_manager 获取字典配置
+        setting = config_manager.get_notification_settings()
         
-        if not setting or not setting.api_url:
-            logger.warning(f"用户 {user_id} 未配置通知设置，中止推送")
-            return
+        api_url = setting.get("api_url")
+        if not api_url:
+            logger.warning("配置文件中未设置 api_url，中止推送")
+            raise ValueError("未配置通知 API 地址")
         
-        # 使用数据库中的配置构建请求
-        url = setting.api_url
+        # 2. 组装请求头
         headers = {}
-        if setting.auth_token:
-            headers["Authorization"] = setting.auth_token
+        auth_token = setting.get("auth_token")
+        if auth_token:
+            headers["Authorization"] = auth_token
         
+        # 3. 组装请求体
         data = {
             "title": title,
             "description": description,
-            "channel": setting.channel or "email",
+            "channel": setting.get("channel", "yes"),  # 默认使用你配置中的 channel
             "content": content
         }
         
+        # 4. 执行异步推送 (使用 json=data 确保是 Application/JSON 格式)
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, data=data, timeout=10.0)
+            response = await client.post(api_url, headers=headers, json=data, timeout=10.0)
             response.raise_for_status()
             logger.info(f"预警推送成功: {response.status_code}")
+            
     except Exception as e:
         logger.error(f"预警推送失败: {str(e)}")
-    finally:
-        db.close()
+        # 必须抛出异常让 alert_service 捕获，确保 success = False
+        # 这样如果推送失败，数据库里就不会错误地将预警标记为“已触发”
+        raise e
 
 def create_alert_payload(
     crypto_symbol: str,
@@ -66,20 +60,7 @@ def create_alert_payload(
     current_price: float,
     triggered_at: datetime
 ) -> Dict[str, Any]:
-    """
-    创建预警通知数据
-    
-    Args:
-        crypto_symbol: 币种符号
-        crypto_name: 币种名称
-        alert_type: 预警类型 (above/below)
-        threshold_price: 阈值价格
-        current_price: 当前价格
-        triggered_at: 触发时间
-    
-    Returns:
-        Dict: 通知数据
-    """
+    """创建预警通知数据"""
     direction = "高于" if alert_type == "above" else "低于"
     
     return {
@@ -108,21 +89,7 @@ async def send_price_alert(
     current_price: float,
     user_id: int = None
 ) -> bool:
-    """
-    发送价格预警通知
-    
-    Args:
-        webhook_url: Webhook URL（此参数保留但不使用）
-        crypto_symbol: 币种符号
-        crypto_name: 币种名称
-        alert_type: 预警类型
-        threshold_price: 阈值价格
-        current_price: 当前价格
-        user_id: 用户ID
-    
-    Returns:
-        bool: 发送是否成功
-    """
+    """发送价格预警通知"""
     direction = "高于" if alert_type == "above" else "低于"
     
     title = f"【价格预警】{crypto_name} 触发阈值"
@@ -133,5 +100,5 @@ async def send_price_alert(
         await send_webhook_alert(title, description, content, user_id=user_id)
         return True
     except Exception as e:
-        logger.error(f"发送价格预警失败: {str(e)}")
+        logger.error(f"发送价格预警逻辑失败: {str(e)}")
         return False

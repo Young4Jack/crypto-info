@@ -9,6 +9,8 @@ from app.models.cryptocurrency import Cryptocurrency
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_name
+from datetime import datetime
+from app.config_manager import config_manager
 
 router = APIRouter(prefix="/api/assets", tags=["资产管理"])
 
@@ -126,13 +128,17 @@ async def create_asset(
         db.commit()
         db.refresh(crypto)
     
-    # 创建资产
+    # 获取配置中的时区 (Asia/Shanghai)
+    tz = config_manager.get_timezone()
+    
+    # 补充 created_at 字段
     asset = Asset(
         user_id=current_user.id,
         crypto_id=crypto.id,
         buy_price=asset_data.buy_price,
         quantity=asset_data.quantity,
-        notes=asset_data.notes
+        notes=asset_data.notes,
+        created_at=datetime.now(tz)  # 强制写入当前时区时间
     )
     
     db.add(asset)
@@ -214,41 +220,23 @@ async def delete_asset(
         Cryptocurrency.id == asset.crypto_id
     ).first()
     
-    # 检查预警管理中是否还有该交易对
-    if crypto:
-        from app.models.alert import PriceAlert
-        alert_using_crypto = db.query(PriceAlert).filter(
-            PriceAlert.crypto_id == crypto.id,
-            PriceAlert.user_id == current_user.id
-        ).first()
-        
-        # 如果预警管理中还有该交易对，不删除币种
-        if alert_using_crypto:
-            # 只删除资产，不删除币种
-            db.delete(asset)
-            db.commit()
-            return {"message": "资产已删除（币种保留，因为预警管理中仍在使用）"}
-    
     # 删除资产
     db.delete(asset)
     db.commit()
     
     # 检查是否还有其他资产使用该币种，如果没有且没有预警使用，则删除币种
+    # 检查是否还有任何表、任何用户使用该币种
     if crypto:
-        other_assets = db.query(Asset).filter(
-            Asset.crypto_id == crypto.id,
-            Asset.user_id == current_user.id
-        ).first()
+        from app.models.alert import PriceAlert
+        from app.models.watchlist import Watchlist
         
-        other_alerts = db.query(PriceAlert).filter(
-            PriceAlert.crypto_id == crypto.id,
-            PriceAlert.user_id == current_user.id
-        ).first()
+        has_alert = db.query(PriceAlert).filter(PriceAlert.crypto_id == crypto.id).first()
+        has_watchlist = db.query(Watchlist).filter(Watchlist.crypto_id == crypto.id).first()
         
-        # 如果没有其他资产和预警使用该币种，则删除币种
-        if not other_assets and not other_alerts:
+        # 只有在三个表都彻底无人使用时，才安全删除币种字典
+        if not has_alert and not has_watchlist:
             db.delete(crypto)
             db.commit()
-            return {"message": "资产和币种已删除"}
+            return {"message": "记录及冗余币种已删除"}
     
-    return {"message": "资产已删除"}
+    return {"message": "记录已删除"}

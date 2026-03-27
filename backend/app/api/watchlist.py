@@ -10,6 +10,8 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_name
 from app.services.price_service_refactored import fetch_crypto_prices
+from datetime import datetime
+from app.config_manager import config_manager
 
 router = APIRouter(prefix="/api/watchlist", tags=["关注列表"])
 
@@ -145,11 +147,14 @@ async def create_watchlist_item(
     if existing:
         raise HTTPException(status_code=400, detail="该币种已在关注列表中")
     
+    tz = config_manager.get_timezone()
+
     # 创建关注项
     watchlist_item = Watchlist(
         user_id=current_user.id,
         crypto_id=crypto.id,
-        notes=watchlist_data.notes
+        notes=watchlist_data.notes,
+        created_at=datetime.now(tz)
     )
     
     db.add(watchlist_item)
@@ -232,20 +237,13 @@ async def delete_watchlist_item(
         from app.models.asset import Asset
         from app.models.alert import PriceAlert
         
-        asset_using_crypto = db.query(Asset).filter(
-            Asset.crypto_id == crypto.id,
-            Asset.user_id == current_user.id
-        ).first()
+        has_asset = db.query(Asset).filter(Asset.crypto_id == crypto.id).first()
+        has_alert = db.query(PriceAlert).filter(PriceAlert.crypto_id == crypto.id).first()
         
-        alert_using_crypto = db.query(PriceAlert).filter(
-            PriceAlert.crypto_id == crypto.id,
-            PriceAlert.user_id == current_user.id
-        ).first()
-        
-        # 如果没有其他资产和预警使用该币种，则删除币种
-        if not asset_using_crypto and not alert_using_crypto:
+        # 只有在三个表都彻底无人使用时，才安全删除币种字典
+        if not has_asset and not has_alert:
             db.delete(crypto)
             db.commit()
-            return {"message": "关注项和币种已删除"}
+            return {"message": "记录及冗余币种已删除"}
     
-    return {"message": "关注项已删除"}
+    return {"message": "记录已删除"}

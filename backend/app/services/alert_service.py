@@ -6,6 +6,7 @@ from app.models.alert import PriceAlert, AlertType
 from app.models.cryptocurrency import Cryptocurrency
 from app.services.notification_service import send_price_alert
 from app.config_manager import config_manager
+from datetime import datetime
 
 async def check_price_alerts(prices: Dict[str, float], user_id: int = None):
     """
@@ -130,13 +131,16 @@ def create_alert(
     Returns:
         PriceAlert: 创建的预警规则
     """
+    tz = config_manager.get_timezone()
+
     alert = PriceAlert(
         user_id=user_id,
         crypto_id=crypto_id,
         alert_type=alert_type,
         threshold_price=threshold_price,
         webhook_url=webhook_url,
-        is_active=True
+        is_active=True,
+        created_at=datetime.now(tz)
     )
     
     db.add(alert)
