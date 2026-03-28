@@ -6,8 +6,8 @@
     "api_secret": ""
   },
   "notification_settings": {
-    "api_url": "https://push.gosu.cc/push/jacket",
-    "auth_token": "802304BD19DD83A29DFAF5A7C56BB57F",
+    "api_url": "https://example.com",
+    "auth_token": "123123123",
     "channel": "wechatapp"
   },
   "system_settings": {
@@ -15,7 +15,7 @@
     "enable_captcha": true,
     "site_title": "Crypto-info",
     "site_description": "数字货币价格监控和预警系统",
-    "log_level": "ERROR",
+    "log_level": "INFO",
     "enable_logging": true,
     "timezone": "Asia/Shanghai"
   }

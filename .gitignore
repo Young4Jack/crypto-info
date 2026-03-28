@@ -38,6 +38,7 @@ frontend/.env.local
 frontend/.env
 
 # --- 其他 ---
+**/config.json
 *.log
 temp/
 README.md
