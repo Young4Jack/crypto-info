@@ -70,7 +70,7 @@
                 <el-button @click="goToAssets" size="small" text bg>查看全部</el-button>
               </div>
             </template>
-            <div class="data-list scrollable-list" v-if="dashboardData.asset_allocation?.length > 0">
+            <div class="data-list" v-if="dashboardData.asset_allocation?.length > 0">
               <div v-for="asset in dashboardData.asset_allocation" :key="asset.crypto_symbol" class="list-item asset-item">
                 <div class="item-left">
                   <el-tag effect="dark" round size="small" class="symbol-tag">{{ asset.crypto_symbol }}</el-tag>
@@ -95,7 +95,7 @@
                 <el-button @click="goToWatchlist" size="small" text bg>管理关注</el-button>
               </div>
             </template>
-            <div class="data-list scrollable-list" v-if="watchlist.length > 0">
+            <div class="data-list" v-if="watchlist.length > 0">
               <div v-for="item in watchlist" :key="item.id" class="list-item watchlist-item">
                 <div class="item-left">
                   <el-tag effect="dark" round size="small" class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
@@ -118,7 +118,7 @@
                 <el-button @click="goToAlerts" size="small" text bg>管理规则</el-button>
               </div>
             </template>
-            <div class="data-list scrollable-list" v-if="alerts.length > 0">
+            <div class="data-list" v-if="alerts.length > 0">
               <div v-for="alert in alerts" :key="alert.id" class="list-item alert-item">
                 <div class="item-left">
                   <el-tag :type="alert.is_active ? 'success' : 'info'" effect="dark" round size="small" class="symbol-tag">
@@ -205,12 +205,12 @@ const allocationChartOption = computed(() => {
   if (data.length === 0) {
     return {
       title: { text: '暂无资产数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } },
-      series: [] // 养成好习惯：无数据时顺手把旧图形清空
+      series: []
     }
   }
   
   return {
-    title: { show: false }, // ✨ 核心修复：当有数据时，强制隐藏之前的“暂无资产”标题
+    title: { show: false },
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: ${c} ({d}%)' },
     legend: { bottom: '0%', left: 'center', icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { color: '#606266' } },
     series: [
@@ -270,9 +270,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* =========================================
-   全局架构级 CSS (强制对齐 Design System)
-   ========================================= */
 .page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; }
 .page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
 .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; width: 100%; }
@@ -280,19 +277,14 @@ onMounted(() => {
 .header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
 .page-main { padding: 20px 25px; max-width: 1400px; margin: 0 auto; width: 100%; }
 
-/* 字体与颜色语义 (金融级等宽字体适配) */
 .symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
 .price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
 .price-target { color: #1f2f3d; font-family: 'Monaco', monospace; margin-left: 4px; }
 .text-up { color: #f56c6c; font-weight: bold; font-family: 'Monaco', monospace; }
 .text-down { color: #67c23a; font-weight: bold; font-family: 'Monaco', monospace; }
 
-/* =========================================
-   Dashboard 专属组件样式
-   ========================================= */
 .stats-row { margin-bottom: 24px; }
 
-/* 核心指标卡片 */
 .stat-card {
   border-radius: 12px;
   border: none;
@@ -308,7 +300,6 @@ onMounted(() => {
 .profit-border { border-bottom: 4px solid #f56c6c; }
 .loss-border { border-bottom: 4px solid #67c23a; }
 
-/* 内容列表卡片 */
 .content-card {
   border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
   margin-bottom: 20px;
@@ -316,13 +307,10 @@ onMounted(() => {
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title { font-weight: 600; color: #303133; font-size: 15px; }
 
-/* 图表区 */
 .chart-container { height: 280px; width: 100%; }
 
-/* 滚动列表统一设计 */
-.scrollable-list { max-height: 320px; overflow-y: auto; padding-right: 5px; }
-.scrollable-list::-webkit-scrollbar { width: 4px; }
-.scrollable-list::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
+/* 修改点：删除了 .scrollable-list 的 max-height 和 overflow 设置，仅保留容器边距基础结构 */
+.data-list { padding-right: 5px; }
 
 .list-item {
   display: flex; justify-content: space-between; align-items: center;
@@ -339,9 +327,6 @@ onMounted(() => {
 .primary-text { font-size: 14px; font-weight: bold; color: #303133; font-family: 'Monaco', monospace; }
 .secondary-text { font-size: 12px; margin-top: 4px; }
 
-/* =========================================
-   移动端视图 (<= 768px)
-   ========================================= */
 @media (max-width: 768px) {
   .page-container { padding-bottom: 80px; }
   .page-main { padding: 12px; }
