@@ -304,12 +304,18 @@ const submitInlineForm = async () => {
         await alertsApi.create({
           crypto_symbol: formattedSymbol,
           alert_type: inlineForm.alert_type as 'above' | 'below',
-          threshold_price: Number(inlineForm.threshold_price)
+          threshold_price: Number(inlineForm.threshold_price),
+          is_continuous: inlineForm.is_continuous,
+          max_notifications: Number(inlineForm.max_notifications),
+          interval_minutes: Number(inlineForm.interval_minutes)
         })
         ElMessage.success(`预警创建成功: ${formattedSymbol}`)
         
         inlineForm.crypto_symbol = ''
         inlineForm.threshold_price = undefined
+        inlineForm.is_continuous = false
+        inlineForm.max_notifications = 1
+        inlineForm.interval_minutes = 5
         inlineFormRef.value?.resetFields()
         
         loadAlerts(true)
@@ -321,12 +327,6 @@ const submitInlineForm = async () => {
     }
   })
 }
-
-// 提交处理：渠道二 (弹窗录入)
-const submitDialogForm = async (keepOpen = false) => {
-  if (!dialogFormRef.value) return
-  await dialogFormRef.value.validate(async (valid) => {
-    if (valid) {
       submitLoading.value = true
       try {
         const formattedSymbol = formatSymbolInput(dialogForm.crypto_symbol)
