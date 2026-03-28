@@ -10,8 +10,6 @@ from app.models.cryptocurrency import Cryptocurrency
 from app.models.alert import PriceAlert, AlertType
 from app.models.alert_history import AlertHistory, AlertHistoryStatus
 from app.models.asset import Asset
-from app.models.system_setting import NotificationSetting, SystemSetting
-from app.models.api_setting import ApiSetting
 from app.models.watchlist import Watchlist
 
 # 导出所有模型
@@ -24,8 +22,5 @@ __all__ = [
     "AlertHistory",
     "AlertHistoryStatus",
     "Asset",
-    "NotificationSetting",
-    "SystemSetting",
-    "ApiSetting",
     "Watchlist"
 ]

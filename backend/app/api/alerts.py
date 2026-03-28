@@ -19,9 +19,15 @@ router = APIRouter(prefix="/api/alerts", tags=["预警管理"])
 class AlertCreate(BaseModel):
     """创建预警规则请求"""
     crypto_symbol: str
-    alert_type: str  # "above" 或 "below"
+    alert_type: str  # "above", "below", "amplitude", "percent_up", "percent_down"
     threshold_price: float
     webhook_url: Optional[str] = None
+    # 新增字段
+    base_price: Optional[float] = None
+    threshold_value: Optional[float] = None
+    is_continuous: bool = False
+    interval_minutes: int = 5
+    max_notifications: int = 1
 
 class AlertUpdate(BaseModel):
     """更新预警规则请求"""
@@ -29,6 +35,12 @@ class AlertUpdate(BaseModel):
     threshold_price: Optional[float] = None
     webhook_url: Optional[str] = None
     is_active: Optional[bool] = None
+    # 新增字段
+    base_price: Optional[float] = None
+    threshold_value: Optional[float] = None
+    is_continuous: Optional[bool] = None
+    interval_minutes: Optional[int] = None
+    max_notifications: Optional[int] = None
 
 class AlertResponse(BaseModel):
     """预警规则响应"""
@@ -42,6 +54,14 @@ class AlertResponse(BaseModel):
     is_active: bool
     triggered_at: Optional[str] = None
     created_at: str
+    # 新增字段
+    base_price: Optional[float] = None
+    threshold_value: Optional[float] = None
+    is_continuous: bool = False
+    interval_minutes: int = 5
+    max_notifications: int = 1
+    notified_count: int = 0
+    last_triggered_at: Optional[str] = None
 
 @router.get("/", response_model=List[AlertResponse])
 async def get_alerts(
@@ -78,7 +98,15 @@ async def get_alerts(
             webhook_url=alert.webhook_url,
             is_active=alert.is_active,
             triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
-            created_at=alert.created_at.isoformat() if alert.created_at else None
+            created_at=alert.created_at.isoformat() if alert.created_at else None,
+            # 新增字段
+            base_price=alert.base_price,
+            threshold_value=alert.threshold_value,
+            is_continuous=alert.is_continuous,
+            interval_minutes=alert.interval_minutes,
+            max_notifications=alert.max_notifications,
+            notified_count=alert.notified_count,
+            last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None
         ))
     
     return result
@@ -147,12 +175,27 @@ async def create_alert_rule(
         db.commit()
         db.refresh(crypto)
     
-    # 验证预警类型
-    if alert_data.alert_type not in ["above", "below"]:
-        raise HTTPException(status_code=400, detail="预警类型必须是 'above' 或 'below'")
+    # 验证预警类型（支持新类型）
+    valid_alert_types = ["above", "below", "amplitude", "percent_up", "percent_down"]
+    if alert_data.alert_type not in valid_alert_types:
+        raise HTTPException(status_code=400, detail=f"预警类型必须是以下之一: {', '.join(valid_alert_types)}")
     
     # 创建预警规则
-    alert_type = AlertType.ABOVE if alert_data.alert_type == "above" else AlertType.BELOW
+    alert_type = AlertType(alert_data.alert_type)
+    
+    # 获取当前价格作为base_price（如果未指定）
+    base_price = alert_data.base_price
+    if base_price is None and alert_data.alert_type in ["amplitude", "percent_up", "percent_down"]:
+        try:
+            current_prices = await fetch_crypto_prices()
+            base_price = current_prices.get(crypto.symbol, 0)
+        except Exception:
+            base_price = 0
+    
+    # 计算threshold_value（如果未指定）
+    threshold_value = alert_data.threshold_value
+    if threshold_value is None:
+        threshold_value = alert_data.threshold_price
     
     alert = create_alert(
         db=db,
@@ -160,7 +203,12 @@ async def create_alert_rule(
         crypto_id=crypto.id,
         alert_type=alert_type,
         threshold_price=alert_data.threshold_price,
-        webhook_url=alert_data.webhook_url
+        webhook_url=alert_data.webhook_url,
+        base_price=base_price,
+        threshold_value=threshold_value,
+        is_continuous=alert_data.is_continuous,
+        interval_minutes=alert_data.interval_minutes,
+        max_notifications=alert_data.max_notifications
     )
     
     return AlertResponse(
@@ -173,7 +221,15 @@ async def create_alert_rule(
         webhook_url=alert.webhook_url,
         is_active=alert.is_active,
         triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
-        created_at=alert.created_at.isoformat() if alert.created_at else None
+        created_at=alert.created_at.isoformat() if alert.created_at else None,
+        # 新增字段
+        base_price=alert.base_price,
+        threshold_value=alert.threshold_value,
+        is_continuous=alert.is_continuous,
+        interval_minutes=alert.interval_minutes,
+        max_notifications=alert.max_notifications,
+        notified_count=alert.notified_count,
+        last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None
     )
 
 @router.put("/{alert_id}", response_model=AlertResponse)

@@ -34,7 +34,22 @@
               <el-select v-model="inlineForm.alert_type" placeholder="选择条件" style="width: 100%">
                 <el-option label="价格高于 ↑" value="above" />
                 <el-option label="价格低于 ↓" value="below" />
+                <el-option label="振幅预警 ↕" value="amplitude" />
+                <el-option label="涨幅百分比 ↗" value="percent_up" />
+                <el-option label="跌幅百分比 ↘" value="percent_down" />
               </el-select>
+            </el-form-item>
+            
+            <el-form-item label="持续预警" class="flex-item-small">
+              <el-switch v-model="inlineForm.is_continuous" active-text="是" inactive-text="否" />
+            </el-form-item>
+            
+            <el-form-item label="通知次数" class="flex-item-small">
+              <el-input-number v-model="inlineForm.max_notifications" :min="1" :max="100" style="width: 100%" />
+            </el-form-item>
+            
+            <el-form-item label="间隔(分钟)" class="flex-item-small">
+              <el-input-number v-model="inlineForm.interval_minutes" :min="1" :max="1440" style="width: 100%" />
             </el-form-item>
             
             <el-form-item label="目标价格 ($)" prop="threshold_price" class="flex-item-medium">
@@ -218,8 +233,22 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
 
-const inlineForm = reactive({ crypto_symbol: '', alert_type: 'above' as 'above'|'below', threshold_price: undefined as number|undefined })
-const dialogForm = reactive({ crypto_symbol: '', alert_type: 'above' as 'above'|'below', threshold_price: undefined as number|undefined })
+const inlineForm = reactive({ 
+  crypto_symbol: '', 
+  alert_type: 'above' as 'above'|'below'|'amplitude'|'percent_up'|'percent_down', 
+  threshold_price: undefined as number|undefined,
+  is_continuous: false,
+  max_notifications: 1,
+  interval_minutes: 5
+})
+const dialogForm = reactive({ 
+  crypto_symbol: '', 
+  alert_type: 'above' as 'above'|'below'|'amplitude'|'percent_up'|'percent_down', 
+  threshold_price: undefined as number|undefined,
+  is_continuous: false,
+  max_notifications: 1,
+  interval_minutes: 5
+})
 const dialogVisible = ref(false)
 
 const formRules: FormRules = {
@@ -274,7 +303,7 @@ const submitInlineForm = async () => {
         const formattedSymbol = formatSymbolInput(inlineForm.crypto_symbol)
         await alertsApi.create({
           crypto_symbol: formattedSymbol,
-          alert_type: inlineForm.alert_type,
+          alert_type: inlineForm.alert_type as 'above' | 'below',
           threshold_price: Number(inlineForm.threshold_price)
         })
         ElMessage.success(`预警创建成功: ${formattedSymbol}`)
