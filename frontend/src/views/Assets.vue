@@ -27,7 +27,12 @@
         >
           <div class="form-responsive-row">
             <el-form-item label="交易对 (容错: 填 btc 自动转 BTCUSDT)" prop="crypto_symbol" class="flex-item-large">
-              <el-input v-model="inlineForm.crypto_symbol" placeholder="如: BTCUSDT" clearable />
+              <el-input 
+                v-model="inlineForm.crypto_symbol" 
+                placeholder="如: BTCUSDT" 
+                clearable 
+                @change="inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)"
+              />
             </el-form-item>
             
             <el-form-item label="持仓数量" prop="quantity" class="flex-item-small">
@@ -179,7 +184,13 @@
     >
       <el-form :model="dialogForm" :rules="formRules" ref="dialogFormRef" label-position="top">
         <el-form-item label="交易对 (容错: 填 eth 自动转 ETHUSDT)" prop="crypto_symbol">
-          <el-input v-model="dialogForm.crypto_symbol" placeholder="输入要添加的交易对" clearable :disabled="isEditing" />
+          <el-input 
+            v-model="dialogForm.crypto_symbol" 
+            placeholder="输入要添加的交易对" 
+            clearable 
+            :disabled="isEditing" 
+            @change="dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)"
+          />
         </el-form-item>
         
         <div class="form-row-2">
@@ -224,7 +235,6 @@ const submitLoading = ref(false)
 const assets = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-// 为两个独立的输入渠道创建隔离的 Ref 和数据源
 const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
 
@@ -232,33 +242,40 @@ const inlineForm = reactive({ crypto_symbol: '', quantity: undefined as number|u
 const dialogForm = reactive({ id: null as number|null, crypto_symbol: '', quantity: 0, buy_price: 0, notes: '' })
 
 const dialogVisible = ref(false)
-const isEditing = ref(false) // 区分弹窗是"新建"还是"修改"
+const isEditing = ref(false)
 
-// 统一的表单校验规则
 const formRules: FormRules = {
   crypto_symbol: [{ required: true, message: '请输入交易对', trigger: 'blur' }],
   quantity: [{ required: true, message: '请输入持仓数量', trigger: 'blur' }],
   buy_price: [{ required: true, message: '请输入持仓均价', trigger: 'blur' }]
 }
 
-// 核心功能：数字安全格式化
 const formatNum = (val: any, decimals: number) => {
   const num = Number(val)
   return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals)
 }
 
-// 核心功能：智能输入容错清洗引擎 (例如：btc -> BTCUSDT)
+// 核心修复 3：升级版智能输入容错清洗引擎 (解决把 btc 误判为后缀的 bug)
 const formatSymbolInput = (rawSymbol: string) => {
+  if (!rawSymbol) return ''
   let formatted = rawSymbol.trim().toUpperCase()
   if (!formatted) return ''
-  // 如果输入不包含基础计价货币后缀，自动补全 USDT
-  if (!formatted.endsWith('USDT') && !formatted.endsWith('USDC') && !formatted.endsWith('BTC') && !formatted.endsWith('ETH')) {
+  
+  // 计价货币白名单
+  const quoteCurrencies = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD']
+  
+  // 必须同时满足：1.以后缀结尾 2.字符串总长度大于后缀的长度 (防止输入 "BTC" 触发条件)
+  const hasQuote = quoteCurrencies.some(quote => {
+    return formatted.endsWith(quote) && formatted.length > quote.length
+  })
+
+  // 若不包含任何标准计价后缀，则补齐 USDT
+  if (!hasQuote) {
     formatted += 'USDT'
   }
   return formatted
 }
 
-// 数据拉取与安全计算引擎 (包含前端去重保护)
 const loadAssets = async (isBackground = false) => {
   if (!isBackground) loading.value = true
   try {
@@ -300,21 +317,23 @@ const loadAssets = async (isBackground = false) => {
   }
 }
 
-// 提交处理：渠道一 (页面快捷录入)
 const submitInlineForm = async () => {
   if (!inlineFormRef.value) return
+  
+  // 核心修复 4：提交前再次强制同步覆盖
+  inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)
+
   await inlineFormRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
       try {
-        const formattedSymbol = formatSymbolInput(inlineForm.crypto_symbol)
         await assetsApi.create({
-          crypto_symbol: formattedSymbol,
+          crypto_symbol: inlineForm.crypto_symbol, // 直接提取已经同步变大写的字段
           quantity: Number(inlineForm.quantity),
           buy_price: Number(inlineForm.buy_price),
           notes: inlineForm.notes
         })
-        ElMessage.success(`成功录入资产: ${formattedSymbol}`)
+        ElMessage.success(`成功录入资产: ${inlineForm.crypto_symbol}`)
         inlineFormRef.value?.resetFields()
         loadAssets(true)
       } catch (error: any) {
@@ -326,32 +345,32 @@ const submitInlineForm = async () => {
   })
 }
 
-// 提交处理：渠道二 (弹窗录入与编辑)
 const submitDialogForm = async (keepOpen = false) => {
   if (!dialogFormRef.value) return
+
+  // 强制同步
+  dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)
+
   await dialogFormRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
       try {
         const payload = {
-          crypto_symbol: formatSymbolInput(dialogForm.crypto_symbol),
+          crypto_symbol: dialogForm.crypto_symbol,
           quantity: Number(dialogForm.quantity),
           buy_price: Number(dialogForm.buy_price),
           notes: dialogForm.notes
         }
 
         if (isEditing.value && dialogForm.id) {
-          // 修改逻辑
           await assetsApi.update(dialogForm.id, payload)
           ElMessage.success('资产数据更新成功')
           dialogVisible.value = false
         } else {
-          // 新增逻辑
           await assetsApi.create(payload)
           ElMessage.success(`成功添加资产: ${payload.crypto_symbol}`)
           
           if (keepOpen) {
-            // 保存并继续添加：只清空数据，不关弹窗
             dialogFormRef.value?.resetFields()
           } else {
             dialogVisible.value = false
@@ -367,7 +386,6 @@ const submitDialogForm = async (keepOpen = false) => {
   })
 }
 
-// 弹窗状态管理
 const openAddDialog = () => {
   isEditing.value = false
   dialogForm.id = null
@@ -375,7 +393,6 @@ const openAddDialog = () => {
   dialogForm.quantity = 0
   dialogForm.buy_price = 0
   dialogForm.notes = ''
-  // 确保打开前清除可能的校验红框
   setTimeout(() => dialogFormRef.value?.clearValidate(), 0)
   dialogVisible.value = true
 }
@@ -394,7 +411,6 @@ const handleDialogClose = () => {
   dialogFormRef.value?.resetFields()
 }
 
-// 数据删除
 const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要彻底删除 ${row._symbol} 的持仓记录吗？`, '危险操作', {
     confirmButtonText: '强制删除', cancelButtonText: '取消', type: 'error'

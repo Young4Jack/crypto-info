@@ -27,7 +27,12 @@
         >
           <div class="form-responsive-row">
             <el-form-item label="交易对 (容错输入: 填 btc 会自动转为 BTCUSDT)" prop="crypto_symbol" class="flex-item">
-              <el-input v-model="createForm.crypto_symbol" placeholder="输入要关注的币种或交易对" clearable />
+              <el-input 
+                v-model="createForm.crypto_symbol" 
+                placeholder="输入要关注的币种或交易对" 
+                clearable 
+                @change="createForm.crypto_symbol = formatSymbolInput(createForm.crypto_symbol)"
+              />
             </el-form-item>
             
             <el-form-item label="备注说明 (可选)" prop="notes" class="flex-item">
@@ -122,7 +127,12 @@
     >
       <el-form :model="createForm" :rules="createRules" ref="dialogFormRef" label-position="top">
         <el-form-item label="交易对 (容错输入: 填 eth 自动转为 ETHUSDT)" prop="crypto_symbol">
-          <el-input v-model="createForm.crypto_symbol" placeholder="输入要关注的币种或交易对" clearable />
+          <el-input 
+            v-model="createForm.crypto_symbol" 
+            placeholder="输入要关注的币种或交易对" 
+            clearable 
+            @change="createForm.crypto_symbol = formatSymbolInput(createForm.crypto_symbol)"
+          />
         </el-form-item>
         
         <el-form-item label="备注说明 (可选)" prop="notes">
@@ -163,6 +173,27 @@ const createRules: FormRules = {
   crypto_symbol: [{ required: true, message: '请输入交易对或币种名称', trigger: 'blur' }]
 }
 
+// 核心修复 3：升级版智能输入容错清洗引擎 (解决把 btc 误判为后缀的 bug)
+const formatSymbolInput = (rawSymbol: string) => {
+  if (!rawSymbol) return ''
+  let formatted = rawSymbol.trim().toUpperCase()
+  if (!formatted) return ''
+  
+  // 计价货币白名单
+  const quoteCurrencies = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD']
+  
+  // 必须同时满足：1.以后缀结尾 2.字符串总长度大于后缀的长度 (防止输入 "BTC" 触发条件)
+  const hasQuote = quoteCurrencies.some(quote => {
+    return formatted.endsWith(quote) && formatted.length > quote.length
+  })
+
+  // 若不包含任何标准计价后缀，则补齐 USDT
+  if (!hasQuote) {
+    formatted += 'USDT'
+  }
+  return formatted
+}
+
 const loadWatchlist = async (isBackground = false) => {
   if (!isBackground) loading.value = true
   try {
@@ -183,28 +214,23 @@ const loadWatchlist = async (isBackground = false) => {
   }
 }
 
-// 核心逻辑：增加容错清洗与连续添加控制
 const handleCreateWatchlist = async (source: 'page' | 'dialog', keepOpen = false) => {
   const targetFormRef = source === 'page' ? createFormRef.value : dialogFormRef.value
   
   if (!targetFormRef) return
   
+  // 核心修复 4：提交前再次强制同步覆盖
+  createForm.crypto_symbol = formatSymbolInput(createForm.crypto_symbol)
+
   await targetFormRef.validate(async (valid) => {
     if (valid) {
       createLoading.value = true
       try {
-        // 数据清洗与容错引擎
-        let formattedSymbol = createForm.crypto_symbol.trim().toUpperCase()
-        // 自动补全基础计价对逻辑
-        if (!formattedSymbol.endsWith('USDT') && !formattedSymbol.endsWith('USDC') && !formattedSymbol.endsWith('BTC') && !formattedSymbol.endsWith('ETH')) {
-          formattedSymbol += 'USDT'
-        }
-
         await watchlistApi.create({
-          crypto_symbol: formattedSymbol,
+          crypto_symbol: createForm.crypto_symbol, // 直接提取已经同步变大写的字段
           notes: createForm.notes || undefined
         })
-        ElMessage.success(`关注项 ${formattedSymbol} 添加成功`)
+        ElMessage.success(`关注项 ${createForm.crypto_symbol} 添加成功`)
         
         // 状态重置
         createForm.crypto_symbol = ''

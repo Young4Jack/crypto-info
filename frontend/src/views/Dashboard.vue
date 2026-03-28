@@ -1,163 +1,148 @@
 <template>
-  <div class="dashboard-container">
-    <el-container>
-      <el-header class="dashboard-header" height="auto">
+  <div class="page-container">
+    <el-header class="page-header" height="auto">
+      <div class="header-content">
         <div class="header-left">
           <h1>{{ siteTitle }}</h1>
+          <p>欢迎回来，{{ authStore.user?.username || 'Jack' }}</p>
         </div>
         <div class="header-right">
-          <span class="welcome-text">欢迎，{{ authStore.user?.username || '用户' }}</span>
-          <el-button-group>
-            <el-button type="primary" @click="goToAlerts" size="small">预警管理</el-button>
-            <el-button type="success" @click="goToAssets" size="small">资产管理</el-button>
-            <el-button type="info" @click="goToWatchlist" size="small">关注列表</el-button>
-            <el-button type="warning" @click="goToSettings" size="small">系统设置</el-button>
-            <el-button type="danger" @click="handleLogout" size="small">退出登录</el-button>
+          <el-button-group class="action-buttons">
+            <el-button type="primary" @click="goToAlerts" plain>预警管理</el-button>
+            <el-button type="success" @click="goToAssets" plain>资产管理</el-button>
+            <el-button type="info" @click="goToWatchlist" plain>关注列表</el-button>
+            <el-button type="warning" @click="goToSettings" plain>系统设置</el-button>
+            <el-button type="danger" @click="handleLogout">退出登录</el-button>
           </el-button-group>
         </div>
-      </el-header>
+      </div>
+    </el-header>
       
-      <el-main class="dashboard-main">
-        <!-- 资产配置 -->
-        <el-row :gutter="20" class="stats-row">
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card class="stat-card">
-              <div class="stat-content">
-                <div class="stat-number">${{ dashboardData.total_value?.toLocaleString() || '0' }}</div>
-                <div class="stat-label">资产总值</div>
-              </div>
-            </el-card>
-          </el-col>
-          
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card class="stat-card" :class="{ 'profit': dashboardData.total_profit_loss > 0, 'loss': dashboardData.total_profit_loss < 0 }">
-              <div class="stat-content">
-                <div class="stat-number">
-                  {{ dashboardData.total_profit_loss > 0 ? '+' : '' }}${{ dashboardData.total_profit_loss?.toLocaleString() || '0' }}
-                </div>
-                <div class="stat-label">盈利/亏损 ({{ dashboardData.total_profit_loss_percentage?.toFixed(2) || '0' }}%)</div>
-              </div>
-            </el-card>
-          </el-col>
-          
-          <el-col :xs="24" :sm="12" :md="8">
-            <el-card class="stat-card">
-              <div class="stat-content">
-                <div class="stat-number">{{ dashboardData.active_alerts_count || 0 }}</div>
-                <div class="stat-label">活跃预警数</div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
+    <el-main class="page-main">
+      <el-row :gutter="20" class="stats-row">
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-number">${{ dashboardData.total_value?.toLocaleString() || '0.00' }}</div>
+              <div class="stat-label">资产总值</div>
+            </div>
+          </el-card>
+        </el-col>
         
-        <!-- 新的三列布局 -->
-        <el-row :gutter="20">
-          <!-- 第一列：资产配置和资产详情 -->
-          <el-col :xs="24" :sm="24" :md="8">
-            <!-- 资产配置 -->
-            <el-card class="chart-card">
-              <template #header>
-                <div class="card-header">
-                  <span>资产配置</span>
-                </div>
-              </template>
-              <div class="chart-container">
-                <v-chart :option="allocationChartOption" autoresize />
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="stat-card" shadow="hover" :class="{ 'profit-border': dashboardData.total_profit_loss >= 0, 'loss-border': dashboardData.total_profit_loss < 0 }">
+            <div class="stat-content">
+              <div :class="['stat-number', dashboardData.total_profit_loss >= 0 ? 'text-up' : 'text-down']">
+                {{ dashboardData.total_profit_loss > 0 ? '+' : '' }}${{ dashboardData.total_profit_loss?.toLocaleString() || '0.00' }}
               </div>
-            </el-card>
-            
-            <!-- 资产详情 -->
-            <el-card class="table-card">
-              <template #header>
-                <div class="card-header">
-                  <span>资产详情</span>
-                  <el-button @click="goToAssets" size="small">查看全部</el-button>
-                </div>
-              </template>
-              <div class="assets-list" v-if="dashboardData.asset_allocation?.length > 0">
-                <div v-for="asset in dashboardData.asset_allocation" :key="asset.crypto_symbol" class="asset-item">
-                  <div class="asset-info">
-                    <div class="asset-left">
-                      <el-tag type="primary" size="small">{{ asset.crypto_symbol }}</el-tag>
-                      <span class="asset-name">{{ asset.crypto_name }}</span>
-                    </div>
-                    <div class="asset-right">
-                      <span class="asset-price">${{ asset.current_price?.toLocaleString() || '0' }}</span>
-                      <span class="asset-quantity">{{ asset.quantity }} 个</span>
-                      <span class="asset-value">${{ asset.holding_value?.toLocaleString() || '0' }}</span>
-                      <span :class="{ 'profit': asset.profit_loss > 0, 'loss': asset.profit_loss < 0 }">
-                        {{ asset.profit_loss > 0 ? '+' : '' }}${{ asset.profit_loss?.toLocaleString() || '0' }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-label">总盈亏金额 ({{ dashboardData.total_profit_loss_percentage?.toFixed(2) || '0.00' }}%)</div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-number active-alerts-num">{{ dashboardData.active_alerts_count || 0 }}</div>
+              <div class="stat-label">运行中的预警引擎</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+      
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="24" :md="8">
+          <el-card class="content-card chart-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">资产配置</span>
               </div>
-              <div v-else class="empty-state">
-                <p>暂无资产数据</p>
-              </div>
-            </el-card>
-          </el-col>
+            </template>
+            <div class="chart-container">
+              <v-chart :option="allocationChartOption" autoresize />
+            </div>
+          </el-card>
           
-          <!-- 第二列：关注列表 -->
-          <el-col :xs="24" :sm="24" :md="8">
-            <el-card class="watchlist-card">
-              <template #header>
-                <div class="card-header">
-                  <span>🔥 关注列表</span>
-                  <el-button @click="goToWatchlist" size="small">查看全部</el-button>
+          <el-card class="content-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">资产详情</span>
+                <el-button @click="goToAssets" size="small" text bg>查看全部</el-button>
+              </div>
+            </template>
+            <div class="data-list scrollable-list" v-if="dashboardData.asset_allocation?.length > 0">
+              <div v-for="asset in dashboardData.asset_allocation" :key="asset.crypto_symbol" class="list-item asset-item">
+                <div class="item-left">
+                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ asset.crypto_symbol }}</el-tag>
                 </div>
-              </template>
-              <div class="watchlist-list" v-if="watchlist.length > 0">
-                <div v-for="item in watchlist" :key="item.id" class="watchlist-item">
-                  <div class="watchlist-info">
-                    <div class="watchlist-left">
-                      <el-tag type="primary" size="small">{{ item.crypto_symbol }}</el-tag>
-                      <span class="watchlist-name">{{ item.crypto_name }}</span>
-                    </div>
-                    <div class="watchlist-right">
-                      <span class="watchlist-price">${{ item.current_price ? item.current_price.toFixed(2) : '0.00' }}</span>
-                    </div>
+                <div class="item-right text-right">
+                  <div class="primary-text">${{ asset.holding_value?.toLocaleString() || '0' }}</div>
+                  <div :class="['secondary-text', asset.profit_loss >= 0 ? 'text-up' : 'text-down']">
+                    {{ asset.profit_loss > 0 ? '+' : '' }}${{ asset.profit_loss?.toLocaleString() || '0' }}
                   </div>
                 </div>
               </div>
-              <div v-else class="empty-state">
-                <p>暂无关注数据</p>
+            </div>
+            <el-empty v-else description="暂无资产数据" :image-size="60" />
+          </el-card>
+        </el-col>
+        
+        <el-col :xs="24" :sm="24" :md="8">
+          <el-card class="content-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">🔥 关注列表</span>
+                <el-button @click="goToWatchlist" size="small" text bg>管理关注</el-button>
               </div>
-            </el-card>
-          </el-col>
-          
-          <!-- 第三列：预警记录 -->
-          <el-col :xs="24" :sm="24" :md="8">
-            <el-card class="alerts-card">
-              <template #header>
-                <div class="card-header">
-                  <span>⚠️ 预警记录</span>
-                  <el-button @click="goToAlerts" size="small">查看全部</el-button>
+            </template>
+            <div class="data-list scrollable-list" v-if="watchlist.length > 0">
+              <div v-for="item in watchlist" :key="item.id" class="list-item watchlist-item">
+                <div class="item-left">
+                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
+                  <span class="item-name">{{ item.crypto_name }}</span>
                 </div>
-              </template>
-              <div class="alerts-list" v-if="alerts.length > 0">
-                <div v-for="alert in alerts" :key="alert.id" class="alert-item">
-                  <div class="alert-info">
-                    <div class="alert-left">
-                      <el-tag :type="alert.alert_type === 'above' ? 'danger' : 'success'" size="small">
-                        {{ alert.crypto_symbol }}
-                      </el-tag>
-                      <span class="alert-price">${{ alert.threshold_price }}</span>
-                    </div>
-                    <div class="alert-right">
-                      <span class="alert-status">{{ alert.is_active ? '激活' : '已触发' }}</span>
-                    </div>
+                <div class="item-right text-right">
+                  <div class="price-text">${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}</div>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无关注数据" :image-size="60" />
+          </el-card>
+        </el-col>
+        
+        <el-col :xs="24" :sm="24" :md="8">
+          <el-card class="content-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">⚠️ 预警监控</span>
+                <el-button @click="goToAlerts" size="small" text bg>管理规则</el-button>
+              </div>
+            </template>
+            <div class="data-list scrollable-list" v-if="alerts.length > 0">
+              <div v-for="alert in alerts" :key="alert.id" class="list-item alert-item">
+                <div class="item-left">
+                  <el-tag :type="alert.is_active ? 'success' : 'info'" effect="dark" round size="small" class="symbol-tag">
+                    {{ alert.crypto_symbol }}
+                  </el-tag>
+                </div>
+                <div class="item-right text-right">
+                  <div class="primary-text">
+                    <span :class="alert.alert_type === 'above' ? 'text-up' : 'text-down'">
+                      {{ alert.alert_type === 'above' ? '高于↑' : '低于↓' }}
+                    </span>
+                    <span class="price-target">${{ alert.threshold_price }}</span>
+                  </div>
+                  <div class="secondary-text" style="color:#909399; font-size: 12px;">
+                    {{ alert.is_active ? '监控中' : '已停用' }}
                   </div>
                 </div>
               </div>
-              <div v-else class="empty-state">
-                <p>暂无预警记录</p>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-main>
-    </el-container>
+            </div>
+            <el-empty v-else description="暂无预警记录" :image-size="60" />
+          </el-card>
+        </el-col>
+      </el-row>
+    </el-main>
   </div>
 </template>
 
@@ -173,7 +158,6 @@ import { PieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 
- // 注册 ECharts 组件
 use([PieChart, TitleComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const router = useRouter()
@@ -191,7 +175,6 @@ const loadDashboardData = async () => {
     const response = await dashboardApi.getSummary()
     dashboardData.value = response.data
   } catch (error) {
-    console.error('加载仪表盘数据失败:', error)
     ElMessage.error('加载仪表盘数据失败')
   } finally {
     loading.value = false
@@ -201,7 +184,7 @@ const loadDashboardData = async () => {
 const loadAlerts = async () => {
   try {
     const response = await alertsApi.getAll()
-    alerts.value = response.data // 显示所有预警记录
+    alerts.value = response.data
   } catch (error) {
     console.error('加载预警记录失败:', error)
   }
@@ -210,78 +193,54 @@ const loadAlerts = async () => {
 const loadWatchlist = async () => {
   try {
     const response = await watchlistApi.getAll()
-    watchlist.value = response.data // 显示所有关注列表
+    watchlist.value = response.data
   } catch (error) {
     console.error('加载关注列表失败:', error)
   }
 }
 
-// 饼图配置
 const allocationChartOption = computed(() => {
   const data = dashboardData.value.asset_allocation || []
   
   if (data.length === 0) {
     return {
-      title: {
-        text: '暂无资产数据',
-        left: 'center',
-        top: 'center',
-        textStyle: {
-          color: '#999'
-        }
-      }
+      title: { text: '暂无资产数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } }
     }
   }
   
   return {
-    title: {
-      text: '资产配置',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>{b}: ${c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
-    },
+    tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: ${c} ({d}%)' },
+    legend: { bottom: '0%', left: 'center', icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { color: '#606266' } },
     series: [
       {
         name: '资产配置',
         type: 'pie',
-        radius: '50%',
+        radius: ['40%', '70%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: { show: false, position: 'center' },
+        emphasis: {
+          label: { show: true, fontSize: 16, fontWeight: 'bold' }
+        },
+        labelLine: { show: false },
         data: data.map((item: any) => ({
           value: item.holding_value,
-          name: `${item.crypto_name} (${item.crypto_symbol})`
-        })),
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
+          name: item.crypto_symbol
+        }))
       }
     ]
   }
 })
 
-const goToAlerts = () => {
-  router.push('/alerts')
-}
-
-const goToAssets = () => {
-  router.push('/assets')
-}
-
-const goToWatchlist = () => {
-  router.push('/watchlist')
-}
-
-const goToSettings = () => {
-  router.push('/settings')
-}
+const goToAlerts = () => router.push('/alerts')
+const goToAssets = () => router.push('/assets')
+const goToWatchlist = () => router.push('/watchlist')
+const goToSettings = () => router.push('/settings')
 
 const loadPublicSettings = async () => {
   try {
@@ -309,505 +268,97 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-}
+/* =========================================
+   全局架构级 CSS (强制对齐 Design System)
+   ========================================= */
+.page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; }
+.page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
+.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; width: 100%; }
+.header-left h1 { margin: 0; font-size: 22px; color: #1f2f3d; font-weight: 600; letter-spacing: 0.5px; }
+.header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
+.page-main { padding: 20px 25px; max-width: 1400px; margin: 0 auto; width: 100%; }
 
-.dashboard-header {
-  background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+/* 字体与颜色语义 (金融级等宽字体适配) */
+.symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
+.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
+.price-target { color: #1f2f3d; font-family: 'Monaco', monospace; margin-left: 4px; }
+.text-up { color: #f56c6c; font-weight: bold; font-family: 'Monaco', monospace; }
+.text-down { color: #67c23a; font-weight: bold; font-family: 'Monaco', monospace; }
 
-.header-left h1 {
-  margin: 0;
-  color: #409eff;
-}
+/* =========================================
+   Dashboard 专属组件样式
+   ========================================= */
+.stats-row { margin-bottom: 24px; }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.dashboard-main {
-  padding: 20px;
-}
-
-.stats-row {
-  margin-bottom: 20px;
-}
-
+/* 核心指标卡片 */
 .stat-card {
-  text-align: center;
-  transition: all 0.3s;
+  border-radius: 12px;
+  border: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 15px;
 }
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+.stat-content { padding: 20px 10px; text-align: center; }
+.stat-number { font-size: 28px; font-weight: bold; color: #1f2f3d; margin-bottom: 8px; font-family: 'Monaco', monospace; }
+.active-alerts-num { color: #e6a23c; }
+.stat-label { font-size: 13px; color: #909399; font-weight: 500; }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
+.profit-border { border-bottom: 4px solid #f56c6c; }
+.loss-border { border-bottom: 4px solid #67c23a; }
 
-.stat-card.profit {
-  border-left: 4px solid #67c23a;
-}
-
-.stat-card.loss {
-  border-left: 4px solid #f56c6c;
-}
-
-.stat-content {
-  padding: 20px;
-}
-
-.stat-number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #409eff;
-  margin-bottom: 10px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #666;
-}
-
-.chart-card, .table-card, .alerts-card, .news-card {
+/* 内容列表卡片 */
+.content-card {
+  border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
   margin-bottom: 20px;
 }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-weight: 600; color: #303133; font-size: 15px; }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* 图表区 */
+.chart-container { height: 280px; width: 100%; }
+
+/* 滚动列表统一设计 */
+.scrollable-list { max-height: 320px; overflow-y: auto; padding-right: 5px; }
+.scrollable-list::-webkit-scrollbar { width: 4px; }
+.scrollable-list::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
+
+.list-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 15px; margin-bottom: 10px;
+  background: #f8f9fa; border-radius: 8px; border: 1px solid #f0f2f5;
+  transition: background-color 0.2s ease;
 }
+.list-item:hover { background: #f0f2f5; }
+.list-item:last-child { margin-bottom: 0; }
 
-.chart-container {
-  height: 300px;
-}
+.item-left { display: flex; align-items: center; gap: 10px; }
+.item-name { font-size: 13px; color: #606266; }
+.text-right { text-align: right; }
+.primary-text { font-size: 14px; font-weight: bold; color: #303133; font-family: 'Monaco', monospace; }
+.secondary-text { font-size: 12px; margin-top: 4px; }
 
-.price {
-  font-weight: bold;
-  color: #409eff;
-}
-
-.profit {
-  color: #67c23a;
-  font-weight: bold;
-}
-
-.loss {
-  color: #f56c6c;
-  font-weight: bold;
-}
-
-.crypto-name {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.alerts-list, .news-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.alert-item {
-  padding: 15px;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 8px;
-  border-left: 4px solid #409eff;
-  transition: all 0.3s ease;
-}
-
-.alert-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-left-color: #67c23a;
-}
-
-.alert-item:last-child {
-  margin-bottom: 0;
-}
-
-.alert-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.alert-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.alert-price {
-  font-weight: bold;
-  color: #409eff;
-  font-size: 16px;
-}
-
-.alert-status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.alert-status[data-status="active"] {
-  background-color: #e1f3d8;
-  color: #67c23a;
-}
-
-.alert-status[data-status="triggered"] {
-  background-color: #fdf6ec;
-  color: #e6a23c;
-}
-
-/* 资产详情样式 */
-.assets-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.asset-item {
-  padding: 15px;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 8px;
-  border-left: 4px solid #409eff;
-  transition: all 0.3s ease;
-}
-
-.asset-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-left-color: #67c23a;
-}
-
-.asset-item:last-child {
-  margin-bottom: 0;
-}
-
-.asset-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.asset-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.asset-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.asset-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.asset-price {
-  font-weight: bold;
-  color: #409eff;
-  font-size: 14px;
-}
-
-.asset-quantity {
-  color: #666;
-  font-size: 12px;
-}
-
-.asset-value {
-  font-weight: bold;
-  color: #409eff;
-  font-size: 14px;
-}
-
-/* 关注列表样式 */
-.watchlist-list {
-  /* 移除滚动条限制，直接铺下来 */
-}
-
-.watchlist-item {
-  padding: 15px;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 8px;
-  border-left: 4px solid #67c23a;
-  transition: all 0.3s ease;
-}
-
-.watchlist-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-left-color: #409eff;
-}
-
-.watchlist-item:last-child {
-  margin-bottom: 0;
-}
-
-.watchlist-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.watchlist-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.watchlist-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.watchlist-price {
-  font-weight: bold;
-  color: #67c23a;
-  font-size: 16px;
-}
-
-.news-item {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.news-item:last-child {
-  border-bottom: none;
-}
-
-.news-title {
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: #333;
-}
-
-.news-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #999;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-}
-
-/* 移动端适配 */
+/* =========================================
+   移动端视图 (<= 768px)
+   ========================================= */
 @media (max-width: 768px) {
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap; /* 允许元素换行 */
-    justify-content: center;
-  }
+  .page-container { padding-bottom: 80px; }
+  .page-main { padding: 12px; }
+  
+  .page-header { padding: 15px; }
+  .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .header-right { width: 100%; }
+  
+  :deep(.action-buttons) { display: flex; flex-wrap: wrap; width: 100%; gap: 6px; }
+  :deep(.action-buttons .el-button) { flex: 1 1 auto; margin: 0 !important; border-radius: 6px !important; }
 
-  /* 解除按钮组的强制在一行排列，允许其在移动端自动换行 */
-  :deep(.el-button-group) {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;
-  }
+  .stat-card { margin-bottom: 12px; }
+  .stat-content { padding: 16px 10px; }
+  .stat-number { font-size: 24px; }
   
-  :deep(.el-button-group > .el-button) {
-    float: none;
-    border-radius: 4px !important; /* 取消首尾按钮的特殊圆角，让折行后的按钮更美观 */
-    margin: 2px;
-  }
-
-  .dashboard-container {
-    min-height: 100vh;
-    background-color: #f5f5f5;
-  }
+  .content-card { margin-bottom: 15px; }
+  .chart-container { height: 240px; }
   
-  .dashboard-header {
-    background: white;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    gap: 15px;
-  }
-  
-  .header-left h1 {
-    margin: 0;
-    color: #409eff;
-    font-size: 1.5rem;
-  }
-  
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .dashboard-main {
-    padding: 15px;
-  }
-  
-  .stats-row {
-    margin-bottom: 15px;
-  }
-  
-  .stat-card {
-    text-align: center;
-    transition: all 0.3s;
-    margin-bottom: 10px;
-  }
-  
-  .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  
-  .stat-card.profit {
-    border-left: 4px solid #67c23a;
-  }
-  
-  .stat-card.loss {
-    border-left: 4px solid #f56c6c;
-  }
-  
-  .stat-content {
-    padding: 15px;
-  }
-  
-  .stat-number {
-    font-size: 24px;
-    font-weight: bold;
-    color: #409eff;
-    margin-bottom: 8px;
-  }
-  
-  .stat-label {
-    font-size: 12px;
-    color: #666;
-  }
-  
-  .chart-card, .table-card, .alerts-card, .news-card {
-    margin-bottom: 15px;
-  }
-  
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  
-  .chart-container {
-    height: 250px;
-  }
-  
-  .price {
-    font-weight: bold;
-    color: #409eff;
-    font-size: 12px;
-  }
-  
-  .profit {
-    color: #67c23a;
-    font-weight: bold;
-    font-size: 12px;
-  }
-  
-  .loss {
-    color: #f56c6c;
-    font-weight: bold;
-    font-size: 12px;
-  }
-  
-  .crypto-name {
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 12px;
-  }
-  
-  .alerts-list, .news-list {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-  
-  .alert-item {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-  }
-  
-  .alert-item:last-child {
-    border-bottom: none;
-  }
-  
-  .alert-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  
-  .alert-price {
-    font-weight: bold;
-    color: #409eff;
-    font-size: 12px;
-  }
-  
-  .alert-status {
-    margin-left: auto;
-    color: #666;
-    font-size: 10px;
-  }
-  
-  .news-item {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-  }
-  
-  .news-item:last-child {
-    border-bottom: none;
-  }
-  
-  .news-title {
-    font-weight: bold;
-    margin-bottom: 3px;
-    color: #333;
-    font-size: 12px;
-  }
-  
-  .news-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: #999;
-  }
-  
-  .empty-state {
-    text-align: center;
-    padding: 30px;
-    color: #999;
-    font-size: 12px;
-  }
+  .list-item { padding: 10px 12px; }
+  .primary-text { font-size: 13px; }
 }
 </style>

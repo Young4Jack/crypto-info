@@ -1,95 +1,104 @@
 <template>
-  <div class="public-watchlist-container">
-    <el-container>
-      <el-header class="public-watchlist-header" height="auto">
+  <div class="page-container">
+    <el-header class="page-header" height="auto">
+      <div class="header-content">
         <div class="header-left">
           <h1>{{ siteTitle }}</h1>
-          <p>{{ siteDescription }}</p>
         </div>
         <div class="header-right">
-          <el-button type="primary" @click="goToLogin">登录</el-button>
+          <el-button type="primary" @click="goToLogin" plain>系统登录</el-button>
         </div>
-      </el-header>
+      </div> </el-header>
       
-      <el-main class="public-watchlist-main">
-        <div class="hero-section">
-          <h2>实时关注加密货币价格</h2>
-          <p>关注您感兴趣的交易对，实时监控价格变化</p>
+    <el-main class="page-main">
+      <div class="hero-section">
+        <h2>{{ siteDescription }}</h2>
+        <p>实时掌控市场脉搏，快人一步捕捉交易良机</p>
+      </div>
+      
+      <div class="view-wrapper" v-loading="loading">
+        <div class="desktop-view">
+          <el-card class="table-card" shadow="never">
+            <template #header>
+              <div class="card-header"><span>🔥 全球热门关注</span></div>
+            </template>
+            
+            <el-table :data="publicWatchlist" stripe hover style="width: 100%">
+              <el-table-column label="交易对" min-width="120">
+                <template #default="{ row }">
+                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ row.crypto_symbol }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="crypto_name" label="币种名称" min-width="150" />
+              <el-table-column label="当前价格" min-width="150" align="right">
+                <template #default="{ row }">
+                  <span class="price-text">${{ row.current_price ? row.current_price.toFixed(4) : '0.0000' }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!loading && publicWatchlist.length === 0" description="暂无公开关注数据" />
+          </el-card>
         </div>
-        
-        <el-card class="watchlist-card">
-          <template #header>
-            <div class="card-header">
-              <span>🔥 热门关注</span>
-            </div>
-          </template>
-          
-          <el-table
-            :data="publicWatchlist"
-            style="width: 100%"
-            v-loading="loading"
-          >
-            <el-table-column prop="crypto_symbol" label="交易对" min-width="100">
-              <template #default="{ row }">
-                <el-tag>{{ row.crypto_symbol }}</el-tag>
-              </template>
-            </el-table-column>
-            
-            <el-table-column prop="crypto_name" label="币种名称" min-width="100" />
-            
-            <el-table-column prop="current_price" label="当前价格" min-width="100">
-              <template #default="{ row }">
-                <span class="price">${{ row.current_price ? row.current_price.toFixed(2) : '0.00' }}</span>
-              </template>
-            </el-table-column>
-            
-          </el-table>
-          
-          <div v-if="!loading && publicWatchlist.length === 0" class="empty-state">
-            <p>暂无关注数据</p>
-            <p>登录后即可添加关注</p>
+
+        <div class="mobile-view">
+          <div class="mobile-header-title">🔥 热门关注</div>
+          <el-empty v-if="!loading && publicWatchlist.length === 0" description="暂无关注数据" />
+          <div v-else class="card-list">
+            <el-card v-for="(item, index) in publicWatchlist" :key="index" shadow="hover" class="mobile-data-card">
+              <div class="card-header-row">
+                <div class="coin-info">
+                  <el-tag effect="dark" round class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
+                  <span class="coin-name">{{ item.crypto_name }}</span>
+                </div>
+                <div class="price-highlight">
+                  ${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}
+                </div>
+              </div>
+            </el-card>
           </div>
-        </el-card>
-        
-        <div class="cta-section">
-          <el-button type="primary" size="large" @click="goToLogin">
-            登录查看更多
-          </el-button>
         </div>
-      </el-main>
-    </el-container>
+      </div>
+      
+      <div class="cta-section">
+        <p>想要定制您的专属监控面板？</p>
+        <el-button type="primary" size="large" @click="goToLogin">
+          立即登录探索更多功能
+        </el-button>
+      </div>
+    </el-main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue' // 新增了 onUnmounted
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { watchlistApi, systemSettingsApi } from '../api'
 
 const router = useRouter()
-
 const loading = ref(false)
 const publicWatchlist = ref<any[]>([])
 const siteTitle = ref('Crypto-info')
-const siteDescription = ref('数字货币价格监控和预警系统')
-
-// 新增：用于保存定时器的变量
+const siteDescription = ref('数字货币价格监控系统')
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-// 修改：增加 isBackground 参数。如果是后台自动刷新，就不显示 loading 动画
 const loadPublicWatchlist = async (isBackground = false) => {
-  if (!isBackground) {
-    loading.value = true
-  }
+  if (!isBackground) loading.value = true
   try {
     const response = await watchlistApi.getPublic()
-    publicWatchlist.value = response.data
-  } catch (error) {
-    console.error('加载公开关注列表失败:', error)
-  } finally {
-    if (!isBackground) {
-      loading.value = false
+    // 前端基础去重保护
+    const uniqueData = []
+    const seen = new Set()
+    for (const item of response.data) {
+      if (!seen.has(item.crypto_symbol)) {
+        seen.add(item.crypto_symbol)
+        uniqueData.push(item)
+      }
     }
+    publicWatchlist.value = uniqueData
+  } catch (error) {
+    // 静默失败，不打扰公开用户
+  } finally {
+    if (!isBackground) loading.value = false
   }
 }
 
@@ -100,9 +109,7 @@ const loadPublicSettings = async () => {
       siteTitle.value = response.data.site_title || 'Crypto-info'
       siteDescription.value = response.data.site_description || '数字货币价格监控和预警系统'
     }
-  } catch (error) {
-    console.error('加载公开设置失败:', error)
-  }
+  } catch (error) {}
 }
 
 const goToLogin = () => {
@@ -110,196 +117,89 @@ const goToLogin = () => {
 }
 
 onMounted(() => {
-  loadPublicWatchlist(false) // 首次加载，显示 loading 动画
+  loadPublicWatchlist(false)
   loadPublicSettings()
-  
-  // 新增：设置定时器，每 5000 毫秒（5秒）在后台静默请求一次最新数据
   refreshTimer = setInterval(() => {
     loadPublicWatchlist(true)
   }, 5000)
 })
 
-// 新增：当用户离开这个页面时，必须销毁定时器，否则会导致内存泄漏和网络请求泛滥
 onUnmounted(() => {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-    refreshTimer = null
-  }
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
 <style scoped>
-.public-watchlist-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  width: 100vw;
-  max-width: 100%;
-  overflow-x: hidden; /* 防止整个页面出现左右滑动 */
-  box-sizing: border-box;
-}
+/* =========================================
+   UI 架构层：继承全局设计规范
+   ========================================= */
+.page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; overflow-x: hidden;}
+.page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
+.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+.header-left h1 { margin: 0; font-size: 22px; color: #409eff; font-weight: bold; letter-spacing: 0.5px; }
+.page-main { padding: 20px 25px; max-width: 1200px; margin: 0 auto; width: 100%; }
 
-.public-watchlist-header {
-  background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px; /* 上下加点 padding 因为去掉了固定高度 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  box-sizing: border-box;
-}
+.table-card { border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); overflow: hidden; }
+.card-header { font-weight: 600; color: #303133; font-size: 16px; }
 
-.header-left h1 {
-  margin: 0;
-  color: #409eff;
-}
+/* 字体排版 */
+.symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
+.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; font-size: 15px;}
 
-.header-left p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.public-watchlist-main {
-  padding: 20px;
-}
-
+/* Hero 展示区 */
 .hero-section {
   text-align: center;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 50px 20px;
+  background: linear-gradient(135deg, #409eff 0%, #3a8ee6 100%);
   color: white;
-  border-radius: 10px;
-  margin-bottom: 20px;
+  border-radius: 16px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.2);
+}
+.hero-section h2 { margin: 0 0 15px 0; font-size: 32px; font-weight: 700; }
+.hero-section p { margin: 0; font-size: 16px; opacity: 0.9; }
+
+/* 引导注册区 */
+.cta-section { text-align: center; padding: 50px 20px; margin-top: 20px; }
+.cta-section p { color: #5e6d82; font-size: 15px; margin-bottom: 20px; }
+.cta-section .el-button { font-size: 16px; padding: 12px 40px; border-radius: 8px; font-weight: bold; }
+
+/* =========================================
+   PC端视图 (> 768px)
+   ========================================= */
+@media (min-width: 769px) {
+  .desktop-view { display: block; }
+  .mobile-view { display: none !important; }
+  :deep(.el-table th.el-table__cell) { background-color: #fafafa; color: #606266; font-weight: 600; height: 50px; }
 }
 
-.hero-section h2 {
-  margin: 0 0 10px 0;
-  font-size: 28px;
-}
-
-.hero-section p {
-  margin: 0;
-  font-size: 16px;
-  opacity: 0.9;
-}
-
-.watchlist-card {
-  margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.price {
-  color: #e6a23c;
-  font-weight: bold;
-}
-
-.notes {
-  color: #666;
-  font-size: 12px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-}
-
-.empty-state p {
-  margin: 10px 0;
-}
-
-.cta-section {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.cta-section .el-button {
-  font-size: 16px;
-  padding: 12px 30px;
-}
-
-/* 移动端适配 */
+/* =========================================
+   移动端视图 (<= 768px)
+   ========================================= */
 @media (max-width: 768px) {
-  .public-watchlist-header {
-    padding: 10px 15px;
-    flex-direction: column;
-    gap: 10px;
-  }
+  .desktop-view { display: none !important; }
+  .mobile-view { display: block; }
   
-  .header-left h1 {
-    font-size: 1.2rem;
-  }
+  .page-container { padding-bottom: 40px; }
+  .page-main { padding: 12px; }
+  .page-header { padding: 15px; }
   
-  .header-left p {
-    font-size: 12px;
-  }
+  .hero-section { padding: 30px 15px; margin-bottom: 20px; border-radius: 12px;}
+  .hero-section h2 { font-size: 22px; }
+  .hero-section p { font-size: 13px; }
   
-  .header-right {
-    gap: 8px;
-  }
+  .mobile-header-title { font-size: 16px; font-weight: bold; color: #303133; margin: 10px 0 15px 5px; }
+
+  /* 卡片流 */
+  .card-list { display: flex; flex-direction: column; gap: 12px; }
+  .mobile-data-card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+  :deep(.mobile-data-card .el-card__body) { padding: 16px; }
   
-  .public-watchlist-main {
-    padding: 10px;
-  }
+  .card-header-row { display: flex; justify-content: space-between; align-items: center; }
+  .coin-info { display: flex; align-items: center; gap: 10px; }
+  .coin-name { font-weight: 600; font-size: 14px; color: #606266; }
+  .price-highlight { font-size: 18px; font-weight: 700; color: #409eff; font-family: 'Monaco', monospace; }
   
-  .hero-section {
-    padding: 20px 15px;
-    margin-bottom: 15px;
-  }
-  
-  .hero-section h2 {
-    font-size: 20px;
-  }
-  
-  .hero-section p {
-    font-size: 14px;
-  }
-  
-  .watchlist-card {
-    margin-bottom: 15px;
-  }
-  
-  .el-table {
-    font-size: 12px;
-  }
-  
-  .el-table-column {
-    min-width: 60px;
-  }
-  
-  .price {
-    font-size: 11px;
-  }
-  
-  .notes {
-    font-size: 11px;
-  }
-  
-  .empty-state {
-    padding: 20px;
-    font-size: 12px;
-  }
-  
-  .cta-section {
-    padding: 20px 15px;
-  }
-  
-  .cta-section .el-button {
-    font-size: 14px;
-    padding: 10px 20px;
-  }
+  .cta-section { padding: 30px 10px; }
 }
-
-
 </style>

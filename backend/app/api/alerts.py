@@ -239,23 +239,65 @@ async def update_alert_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """更新预警规则"""
-    # 验证预警类型
-    if alert_data.alert_type and alert_data.alert_type not in ["above", "below"]:
-        raise HTTPException(status_code=400, detail="预警类型必须是 'above' 或 'below'")
+    """更新预警规则（支持全字段编辑与状态重置）"""
+    valid_types = ["above", "below", "amplitude", "percent_up", "percent_down"]
+    if alert_data.alert_type and alert_data.alert_type not in valid_types:
+        raise HTTPException(status_code=400, detail="预警类型不合法")
     
-    # 准备更新数据
+    alert = db.query(PriceAlert).filter(
+        PriceAlert.id == alert_id,
+        PriceAlert.user_id == current_user.id
+    ).first()
+    
+    if not alert:
+        raise HTTPException(status_code=404, detail="预警规则不存在")
+    
     update_data = {}
     if alert_data.alert_type:
-        update_data["alert_type"] = AlertType.ABOVE if alert_data.alert_type == "above" else AlertType.BELOW
-    if alert_data.threshold_price is not None:
-        update_data["threshold_price"] = alert_data.threshold_price
+        update_data["alert_type"] = AlertType(alert_data.alert_type)
     if alert_data.webhook_url is not None:
         update_data["webhook_url"] = alert_data.webhook_url
+        
+    # 【核心修改1】：同步更新阈值。防止用户修改了百分比，但后台还在用旧的百分比计算
+    if alert_data.threshold_price is not None:
+        update_data["threshold_price"] = alert_data.threshold_price
+        update_data["threshold_value"] = alert_data.threshold_price
+        
+    # 【核心修改2】：开放编辑权限，允许更新模式、次数和间隔
+    if alert_data.is_continuous is not None:
+        update_data["is_continuous"] = alert_data.is_continuous
+    if alert_data.interval_minutes is not None:
+        update_data["interval_minutes"] = alert_data.interval_minutes
+    if alert_data.max_notifications is not None:
+        update_data["max_notifications"] = alert_data.max_notifications
+    
+    # 状态更新与重置逻辑
     if alert_data.is_active is not None:
         update_data["is_active"] = alert_data.is_active
+        
+        # 当被重新激活时，执行重置
+        if alert_data.is_active is True and alert.is_active is False:
+            tz = config_manager.get_timezone()
+            update_data["notified_count"] = 0
+            update_data["last_triggered_at"] = None
+            update_data["created_at"] = datetime.now(tz)
+            
+            if alert_data.alert_type:
+                current_type = AlertType(alert_data.alert_type)
+            else:
+                current_type = alert.alert_type
+                
+            if current_type in [AlertType.AMPLITUDE, AlertType.PERCENT_UP, AlertType.PERCENT_DOWN]:
+                crypto = db.query(Cryptocurrency).filter(Cryptocurrency.id == alert.crypto_id).first()
+                if crypto:
+                    try:
+                        current_prices = await fetch_crypto_prices()
+                        current_price = current_prices.get(crypto.symbol, 0)
+                        if current_price > 0:
+                            update_data["base_price"] = current_price
+                    except Exception:
+                        pass
     
-    # 更新预警规则
     alert = update_alert(
         db=db,
         alert_id=alert_id,
@@ -263,10 +305,7 @@ async def update_alert_rule(
         **update_data
     )
     
-    # 获取对应的币种信息
-    crypto = db.query(Cryptocurrency).filter(
-        Cryptocurrency.id == alert.crypto_id
-    ).first()
+    crypto = db.query(Cryptocurrency).filter(Cryptocurrency.id == alert.crypto_id).first()
     
     return AlertResponse(
         id=alert.id,

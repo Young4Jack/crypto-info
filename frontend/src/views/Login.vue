@@ -1,7 +1,10 @@
 <template>
-  <div class="login-container">
+  <div class="login-wrapper">
     <div class="login-card">
       <div class="login-header">
+        <div class="logo-box">
+          <span class="logo-text">{{ siteTitle ? siteTitle.charAt(0).toUpperCase() : 'C' }}</span>
+        </div>
         <h1>{{ siteTitle }}</h1>
         <p>{{ siteDescription }}</p>
       </div>
@@ -19,6 +22,7 @@
             placeholder="请输入邮箱或用户名"
             prefix-icon="User"
             size="large"
+            clearable
           />
         </el-form-item>
         
@@ -56,7 +60,7 @@
           <div class="captcha-tip">点击图片刷新验证码</div>
         </el-form-item>
         
-        <el-form-item>
+        <el-form-item class="submit-item">
           <el-button
             type="primary"
             size="large"
@@ -64,7 +68,7 @@
             @click="handleLogin"
             class="login-button"
           >
-            {{ loading ? '登录中...' : '登录' }}
+            {{ loading ? '身份验证中...' : '安全登录' }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -108,7 +112,6 @@ const loginRules = computed(() => {
     ]
   }
   
-  // 只有在验证码启用时才添加验证码验证规则
   if (captchaEnabled.value) {
     rules.captchaAnswer = [
       { required: true, message: '请输入验证码', trigger: 'blur' }
@@ -128,7 +131,7 @@ const getCaptcha = async () => {
       loginForm.captchaId = response.data.captcha_id
     }
   } catch (error) {
-    console.error('获取验证码失败:', error)
+    // 静默处理，避免未配置时报错打断渲染
   }
 }
 
@@ -144,7 +147,7 @@ const refreshCaptcha = async () => {
       loginForm.captchaAnswer = ''
     }
   } catch (error) {
-    console.error('刷新验证码失败:', error)
+    ElMessage.error('刷新验证码失败')
   }
 }
 
@@ -165,7 +168,7 @@ const handleLogin = async () => {
           ElMessage.success('登录成功')
           router.push('/dashboard')
         } else {
-          ElMessage.error('登录失败，请检查邮箱/用户名和密码')
+          ElMessage.error('登录失败，请检查凭证')
           if (captchaEnabled.value) {
             refreshCaptcha()
           }
@@ -182,11 +185,6 @@ const handleLogin = async () => {
   })
 }
 
-onMounted(() => {
-  getCaptcha()
-  loadPublicSettings()
-})
-
 const loadPublicSettings = async () => {
   try {
     const response = await systemSettingsApi.getPublicSystemSetting()
@@ -195,57 +193,113 @@ const loadPublicSettings = async () => {
       siteDescription.value = response.data.site_description || '数字货币价格监控和预警系统'
     }
   } catch (error) {
-    console.error('加载公开设置失败:', error)
+    // 采用默认设置
   }
 }
+
+onMounted(() => {
+  getCaptcha()
+  loadPublicSettings()
+})
 </script>
 
 <style scoped>
-.login-container {
+/* =========================================
+   全局架构层：强制与内部面板背景色对齐
+   ========================================= */
+.login-wrapper {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-  padding: var(--spacing-md);
+  background-color: #f5f7fa; /* 统一的后台背景色 */
+  padding: 20px;
+  box-sizing: border-box;
 }
 
+/* =========================================
+   核心组件：登录卡片
+   ========================================= */
 .login-card {
   width: 100%;
-  max-width: 400px;
-  padding: var(--spacing-xxl);
-  background: var(--bg-color);
-  border-radius: var(--border-radius-large);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 420px;
+  padding: 40px 35px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f2f5;
+  box-sizing: border-box;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 35px;
+}
+
+.logo-box {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #409eff 0%, #3a8ee6 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.logo-text {
+  color: white;
+  font-size: 26px;
+  font-weight: bold;
+  font-family: 'Monaco', monospace;
 }
 
 .login-header h1 {
-  font-size: var(--font-size-title);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
-  font-weight: 700;
+  font-size: 24px;
+  color: #1f2f3d;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .login-header p {
-  font-size: var(--font-size-base);
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: #909399;
+  margin: 0;
 }
 
 .login-form {
   width: 100%;
 }
 
+/* 表单元素深度定制 */
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dcdfe6;
+  padding: 0 15px;
+  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #409eff;
+}
+
+:deep(.el-input__inner) {
+  height: 46px;
+  line-height: 46px;
+}
+
+/* 验证码模块 */
 .captcha-container {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 12px;
   align-items: center;
+  width: 100%;
 }
 
 .captcha-input {
@@ -253,22 +307,21 @@ const loadPublicSettings = async () => {
 }
 
 .captcha-image-container {
-  width: 120px;
-  height: 40px;
+  width: 130px;
+  height: 48px;
   cursor: pointer;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-base);
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
-  transition: all var(--transition-duration) var(--transition-timing);
+  background-color: #f5f7fa;
+  transition: border-color 0.2s;
 }
 
 .captcha-image-container:hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  border-color: #409eff;
 }
 
 .captcha-image {
@@ -278,106 +331,81 @@ const loadPublicSettings = async () => {
 }
 
 .captcha-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
+  color: #909399;
 }
 
 .captcha-tip {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  margin-top: var(--spacing-xs);
-  text-align: center;
+  font-size: 12px;
+  color: #a8abb2;
+  margin-top: 6px;
+  line-height: 1.2;
+}
+
+/* 提交按钮 */
+.submit-item {
+  margin-top: 10px;
+  margin-bottom: 0;
 }
 
 .login-button {
   width: 100%;
   height: 48px;
-  font-size: var(--font-size-lg);
+  font-size: 16px;
   font-weight: 600;
-  border-radius: var(--border-radius-base);
-  margin-top: var(--spacing-lg);
-  transition: all var(--transition-duration) var(--transition-timing);
+  border-radius: 8px;
+  letter-spacing: 1px;
 }
 
-.login-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-light);
-}
-
-:deep(.el-input__wrapper) {
-  border-radius: var(--border-radius-base);
-  box-shadow: 0 0 0 1px var(--border-color);
-  transition: all var(--transition-duration) var(--transition-timing);
-}
-
-:deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px var(--primary-light);
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
-}
-
-:deep(.el-form-item__label) {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-}
-
-/* 移动端适配 */
+/* =========================================
+   移动端视图 (<= 768px)
+   ========================================= */
 @media (max-width: 768px) {
-  .login-container {
-    padding: var(--spacing-sm);
+  .login-wrapper {
+    padding: 15px;
+    align-items: flex-start;
+    padding-top: 10vh;
   }
   
   .login-card {
-    padding: var(--spacing-lg);
-    margin: var(--spacing-sm);
-    max-width: none;
+    padding: 30px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+  
+  .login-header {
+    margin-bottom: 25px;
+  }
+  
+  .logo-box {
+    width: 46px;
+    height: 46px;
+  }
+  
+  .logo-text {
+    font-size: 22px;
   }
   
   .login-header h1 {
-    font-size: var(--font-size-xl);
+    font-size: 22px;
   }
   
   .login-header p {
-    font-size: var(--font-size-sm);
+    font-size: 13px;
   }
   
-  .captcha-container {
-    flex-direction: column;
-    gap: var(--spacing-xs);
-  }
-  
-  .captcha-image-container {
-    width: 100%;
-    height: 50px;
+  :deep(.el-input__inner) {
+    height: 42px;
+    line-height: 42px;
   }
   
   .login-button {
     height: 44px;
-    font-size: var(--font-size-base);
-  }
-}
-
-@media (max-width: 480px) {
-  .login-card {
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-base);
+    font-size: 15px;
   }
   
-  .login-header {
-    margin-bottom: var(--spacing-lg);
-  }
-  
-  .login-header h1 {
-    font-size: var(--font-size-lg);
-  }
-  
-  .login-button {
-    margin-top: var(--spacing-md);
+  .captcha-image-container {
+    width: 110px;
+    height: 44px;
   }
 }
 </style>

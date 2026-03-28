@@ -130,7 +130,8 @@ async def test_primary_api():
             response = await client.get(
                 primary_api_url,
                 headers=headers,
-                timeout=10.0
+                timeout=10.0,
+                follow_redirects=True
             )
             response.raise_for_status()
             
@@ -173,7 +174,8 @@ async def test_backup_api():
             response = await client.get(
                 backup_api_url,
                 headers=headers,
-                timeout=10.0
+                timeout=10.0,
+                follow_redirects=True
             )
             response.raise_for_status()
             

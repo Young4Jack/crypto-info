@@ -48,8 +48,11 @@ export const alertsApi = {
   // 创建预警规则
   create: (data: {
     crypto_symbol: string
-    alert_type: 'above' | 'below'
+    alert_type: 'above' | 'below' | 'amplitude' | 'percent_up' | 'percent_down'
     threshold_price: number
+    is_continuous?: boolean
+    max_notifications?: number
+    interval_minutes?: number
   }) => {
     return request.post('/api/alerts/', data)
   },

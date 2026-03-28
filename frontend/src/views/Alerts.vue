@@ -27,7 +27,12 @@
         >
           <div class="form-responsive-row">
             <el-form-item label="交易对 (容错: 填 btc 自动转 BTCUSDT)" prop="crypto_symbol" class="flex-item-large">
-              <el-input v-model="inlineForm.crypto_symbol" placeholder="输入监控币种" clearable />
+              <el-input 
+                v-model="inlineForm.crypto_symbol" 
+                placeholder="输入监控币种" 
+                clearable 
+                @change="inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)"
+              />
             </el-form-item>
             
             <el-form-item label="触发条件" prop="alert_type" class="flex-item-small">
@@ -52,8 +57,8 @@
               <el-input-number v-model="inlineForm.interval_minutes" :min="1" :max="1440" style="width: 100%" />
             </el-form-item>
             
-            <el-form-item label="目标价格 ($)" prop="threshold_price" class="flex-item-medium">
-              <el-input-number v-model="inlineForm.threshold_price" :precision="4" :min="0" :controls="false" style="width: 100%" placeholder="目标触发价" />
+            <el-form-item :label="['above', 'below'].includes(inlineForm.alert_type) ? '目标价格 ($)' : '触发阈值 (%)'" prop="threshold_price" class="flex-item-medium">
+              <el-input-number v-model="inlineForm.threshold_price" :precision="['above', 'below'].includes(inlineForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" :placeholder="['above', 'below'].includes(inlineForm.alert_type) ? '目标触发价' : '填入百分比，如 5'" />
             </el-form-item>
             
             <el-form-item label="&nbsp;" class="flex-btn">
@@ -76,24 +81,58 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="当前价格" min-width="120" align="right">
+              <el-table-column label="币种名称" min-width="110">
+                <template #default="{ row }">
+                  <span style="color: #606266; font-weight: 500;">{{ row.crypto_name }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="当前价格" min-width="110" align="right">
                 <template #default="{ row }">
                   <span class="price-text">${{ formatNum(row._cp, 4) }}</span>
                 </template>
               </el-table-column>
               
-              <el-table-column label="触发条件" min-width="150" align="right">
+              <el-table-column label="触发条件" min-width="130" align="right">
                 <template #default="{ row }">
                   <span class="condition-group">
-                    <span :class="row.alert_type === 'above' ? 'text-up' : 'text-down'">
-                      {{ row.alert_type === 'above' ? '高于 ↑' : '低于 ↓' }}
-                    </span>
-                    <b class="price-target">${{ formatNum(row.threshold_price, 4) }}</b>
+                    <span :class="getConditionText(row).class">{{ getConditionText(row).text }}</span>
+                    <b class="price-target">{{ getConditionText(row).val }}</b>
                   </span>
                 </template>
               </el-table-column>
               
-              <el-table-column label="运行状态" min-width="110" align="center">
+              <el-table-column label="持续" min-width="70" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.is_continuous ? 'success' : 'info'" size="small">{{ row.is_continuous ? '是' : '否' }}</el-tag>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="进度" min-width="80" align="center">
+                <template #default="{ row }">
+                  <span>{{ row.notified_count }} / {{ row.max_notifications }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="间隔" min-width="70" align="center">
+                <template #default="{ row }">
+                  <span>{{ row.interval_minutes }}m</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="创建时间" min-width="150">
+                <template #default="{ row }">
+                  <span class="time-text">{{ row.created_at ? formatTime(row.created_at) : '-' }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="最后触发" min-width="150">
+                <template #default="{ row }">
+                  <span class="time-text">{{ row.last_triggered_at ? formatTime(row.last_triggered_at) : '等待触发...' }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="运行状态" min-width="110" align="center" fixed="right">
                 <template #default="{ row }">
                   <el-switch
                     v-model="row.is_active"
@@ -106,14 +145,9 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="最后触发" min-width="160">
+              <el-table-column label="操作" width="140" align="center" fixed="right">
                 <template #default="{ row }">
-                  <span class="time-text">{{ row.triggered_at ? formatTime(row.triggered_at) : '等待触发...' }}</span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="操作" width="100" align="center" fixed="right">
-                <template #default="{ row }">
+                  <el-button size="small" type="primary" plain @click="openEditDialog(row)">编辑</el-button>
                   <el-button size="small" type="danger" plain @click="handleDeleteAlert(row)">删除</el-button>
                 </template>
               </el-table-column>
@@ -129,8 +163,9 @@
               <div class="card-header-row">
                 <div class="coin-info">
                   <el-tag effect="dark" round class="symbol-tag">{{ item._symbol }}</el-tag>
+                  <span style="font-size: 13px; color: #909399; margin-left: 6px;">{{ item.crypto_name }}</span>
                 </div>
-                <div class="status-indicator" @click="handleToggleActive(item)">
+                <div class="status-indicator" @click="handleToggleActiveMobile(item)">
                   <span :class="['status-dot', item.is_active ? 'dot-active' : 'dot-inactive']"></span>
                   <span class="status-text">{{ item.is_active ? '监控中' : '已停用' }}</span>
                 </div>
@@ -148,27 +183,47 @@
                   <div class="price-item">
                     <span class="price-label">目标设定</span>
                     <span class="price-value">
-                      <span :class="item.alert_type === 'above' ? 'text-up' : 'text-down'" style="font-size: 14px; margin-right: 4px;">
-                        {{ item.alert_type === 'above' ? '高于↑' : '低于↓' }}
+                      <span :class="getConditionText(item).class" style="font-size: 14px; margin-right: 4px;">
+                        {{ getConditionText(item).text }}
                       </span>
-                      <span class="price-target">${{ formatNum(item.threshold_price, 4) }}</span>
+                      <span class="price-target" style="font-size: 16px;">{{ getConditionText(item).val }}</span>
                     </span>
                   </div>
                 </div>
                 
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">持续预警:</span>
+                    <span class="detail-value">{{ item.is_continuous ? '是' : '否' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">间隔频率:</span>
+                    <span class="detail-value">{{ item.interval_minutes }}分钟</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">推送进度:</span>
+                    <span class="detail-value">{{ item.notified_count }} / {{ item.max_notifications }}次</span>
+                  </div>
+                </div>
+                
                 <div class="trigger-info">
-                  <span class="trigger-label">最新动态:</span>
-                  <span class="trigger-time">{{ item.triggered_at ? formatTime(item.triggered_at) : '监控引擎待命...' }}</span>
+                  <span class="trigger-label">创建时间:</span>
+                  <span class="trigger-time">{{ item.created_at ? formatTime(item.created_at) : '-' }}</span>
+                </div>
+                <div class="trigger-info" style="margin-top: 4px;">
+                  <span class="trigger-label">最后触发:</span>
+                  <span class="trigger-time">{{ item.last_triggered_at ? formatTime(item.last_triggered_at) : '等待触发...' }}</span>
                 </div>
               </div>
 
               <el-divider class="compact-divider" />
 
               <div class="card-footer">
-                <el-button size="default" :type="item.is_active ? 'warning' : 'success'" plain @click="handleToggleActive(item)" style="flex:1">
-                  {{ item.is_active ? '暂停监控' : '恢复监控' }}
+                <el-button size="default" type="primary" plain @click="openEditDialog(item)" style="flex:1">编辑</el-button>
+                <el-button size="default" :type="item.is_active ? 'warning' : 'success'" plain @click="handleToggleActiveMobile(item)" style="flex:1">
+                  {{ item.is_active ? '暂停' : '启动' }}
                 </el-button>
-                <el-button size="default" type="danger" plain @click="handleDeleteAlert(item)" style="flex:1">彻底删除</el-button>
+                <el-button size="default" type="danger" plain @click="handleDeleteAlert(item)" style="flex:1">删除</el-button>
               </div>
             </el-card>
           </div>
@@ -185,7 +240,12 @@
     >
       <el-form :model="dialogForm" :rules="formRules" ref="dialogFormRef" label-position="top">
         <el-form-item label="交易对 (容错: 填 eth 自动转 ETHUSDT)" prop="crypto_symbol">
-          <el-input v-model="dialogForm.crypto_symbol" placeholder="输入要监控的交易对" clearable />
+          <el-input 
+            v-model="dialogForm.crypto_symbol" 
+            placeholder="输入要监控的交易对" 
+            clearable 
+            @change="dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)"
+          />
         </el-form-item>
         
         <div class="form-row-2">
@@ -213,6 +273,55 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="editDialogVisible"
+      title="修改预警规则"
+      class="responsive-dialog"
+    >
+      <el-form :model="editForm" :rules="formRules" ref="editFormRef" label-position="top">
+        <el-form-item label="交易对 (锁定)">
+          <el-input v-model="editForm.crypto_symbol" disabled />
+        </el-form-item>
+        
+        <el-form-item label="触发条件" prop="alert_type">
+          <el-select v-model="editForm.alert_type" style="width: 100%">
+            <el-option label="价格高于 ↑" value="above" />
+            <el-option label="价格低于 ↓" value="below" />
+            <el-option label="振幅预警 ↕" value="amplitude" />
+            <el-option label="涨幅百分比 ↗" value="percent_up" />
+            <el-option label="跌幅百分比 ↘" value="percent_down" />
+          </el-select>
+        </el-form-item>
+        
+        <div class="form-row-2">
+          <el-form-item label="持续预警">
+            <el-switch v-model="editForm.is_continuous" active-text="是" inactive-text="否" />
+          </el-form-item>
+          <el-form-item label="通知次数">
+            <el-input-number v-model="editForm.max_notifications" :min="1" :max="100" style="width: 100%" />
+          </el-form-item>
+        </div>
+
+        <div class="form-row-2">
+          <el-form-item label="间隔(分钟)">
+            <el-input-number v-model="editForm.interval_minutes" :min="1" :max="1440" style="width: 100%" />
+          </el-form-item>
+          <el-form-item :label="['above', 'below'].includes(editForm.alert_type) ? '目标价格 ($)' : '触发阈值 (%)'" prop="threshold_price">
+            <el-input-number v-model="editForm.threshold_price" :precision="['above', 'below'].includes(editForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" />
+          </el-form-item>
+        </div>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitEditForm" :loading="submitLoading">
+            保存修改并重置状态
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -229,9 +338,9 @@ const submitLoading = ref(false)
 const alerts = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-// 双输入渠道隔离
 const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
+const editFormRef = ref<FormInstance>()
 
 const inlineForm = reactive({ 
   crypto_symbol: '', 
@@ -241,6 +350,7 @@ const inlineForm = reactive({
   max_notifications: 1,
   interval_minutes: 5
 })
+
 const dialogForm = reactive({ 
   crypto_symbol: '', 
   alert_type: 'above' as 'above'|'below'|'amplitude'|'percent_up'|'percent_down', 
@@ -249,37 +359,68 @@ const dialogForm = reactive({
   max_notifications: 1,
   interval_minutes: 5
 })
+
+const editForm = reactive({
+  id: 0,
+  crypto_symbol: '',
+  alert_type: 'above' as 'above'|'below'|'amplitude'|'percent_up'|'percent_down',
+  threshold_price: 0 as number,
+  is_continuous: false,
+  max_notifications: 1,
+  interval_minutes: 5
+})
+
 const dialogVisible = ref(false)
+const editDialogVisible = ref(false)
 
 const formRules: FormRules = {
   crypto_symbol: [{ required: true, message: '请输入交易对', trigger: 'blur' }],
-  threshold_price: [{ required: true, message: '请输入目标触发价格', trigger: 'blur' }]
+  threshold_price: [{ required: true, message: '请输入目标触发数据', trigger: 'blur' }]
 }
 
-// 格式化工具：数字安全与容错输入
 const formatNum = (val: any, decimals: number) => {
   const num = Number(val)
   return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals)
 }
 
+// 核心修复 3：升级版智能输入容错清洗引擎 (解决把 btc 误判为后缀的 bug)
 const formatSymbolInput = (rawSymbol: string) => {
+  if (!rawSymbol) return ''
   let formatted = rawSymbol.trim().toUpperCase()
   if (!formatted) return ''
-  if (!formatted.endsWith('USDT') && !formatted.endsWith('USDC') && !formatted.endsWith('BTC') && !formatted.endsWith('ETH')) {
+  
+  // 计价货币白名单
+  const quoteCurrencies = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD']
+  
+  // 必须同时满足：1.以后缀结尾 2.字符串总长度大于后缀的长度 (防止输入 "BTC" 触发条件)
+  const hasQuote = quoteCurrencies.some(quote => {
+    return formatted.endsWith(quote) && formatted.length > quote.length
+  })
+
+  // 若不包含任何标准计价后缀，则补齐 USDT
+  if (!hasQuote) {
     formatted += 'USDT'
   }
   return formatted
+}
+
+const getConditionText = (row: any) => {
+  const type = row.alert_type
+  const val = row.threshold_value !== null ? row.threshold_value : row.threshold_price
+  if (type === 'above') return { text: '高于 ↑', val: `$${formatNum(val, 4)}`, class: 'text-up' }
+  if (type === 'below') return { text: '低于 ↓', val: `$${formatNum(val, 4)}`, class: 'text-down' }
+  if (type === 'amplitude') return { text: '振幅 ↕', val: `${formatNum(val, 2)}%`, class: 'text-amplitude' }
+  if (type === 'percent_up') return { text: '涨幅 ↗', val: `${formatNum(val, 2)}%`, class: 'text-up' }
+  if (type === 'percent_down') return { text: '跌幅 ↘', val: `${formatNum(val, 2)}%`, class: 'text-down' }
+  return { text: '未知', val: String(val), class: '' }
 }
 
 const loadAlerts = async (isBackground = false) => {
   if (!isBackground) loading.value = true
   try {
     const response = await alertsApi.getAll()
-    
     alerts.value = response.data.map((alert: any) => {
-      // 提取当前价格（兼容后端可能的嵌套结构，若后端暂无该字段则默认为0）
       const cp = Number(alert.current_price || (alert.crypto && alert.crypto.current_price) || 0)
-      
       return {
         ...alert,
         _symbol: alert.crypto_symbol || (alert.crypto && alert.crypto.symbol) || '未知',
@@ -293,23 +434,24 @@ const loadAlerts = async (isBackground = false) => {
   }
 }
 
-// 提交处理：渠道一 (页面快捷录入)
 const submitInlineForm = async () => {
   if (!inlineFormRef.value) return
+  // 核心修复 4：提交前再次强制同步覆盖
+  inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)
+  
   await inlineFormRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
       try {
-        const formattedSymbol = formatSymbolInput(inlineForm.crypto_symbol)
         await alertsApi.create({
-          crypto_symbol: formattedSymbol,
-          alert_type: inlineForm.alert_type as 'above' | 'below',
+          crypto_symbol: inlineForm.crypto_symbol,
+          alert_type: inlineForm.alert_type,
           threshold_price: Number(inlineForm.threshold_price),
           is_continuous: inlineForm.is_continuous,
           max_notifications: Number(inlineForm.max_notifications),
           interval_minutes: Number(inlineForm.interval_minutes)
         })
-        ElMessage.success(`预警创建成功: ${formattedSymbol}`)
+        ElMessage.success(`预警创建成功: ${inlineForm.crypto_symbol}`)
         
         inlineForm.crypto_symbol = ''
         inlineForm.threshold_price = undefined
@@ -327,15 +469,22 @@ const submitInlineForm = async () => {
     }
   })
 }
+
+const submitDialogForm = async (keepOpen = false) => {
+  if (!dialogFormRef.value) return
+  // 强制同步
+  dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)
+
+  await dialogFormRef.value.validate(async (valid) => {
+    if (valid) {
       submitLoading.value = true
       try {
-        const formattedSymbol = formatSymbolInput(dialogForm.crypto_symbol)
         await alertsApi.create({
-          crypto_symbol: formattedSymbol,
+          crypto_symbol: dialogForm.crypto_symbol,
           alert_type: dialogForm.alert_type,
           threshold_price: Number(dialogForm.threshold_price)
         })
-        ElMessage.success(`预警创建成功: ${formattedSymbol}`)
+        ElMessage.success(`预警创建成功: ${dialogForm.crypto_symbol}`)
         
         if (keepOpen) {
           dialogForm.crypto_symbol = ''
@@ -347,6 +496,43 @@ const submitInlineForm = async () => {
         loadAlerts(true)
       } catch (error: any) {
         ElMessage.error('创建失败，可能是参数错误')
+      } finally {
+        submitLoading.value = false
+      }
+    }
+  })
+}
+
+const openEditDialog = (row: any) => {
+  editForm.id = row.id
+  editForm.crypto_symbol = row._symbol
+  editForm.alert_type = row.alert_type
+  editForm.threshold_price = row.threshold_value !== null ? row.threshold_value : row.threshold_price
+  editForm.is_continuous = row.is_continuous
+  editForm.max_notifications = row.max_notifications
+  editForm.interval_minutes = row.interval_minutes
+  editDialogVisible.value = true
+}
+
+const submitEditForm = async () => {
+  if (!editFormRef.value) return
+  await editFormRef.value.validate(async (valid) => {
+    if (valid) {
+      submitLoading.value = true
+      try {
+        await alertsApi.update(editForm.id, {
+          alert_type: editForm.alert_type,
+          threshold_price: Number(editForm.threshold_price),
+          is_continuous: editForm.is_continuous,
+          max_notifications: Number(editForm.max_notifications),
+          interval_minutes: Number(editForm.interval_minutes),
+          is_active: true 
+        })
+        ElMessage.success('预警规则已更新并重新激活')
+        editDialogVisible.value = false
+        loadAlerts(true)
+      } catch (error: any) {
+        ElMessage.error('修改失败')
       } finally {
         submitLoading.value = false
       }
@@ -366,15 +552,20 @@ const handleDialogClose = () => {
 }
 
 const handleToggleActive = async (alert: any) => {
-  const originalState = alert.is_active
-  alert.is_active = !originalState
+  const newState = alert.is_active 
   try {
-    await alertsApi.update(alert.id, { is_active: alert.is_active })
-    ElMessage.success(`已${alert.is_active ? '启动' : '暂停'}监控引擎`)
+    await alertsApi.update(alert.id, { is_active: newState })
+    ElMessage.success(`引擎已${newState ? '重置并激活' : '暂停'}`)
+    loadAlerts(true) 
   } catch (error) {
-    alert.is_active = originalState
+    alert.is_active = !newState
     ElMessage.error('状态更新失败')
   }
+}
+
+const handleToggleActiveMobile = async (alert: any) => {
+  alert.is_active = !alert.is_active
+  await handleToggleActive(alert)
 }
 
 const handleDeleteAlert = async (alert: any) => {
@@ -411,9 +602,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* =========================================
-   UI 架构层：与 Assets/Watchlist 绝对统一
-   ========================================= */
 .page-container { min-height: 100vh; background-color: #f5f7fa; padding-bottom: 30px; }
 .page-header { background: white; padding: 15px 25px; box-shadow: 0 1px 4px rgba(0,21,41,0.04); border-bottom: 1px solid #f0f0f0; }
 .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto; width: 100%; }
@@ -424,99 +612,68 @@ onUnmounted(() => {
 .form-card { margin-bottom: 20px; border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); }
 .table-card { border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02); overflow: hidden; }
 
-/* 字体与颜色语义 */
 .symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
 .text-up { color: #f56c6c; font-weight: bold; }
 .text-down { color: #67c23a; font-weight: bold; }
+.text-amplitude { color: #e6a23c; font-weight: bold; }
 .price-target { color: #1f2f3d; font-size: 16px; font-family: 'Monaco', monospace; margin-left: 5px; }
 .price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
 .condition-group { display: flex; align-items: center; justify-content: flex-end; }
 .time-text { color: #909399; font-size: 13px; }
 
-/* =========================================
-   PC端视图 (> 768px)
-   ========================================= */
 @media (min-width: 769px) {
   .desktop-view { display: block; }
   .mobile-view { display: none !important; }
-  
   :deep(.el-table th.el-table__cell) { background-color: #fafafa; color: #606266; font-weight: 600; height: 50px; }
-  
   .form-responsive-row { display: flex; gap: 24px; align-items: flex-end; }
   .flex-item-large { flex: 2; margin-bottom: 0; }
   .flex-item-medium { flex: 1.5; margin-bottom: 0; }
   .flex-item-small { flex: 1; margin-bottom: 0; }
   .flex-btn { width: 120px; margin-bottom: 0; }
-  
   .form-row-2 { display: flex; gap: 20px; }
   .form-row-2 > .el-form-item { flex: 1; }
 }
 
-/* =========================================
-   移动端视图 (<= 768px)
-   ========================================= */
 @media (max-width: 768px) {
   .desktop-view { display: none !important; }
   .mobile-view { display: block; }
-  
   .page-container { padding-bottom: 80px; }
   .page-main { padding: 12px; }
-  
   .page-header { padding: 15px; }
   .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
   .header-right { width: 100%; }
-  
   :deep(.action-buttons) { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; }
   :deep(.action-buttons .el-button) { flex: 1 1 auto; margin: 0 !important; border-radius: 6px !important; }
-
   .form-responsive-row { display: flex; flex-direction: column; gap: 0; }
   .flex-item-large, .flex-item-medium, .flex-item-small { margin-bottom: 16px; }
   .flex-btn { margin-bottom: 4px; }
-
-  /* 移动端高级卡片设计 */
   .card-list { display: flex; flex-direction: column; gap: 12px; }
-  .mobile-data-card { 
-    border-radius: 12px; border: none; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-    transition: all 0.3s ease;
-  }
+  .mobile-data-card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: all 0.3s ease; }
   .card-inactive { opacity: 0.6; filter: grayscale(50%); }
   :deep(.mobile-data-card .el-card__body) { padding: 16px; }
-  
   .card-header-row { display: flex; justify-content: space-between; align-items: center; }
-  
-  /* 仿 iOS 状态指示器 */
   .status-indicator { display: flex; align-items: center; gap: 6px; background: #f4f4f5; padding: 4px 10px; border-radius: 20px; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; }
   .dot-active { background-color: #13ce66; box-shadow: 0 0 4px #13ce66; }
   .dot-inactive { background-color: #909399; }
   .status-text { font-size: 12px; color: #606266; font-weight: 500; }
-  
   .compact-divider { margin: 14px 0; border-color: #ebeef5; opacity: 0.6; }
-  
-  /* 移动端专属：价格对比框 */
-  .price-compare-box {
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #f0f2f5;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-  }
+  .price-compare-box { background: #f8f9fa; border-radius: 8px; border: 1px solid #f0f2f5; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; margin-bottom: 12px; }
   .price-item { display: flex; flex-direction: column; gap: 4px; }
   .price-label { font-size: 12px; color: #909399; }
   .price-value { font-size: 18px; font-weight: bold; font-family: 'Monaco', monospace; display: flex; align-items: center;}
   .price-divider { width: 1px; height: 30px; background-color: #ebeef5; margin: 0 10px; }
   
-  .trigger-info { margin-top: 12px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; background: #fff; border-radius: 8px; }
+  .detail-item { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #f0f2f5;}
+  .detail-label { color: #909399; }
+  .detail-value { color: #303133; font-weight: 500; }
+  
+  .trigger-info { font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
   .trigger-label { color: #a8abb2; }
   .trigger-time { color: #606266; font-weight: 500; }
-  
-  .card-footer { display: flex; gap: 12px; margin-top: 6px; }
-  .card-footer .el-button { border-radius: 6px; }
-
-  /* 对话框适配 */
+  .card-footer { display: flex; gap: 8px; margin-top: 6px; }
+  .card-footer .el-button { border-radius: 6px; padding: 8px; }
   :deep(.responsive-dialog) { width: 95% !important; max-width: 400px; margin: 5vh auto !important; border-radius: 12px; }
   .form-row-2 { display: flex; flex-direction: column; gap: 0; }
   :deep(.dialog-footer) { display: flex; flex-wrap: wrap; gap: 10px; }

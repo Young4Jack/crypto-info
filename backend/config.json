@@ -6,16 +6,16 @@
     "api_secret": ""
   },
   "notification_settings": {
-    "api_url": "https://push.gosu.cc/push/jacket",
-    "auth_token": "802304BD19DD83A29DFAF5A7C56BB57F",
+    "api_url": "https://exp.baidu.com",
+    "auth_token": "12312321321321321321321",
     "channel": "wechatapp"
   },
   "system_settings": {
     "refresh_interval": 5,
-    "enable_captcha": false,
+    "enable_captcha": true,
     "site_title": "Crypto-info",
     "site_description": "数字货币价格监控和预警系统",
-    "log_level": "INFO",
+    "log_level": "ERROR",
     "enable_logging": true,
     "timezone": "Asia/Shanghai"
   }
