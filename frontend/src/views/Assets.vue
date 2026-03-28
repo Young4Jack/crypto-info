@@ -227,7 +227,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Edit, Delete, Notebook } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { assetsApi } from '../api'
+import { assetsApi, systemSettingsApi } from '../api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -315,6 +315,20 @@ const loadAssets = async (isBackground = false) => {
   } finally {
     if (!isBackground) loading.value = false
   }
+}
+
+// 🚀 修复点：将其改造为返回配置刷新间隔时间的异步函数
+const loadPublicSettings = async (): Promise<number> => {
+  try {
+    const response = await systemSettingsApi.getPublicSystemSetting()
+    if (response.data) {
+      // console.log('真实接收到的后端刷新频率:', response.data.refresh_interval)
+      return response.data.refresh_interval || 5
+    }
+  } catch (error) {
+    console.error('获取系统刷新频率失败，启用默认值', error)
+  }
+  return 5
 }
 
 const submitInlineForm = async () => {
@@ -427,9 +441,14 @@ const handleDelete = (row: any) => {
 
 const goToDashboard = () => router.push('/dashboard')
 
-onMounted(() => {
+
+onMounted(async () => {
   loadAssets(false)
-  refreshTimer = setInterval(() => loadAssets(true), 5000)
+  const intervalSeconds = await loadPublicSettings()
+  
+  refreshTimer = setInterval(() => {
+    loadAssets(true)
+  }, intervalSeconds * 1000)
 })
 
 onUnmounted(() => {

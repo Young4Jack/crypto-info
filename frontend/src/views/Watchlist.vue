@@ -156,7 +156,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { watchlistApi } from '../api'
+import { watchlistApi, systemSettingsApi } from '../api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -212,6 +212,20 @@ const loadWatchlist = async (isBackground = false) => {
   } finally {
     if (!isBackground) loading.value = false
   }
+}
+
+// 🚀 修复点：将其改造为返回配置刷新间隔时间的异步函数
+const loadPublicSettings = async (): Promise<number> => {
+  try {
+    const response = await systemSettingsApi.getPublicSystemSetting()
+    if (response.data) {
+      // console.log('真实接收到的后端刷新频率:', response.data.refresh_interval)
+      return response.data.refresh_interval || 5
+    }
+  } catch (error) {
+    console.error('获取系统刷新频率失败，启用默认值', error)
+  }
+  return 5
 }
 
 const handleCreateWatchlist = async (source: 'page' | 'dialog', keepOpen = false) => {
@@ -298,9 +312,14 @@ const formatTime = (timeStr: string) => {
 
 const goToDashboard = () => router.push('/dashboard')
 
-onMounted(() => {
+
+onMounted(async () => {
   loadWatchlist(false)
-  refreshTimer = setInterval(() => loadWatchlist(true), 5000)
+  const intervalSeconds = await loadPublicSettings()
+  
+  refreshTimer = setInterval(() => {
+    loadWatchlist(true)
+  }, intervalSeconds * 1000)
 })
 
 onUnmounted(() => {

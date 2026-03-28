@@ -19,54 +19,72 @@
     </el-header>
       
     <el-main class="page-main">
-      <el-row :gutter="20" class="stats-row">
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number">${{ dashboardData.total_value?.toLocaleString() || '0.00' }}</div>
-              <div class="stat-label">资产总值</div>
-            </div>
-          </el-card>
-        </el-col>
+      <el-row :gutter="20" class="top-dashboard-row">
         
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-card class="stat-card" shadow="hover" :class="{ 'profit-border': dashboardData.total_profit_loss >= 0, 'loss-border': dashboardData.total_profit_loss < 0 }">
-            <div class="stat-content">
-              <div :class="['stat-number', dashboardData.total_profit_loss >= 0 ? 'text-up' : 'text-down']">
-                {{ dashboardData.total_profit_loss > 0 ? '+' : '' }}${{ dashboardData.total_profit_loss?.toLocaleString() || '0.00' }}
+        <el-col :xs="24" :md="8" class="chart-col">
+          <el-card class="content-card chart-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">📊 资产配置</span>
               </div>
-              <div class="stat-label">总盈亏金额 ({{ dashboardData.total_profit_loss_percentage?.toFixed(2) || '0.00' }}%)</div>
+            </template>
+            <div class="chart-container-small">
+              <v-chart :option="allocationChartOption" autoresize />
             </div>
           </el-card>
         </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number active-alerts-num">{{ dashboardData.active_alerts_count || 0 }}</div>
-              <div class="stat-label">运行中的预警引擎</div>
-            </div>
-          </el-card>
+
+        <el-col :xs="24" :md="16">
+          <el-row :gutter="20">
+            <el-col :xs="12" :sm="12" :md="12">
+              <el-card class="stat-card" shadow="hover">
+                <div class="stat-content">
+                  <div class="stat-number">${{ dashboardData.total_value?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00' }}</div>
+                  <div class="stat-label">资产总值</div>
+                </div>
+              </el-card>
+            </el-col>
+            
+            <el-col :xs="12" :sm="12" :md="12">
+              <el-card class="stat-card" shadow="hover" :class="{ 'profit-border': dashboardData.total_profit_loss >= 0, 'loss-border': dashboardData.total_profit_loss < 0 }">
+                <div class="stat-content">
+                  <div :class="['stat-number', dashboardData.total_profit_loss >= 0 ? 'text-up' : 'text-down']">
+                    {{ dashboardData.total_profit_loss > 0 ? '+' : '' }}${{ dashboardData.total_profit_loss?.toLocaleString(undefined, {maximumFractionDigits: 0}) || '0' }}
+                  </div>
+                  <div class="stat-label">总盈亏金额</div>
+                </div>
+              </el-card>
+            </el-col>
+
+            <el-col :xs="12" :sm="12" :md="12">
+              <el-card class="stat-card" shadow="hover" :class="{ 'profit-border': dashboardData.total_profit_loss >= 0, 'loss-border': dashboardData.total_profit_loss < 0 }">
+                <div class="stat-content">
+                  <div :class="['stat-number', dashboardData.total_profit_loss >= 0 ? 'text-up' : 'text-down']">
+                    {{ dashboardData.total_profit_loss_percentage?.toFixed(2) || '0.00' }}%
+                  </div>
+                  <div class="stat-label">总盈亏比</div>
+                </div>
+              </el-card>
+            </el-col>
+            
+            <el-col :xs="12" :sm="12" :md="12">
+              <el-card class="stat-card" shadow="hover">
+                <div class="stat-content">
+                  <div class="stat-number active-alerts-num">{{ dashboardData.active_alerts_count || 0 }}</div>
+                  <div class="stat-label">运行中的预警引擎</div>
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
         </el-col>
       </el-row>
       
       <el-row :gutter="20">
         <el-col :xs="24" :sm="24" :md="8">
-          <el-card class="content-card chart-card" shadow="never">
-            <template #header>
-              <div class="card-header">
-                <span class="card-title">资产配置</span>
-              </div>
-            </template>
-            <div class="chart-container">
-              <v-chart :option="allocationChartOption" autoresize />
-            </div>
-          </el-card>
-          
           <el-card class="content-card" shadow="never">
             <template #header>
               <div class="card-header">
-                <span class="card-title">资产详情</span>
+                <span class="card-title">💰 资产详情</span>
                 <el-button @click="goToAssets" size="small" text bg>查看全部</el-button>
               </div>
             </template>
@@ -74,11 +92,12 @@
               <div v-for="asset in dashboardData.asset_allocation" :key="asset.crypto_symbol" class="list-item asset-item">
                 <div class="item-left">
                   <el-tag effect="dark" round size="small" class="symbol-tag">{{ asset.crypto_symbol }}</el-tag>
+                  <span class="item-name">{{ asset.crypto_name }}</span>
                 </div>
                 <div class="item-right text-right">
-                  <div class="primary-text">${{ asset.holding_value?.toLocaleString() || '0' }}</div>
+                  <div class="primary-text">${{ asset.holding_value?.toLocaleString(undefined, {maximumFractionDigits: 0}) || '0' }}</div>
                   <div :class="['secondary-text', asset.profit_loss >= 0 ? 'text-up' : 'text-down']">
-                    {{ asset.profit_loss > 0 ? '+' : '' }}${{ asset.profit_loss?.toLocaleString() || '0' }}
+                    {{ asset.profit_loss > 0 ? '+' : '' }}${{ asset.profit_loss?.toLocaleString(undefined, {maximumFractionDigits: 0}) || '0' }}
                   </div>
                 </div>
               </div>
@@ -124,6 +143,7 @@
                   <el-tag :type="alert.is_active ? 'success' : 'info'" effect="dark" round size="small" class="symbol-tag">
                     {{ alert.crypto_symbol }}
                   </el-tag>
+                  <span class="item-name">{{ alert.crypto_name }}</span>
                 </div>
                 <div class="item-right text-right">
                   <div class="primary-text">
@@ -147,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
@@ -169,34 +189,40 @@ const alerts = ref<any[]>([])
 const watchlist = ref<any[]>([])
 const siteTitle = ref('Crypto-info')
 
-const loadDashboardData = async () => {
-  loading.value = true
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const loadDashboardData = async (isBackground = false) => {
+  if (!isBackground) loading.value = true
   try {
     const response = await dashboardApi.getSummary()
     dashboardData.value = response.data
   } catch (error) {
-    ElMessage.error('加载仪表盘数据失败')
+    if (!isBackground) ElMessage.error('加载仪表盘数据失败')
   } finally {
-    loading.value = false
+    if (!isBackground) loading.value = false
   }
 }
 
+// 🚀 修复点：移除了未使用到的 isBackground 参数
 const loadAlerts = async () => {
   try {
     const response = await alertsApi.getAll()
     alerts.value = response.data
-  } catch (error) {
-    console.error('加载预警记录失败:', error)
-  }
+  } catch (error) {}
 }
 
+// 🚀 修复点：移除了未使用到的 isBackground 参数
 const loadWatchlist = async () => {
   try {
     const response = await watchlistApi.getAll()
     watchlist.value = response.data
-  } catch (error) {
-    console.error('加载关注列表失败:', error)
-  }
+  } catch (error) {}
+}
+
+const fetchAllData = (isBackground = false) => {
+  loadDashboardData(isBackground)
+  loadAlerts()
+  loadWatchlist()
 }
 
 const allocationChartOption = computed(() => {
@@ -204,21 +230,29 @@ const allocationChartOption = computed(() => {
   
   if (data.length === 0) {
     return {
-      title: { text: '暂无资产数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } },
+      title: { text: '暂无配置', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 13 } },
       series: []
     }
   }
   
   return {
-    title: { show: false },
+    title: { show: false }, 
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: ${c} ({d}%)' },
-    legend: { bottom: '0%', left: 'center', icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { color: '#606266' } },
+    legend: { 
+      orient: 'horizontal', 
+      bottom: '0%', 
+      left: 'center', 
+      icon: 'circle', 
+      itemWidth: 8, 
+      itemHeight: 8, 
+      textStyle: { color: '#606266', fontSize: 11 } 
+    },
     series: [
       {
         name: '资产配置',
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '45%'],
+        radius: ['45%', '70%'],
+        center: ['50%', '45%'], 
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 6,
@@ -227,7 +261,7 @@ const allocationChartOption = computed(() => {
         },
         label: { show: false, position: 'center' },
         emphasis: {
-          label: { show: true, fontSize: 16, fontWeight: 'bold' }
+          label: { show: true, fontSize: 14, fontWeight: 'bold', formatter: '{b}\n${c}' }
         },
         labelLine: { show: false },
         data: data.map((item: any) => ({
@@ -244,15 +278,20 @@ const goToAssets = () => router.push('/assets')
 const goToWatchlist = () => router.push('/watchlist')
 const goToSettings = () => router.push('/settings')
 
-const loadPublicSettings = async () => {
+// 🚀 修复点：将其改造为返回配置刷新间隔时间的异步函数
+const loadPublicSettings = async (): Promise<number> => {
   try {
     const response = await systemSettingsApi.getPublicSystemSetting()
     if (response.data) {
       siteTitle.value = response.data.site_title || 'Crypto-info'
+      // 提取后端的 refresh_interval 设置，如果后端没返回，保底给 5 秒
+      // console.log('真实接收到的后端刷新频率:', response.data.refresh_interval)
+      return response.data.refresh_interval || 5
     }
   } catch (error) {
     console.error('加载公开设置失败:', error)
   }
+  return 5 // 发生异常时保底给 5 秒
 }
 
 const handleLogout = () => {
@@ -261,11 +300,23 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-onMounted(() => {
-  loadDashboardData()
-  loadAlerts()
-  loadWatchlist()
-  loadPublicSettings()
+onMounted(async () => {
+  // 1. 挂载时立即执行一次请求渲染画面
+  fetchAllData(false)
+  
+  // 2. 等待拉取后端设置（例如拿到了你配置的 8）
+  const intervalSeconds = await loadPublicSettings()
+  
+  // 3. 使用后端的设置动态计算毫秒数 (8 * 1000 = 8000ms)，启动循环引擎
+  refreshTimer = setInterval(() => {
+    fetchAllData(true)
+  }, intervalSeconds * 1000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
 })
 </script>
 
@@ -278,28 +329,28 @@ onMounted(() => {
 .page-main { padding: 20px 25px; max-width: 1400px; margin: 0 auto; width: 100%; }
 
 .symbol-tag { font-weight: bold; font-family: 'Monaco', monospace; }
-.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
+.price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; transition: color 0.3s ease; }
 .price-target { color: #1f2f3d; font-family: 'Monaco', monospace; margin-left: 4px; }
 .text-up { color: #f56c6c; font-weight: bold; font-family: 'Monaco', monospace; }
 .text-down { color: #67c23a; font-weight: bold; font-family: 'Monaco', monospace; }
 
-.stats-row { margin-bottom: 24px; }
-
+/* Dashboard 专属核心指标卡片 */
 .stat-card {
   border-radius: 12px;
   border: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  margin-bottom: 15px;
+  margin-bottom: 20px; 
 }
 .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
 .stat-content { padding: 20px 10px; text-align: center; }
-.stat-number { font-size: 28px; font-weight: bold; color: #1f2f3d; margin-bottom: 8px; font-family: 'Monaco', monospace; }
+.stat-number { font-size: 24px; font-weight: bold; color: #1f2f3d; margin-bottom: 8px; font-family: 'Monaco', monospace; transition: all 0.3s; }
 .active-alerts-num { color: #e6a23c; }
-.stat-label { font-size: 13px; color: #909399; font-weight: 500; }
+.stat-label { font-size: 12px; color: #909399; font-weight: 500; }
 
 .profit-border { border-bottom: 4px solid #f56c6c; }
 .loss-border { border-bottom: 4px solid #67c23a; }
 
+/* 内容卡片统一设计 */
 .content-card {
   border-radius: 10px; border: none; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
   margin-bottom: 20px;
@@ -307,9 +358,6 @@ onMounted(() => {
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title { font-weight: 600; color: #303133; font-size: 15px; }
 
-.chart-container { height: 280px; width: 100%; }
-
-/* 修改点：删除了 .scrollable-list 的 max-height 和 overflow 设置，仅保留容器边距基础结构 */
 .data-list { padding-right: 5px; }
 
 .list-item {
@@ -324,9 +372,46 @@ onMounted(() => {
 .item-left { display: flex; align-items: center; gap: 10px; }
 .item-name { font-size: 13px; color: #606266; }
 .text-right { text-align: right; }
-.primary-text { font-size: 14px; font-weight: bold; color: #303133; font-family: 'Monaco', monospace; }
-.secondary-text { font-size: 12px; margin-top: 4px; }
+.primary-text { font-size: 14px; font-weight: bold; color: #303133; font-family: 'Monaco', monospace; transition: color 0.3s ease; }
+.secondary-text { font-size: 12px; margin-top: 4px; transition: color 0.3s ease; }
 
+/* =========================================
+   🚀 修复点：大屏幕下的 Flex 等高拉伸
+   ========================================= */
+@media (min-width: 992px) {
+  .top-dashboard-row {
+    display: flex;
+    align-items: stretch; /* 强制左右两侧高度拉平 */
+  }
+  
+  .chart-col {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chart-card {
+    flex: 1; /* 让卡片填满整个列 */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px; /* 对齐右侧边距 */
+  }
+  
+  .chart-card :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+  
+  .chart-container-small {
+    height: 100%;
+    min-height: 180px;
+    width: 100%;
+  }
+}
+
+/* 移动端视图 (xs <= 768px) */
 @media (max-width: 768px) {
   .page-container { padding-bottom: 80px; }
   .page-main { padding: 12px; }
@@ -340,10 +425,12 @@ onMounted(() => {
 
   .stat-card { margin-bottom: 12px; }
   .stat-content { padding: 16px 10px; }
-  .stat-number { font-size: 24px; }
+  .stat-number { font-size: 20px; }
   
   .content-card { margin-bottom: 15px; }
-  .chart-container { height: 240px; }
+  
+  /* 手机端图表高度回退 */
+  .chart-container-small { height: 220px; width: 100%; }
   
   .list-item { padding: 10px 12px; }
   .primary-text { font-size: 13px; }

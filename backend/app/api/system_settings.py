@@ -36,6 +36,7 @@ class SystemSettingResponse(BaseModel):
     enable_captcha: bool
     site_title: str
     site_description: str
+    refresh_interval: int = 1
     log_level: str
     enable_logging: bool
     timezone: str
@@ -147,5 +148,6 @@ async def get_public_system_settings():
     
     return {
         "site_title": system_settings.get("site_title", "Crypto-info"),
-        "site_description": system_settings.get("site_description", "数字货币价格监控和预警系统")
+        "site_description": system_settings.get("site_description", "数字货币价格监控和预警系统"),
+        "refresh_interval": system_settings.get("refresh_interval", 1)
     }

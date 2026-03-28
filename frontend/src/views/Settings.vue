@@ -96,7 +96,7 @@
                 </el-col>
                 <el-col :xs="24" :sm="12">
                   <el-form-item label="价格刷新间隔 (秒)" prop="refresh_interval">
-                    <el-input-number v-model="systemForm.refresh_interval" :min="5" :max="3600" style="width: 100%;" />
+                    <el-input-number v-model="systemForm.refresh_interval" :min="1" :max="3600" style="width: 100%;" />
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -236,7 +236,7 @@ const apiSettingRules: FormRules = {
 const systemRules: FormRules = {
   refresh_interval: [
     { required: true, message: '请输入刷新间隔', trigger: 'blur' },
-    { type: 'number', min: 5, max: 3600, message: '间隔 5-3600 秒', trigger: 'blur' }
+    { type: 'number', min: 1, max: 3600, message: '间隔 1-3600 秒', trigger: 'blur' }
   ]
 }
 

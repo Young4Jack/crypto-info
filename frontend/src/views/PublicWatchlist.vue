@@ -8,7 +8,8 @@
         <div class="header-right">
           <el-button type="primary" @click="goToLogin" plain>系统登录</el-button>
         </div>
-      </div> </el-header>
+      </div> 
+    </el-header>
       
     <el-main class="page-main">
       <div class="hero-section">
@@ -102,26 +103,38 @@ const loadPublicWatchlist = async (isBackground = false) => {
   }
 }
 
-const loadPublicSettings = async () => {
+// 🚀 核心修改 1：让函数返回数字 (Promise<number>)，并加上 return 语句
+const loadPublicSettings = async (): Promise<number> => {
   try {
     const response = await systemSettingsApi.getPublicSystemSetting()
     if (response.data) {
       siteTitle.value = response.data.site_title || 'Crypto-info'
       siteDescription.value = response.data.site_description || '数字货币价格监控和预警系统'
+      // console.log('真实接收到的后端刷新频率:', response.data.refresh_interval)
+      // 返回后端配置的时间，保底 5 秒
+      return response.data.refresh_interval || 5
     }
-  } catch (error) {}
+  } catch (error) {
+    console.error('加载配置失败，使用默认 5 秒')
+  }
+  return 5
 }
 
 const goToLogin = () => {
   router.push('/login')
 }
 
-onMounted(() => {
+// 🚀 核心修改 2：加上 async，并使用 await 接收时间
+onMounted(async () => {
   loadPublicWatchlist(false)
-  loadPublicSettings()
+  
+  // 等待获取设置和刷新时间
+  const intervalSeconds = await loadPublicSettings()
+  
+  // 注入动态时间
   refreshTimer = setInterval(() => {
     loadPublicWatchlist(true)
-  }, 5000)
+  }, intervalSeconds * 1000)
 })
 
 onUnmounted(() => {
