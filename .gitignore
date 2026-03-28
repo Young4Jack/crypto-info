@@ -3,6 +3,12 @@
 .vscode/
 .idea/
 
+# 忽略所有层级下的 __pycache__ 文件夹
+**/__pycache__/
+
+# 忽略所有 .pyc 编译文件
+*.pyc
+
 # --- 后端 (Python/Backend) ---
 # 虚拟环境
 backend/venv/
@@ -16,9 +22,9 @@ backend/.env
 
 # --- 数据库 (SQLite) ---
 # 你的数据文件 crypto.db
-#backend/*.db
+backend/*.db
 # 备份文件
-#backend/*.db.bak
+backend/*.db.bak
 # 数据库迁移文件 (建议保留 versions 文件夹，忽略缓存)
 backend/alembic/__pycache__/
 

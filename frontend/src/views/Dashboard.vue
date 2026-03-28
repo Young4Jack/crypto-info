@@ -204,11 +204,13 @@ const allocationChartOption = computed(() => {
   
   if (data.length === 0) {
     return {
-      title: { text: '暂无资产数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } }
+      title: { text: '暂无资产数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } },
+      series: [] // 养成好习惯：无数据时顺手把旧图形清空
     }
   }
   
   return {
+    title: { show: false }, // ✨ 核心修复：当有数据时，强制隐藏之前的“暂无资产”标题
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: ${c} ({d}%)' },
     legend: { bottom: '0%', left: 'center', icon: 'circle', itemWidth: 10, itemHeight: 10, textStyle: { color: '#606266' } },
     series: [
