@@ -50,9 +50,9 @@ COPY --from=frontend-build /frontend/dist /app/frontend
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # 创建非 root 用户
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+# RUN useradd --create-home --shell /bin/bash app \
+#     && chown -R app:app /app
+# USER app
 
 # 暴露端口（可通过环境变量覆盖）
 ENV BACKEND_PORT=8000
@@ -64,7 +64,8 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:$BACKEND_PORT/health || exit 1
 
 # 启动脚本
-COPY --chown=app:app docker-entrypoint.sh /app/docker-entrypoint.sh
+#COPY --chown=app:app docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # 启动命令

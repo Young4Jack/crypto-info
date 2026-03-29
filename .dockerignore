@@ -1,0 +1,5 @@
+# 忽略本地的数据库文件
+backend/crypto.db
+
+# 忽略本地的配置文件
+backend/config.json

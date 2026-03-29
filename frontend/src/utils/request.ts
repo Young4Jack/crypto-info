@@ -3,21 +3,10 @@ import { ElMessage } from 'element-plus'
 import router from '../router'
 
 // 创建 Axios 实例
-const getBaseURL = () => {
-  const hostname = window.location.hostname
-  const protocol = window.location.protocol
-  
-  // 本地开发环境
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8000'
-  }
-  
-  // 局域网或生产环境 - 使用当前访问的主机名
-  return `${protocol}//${hostname}:8000`
-}
-
+// 采用反向代理架构后，所有 API 请求直接发送到当前域名的 /api 路径
+// 本地开发由 Vite proxy 转发，生产环境由 Nginx 转发
 const request = axios.create({
-  baseURL: getBaseURL(),
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

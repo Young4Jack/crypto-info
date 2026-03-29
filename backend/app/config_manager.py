@@ -31,7 +31,9 @@ class ConfigManager:
                 "site_description": "数字货币价格监控和预警系统",
                 "log_level": "INFO",
                 "enable_logging": True,
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
+                "backend_port": 8000,
+                "frontend_port": 5173
             }
         }
     
@@ -87,9 +89,20 @@ class ConfigManager:
         return self.save_config(config)
     
     def get_system_settings(self) -> Dict[str, Any]:
-        """获取系统设置"""
+        """获取系统设置 (融合环境变量优先级)"""
         config = self.load_config()
-        return config.get("system_settings", self.default_config["system_settings"])
+        settings = config.get("system_settings", self.default_config["system_settings"])
+        
+        # 如果检测到 Docker 环境注入的端口，强行覆盖 config.json 中的值
+        env_backend_port = os.getenv("BACKEND_PORT")
+        if env_backend_port:
+            settings["backend_port"] = int(env_backend_port)
+            
+        env_frontend_port = os.getenv("FRONTEND_PORT")
+        if env_frontend_port:
+            settings["frontend_port"] = int(env_frontend_port)
+            
+        return settings
     
     def save_system_settings(self, system_settings: Dict[str, Any]) -> bool:
         """保存系统设置（更新而不是覆盖）"""
