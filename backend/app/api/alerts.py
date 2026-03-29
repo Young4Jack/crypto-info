@@ -25,9 +25,9 @@ class AlertCreate(BaseModel):
     # 新增字段
     base_price: Optional[float] = None
     threshold_value: Optional[float] = None
-    is_continuous: bool = False
-    interval_minutes: int = 5
-    max_notifications: int = 1
+    is_continuous: Optional[bool] = False
+    interval_minutes: Optional[int] = 5
+    max_notifications: Optional[int] = 1
 
 class AlertUpdate(BaseModel):
     """更新预警规则请求"""

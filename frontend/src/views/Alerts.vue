@@ -342,9 +342,11 @@ const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
 const editFormRef = ref<FormInstance>()
 
+type AlertType = 'above' | 'below' | 'amplitude' | 'percent_up' | 'percent_down'
+
 const inlineForm = reactive({ 
   crypto_symbol: '', 
-  alert_type: 'above' as 'above'|'below'|'amplitude'|'percent_up'|'percent_down', 
+  alert_type: 'above' as AlertType, 
   threshold_price: undefined as number|undefined,
   is_continuous: false,
   max_notifications: 1,

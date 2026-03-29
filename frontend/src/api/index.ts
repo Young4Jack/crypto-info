@@ -59,10 +59,13 @@ export const alertsApi = {
   
   // 更新预警规则
   update: (id: number, data: {
-    alert_type?: 'above' | 'below'
+    alert_type?: 'above' | 'below' | 'amplitude' | 'percent_up' | 'percent_down'
     threshold_price?: number
     webhook_url?: string
     is_active?: boolean
+    is_continuous?: boolean
+    max_notifications?: number
+    interval_minutes?: number
   }) => {
     return request.put(`/api/alerts/${id}`, data)
   },

@@ -11,3 +11,5 @@ apscheduler==3.10.4
 python-multipart==0.0.6
 deep-translator>=1.11.0
 feedparser>=6.0.0
+bcrypt>=4.0.0
+python-dateutil>=2.8.0
