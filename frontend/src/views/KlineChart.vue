@@ -339,15 +339,27 @@ const loadKlineData = async () => {
   loading.value = true
   try {
     const response = await klinesApi.getKlines(selectedSymbol.value, selectedInterval.value, 200)
-    if (response.data.success) {
-      klineData.value = response.data.data.klines
-      ElMessage.success(`成功加载 ${klineData.value.length} 条K线数据`)
+    console.log('K线API响应:', response) // 调试日志
+    
+    // 检查响应格式
+    if (response.data && response.data.success) {
+      klineData.value = response.data.data.klines || []
+      if (klineData.value.length > 0) {
+        ElMessage.success(`成功加载 ${klineData.value.length} 条K线数据`)
+      } else {
+        ElMessage.warning('K线数据为空')
+      }
     } else {
-      ElMessage.error('获取K线数据失败')
+      console.error('API响应格式错误:', response)
+      ElMessage.error(response.data?.error || '获取K线数据失败')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取K线数据失败:', error)
-    ElMessage.error('获取K线数据失败')
+    if (error.response?.status === 404) {
+      ElMessage.error('K线API不存在，请重启后端服务')
+    } else {
+      ElMessage.error('获取K线数据失败: ' + (error.message || '未知错误'))
+    }
   } finally {
     loading.value = false
   }
