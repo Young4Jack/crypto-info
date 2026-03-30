@@ -109,7 +109,7 @@ app.include_router(alert_histories.router)
 app.include_router(system_settings.router)
 app.include_router(account.router)
 app.include_router(watchlist.router)
-app.include_router(klines.router)
+app.include_router(klines.router, prefix="/api")
 
 # 全局异常处理
 @app.exception_handler(Exception)
