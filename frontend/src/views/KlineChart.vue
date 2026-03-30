@@ -508,26 +508,39 @@ onMounted(() => {
   }
   
   .page-main {
-    padding: 12px;
+    padding: 8px;
   }
   
   .page-header {
-    padding: 15px;
+    padding: 12px;
   }
   
   .header-content {
     flex-direction: column;
     align-items: flex-start;
-    gap: 15px;
+    gap: 12px;
+  }
+  
+  .header-left h1 {
+    font-size: 18px;
+  }
+  
+  .header-left p {
+    font-size: 12px;
   }
   
   .header-right {
     width: 100%;
   }
   
+  .control-card {
+    margin-bottom: 12px;
+  }
+  
   .control-row {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
   
   .control-item {
@@ -535,8 +548,50 @@ onMounted(() => {
     justify-content: space-between;
   }
   
+  .control-item label {
+    font-size: 12px;
+  }
+  
+  .chart-card {
+    margin-bottom: 12px;
+  }
+  
+  .chart-container {
+    min-height: 300px;
+  }
+  
+  .chart-container :deep(.el-empty) {
+    padding: 20px 0;
+  }
+  
+  .stat-card {
+    margin-bottom: 10px;
+  }
+  
+  .stat-content {
+    padding: 10px 8px;
+  }
+  
   .stat-number {
-    font-size: 18px;
+    font-size: 16px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .card-title {
+    font-size: 14px;
+  }
+  
+  .data-count {
+    font-size: 11px;
   }
 }
 </style>
