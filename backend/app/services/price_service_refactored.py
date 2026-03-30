@@ -345,3 +345,78 @@ def get_current_prices(db: Session) -> Dict[str, float]:
     # 这里可以从数据库中获取最近的价格
     # 目前返回空字典，实际应用中应该从数据库获取
     return {}
+
+async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) -> list:
+    """
+    获取K线数据
+    :param symbol: 交易对符号，如 BTCUSDT
+    :param interval: K线周期，如 1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M
+    :param limit: 返回数量，最大1000
+    :return: K线数据列表
+    """
+    # 从配置获取API设置
+    api_settings = config_manager.get_api_settings()
+    primary_api_url = api_settings.get("primary_api_url", "https://api.binance.com")
+    
+    # 构建币安K线API URL
+    url = f"{primary_api_url}/api/v3/klines"
+    params = {
+        'symbol': symbol,
+        'interval': interval,
+        'limit': min(limit, 1000)  # 限制最大1000
+    }
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params, headers=headers)
+            
+            if response.status_code == 200:
+                klines = response.json()
+                # 币安K线数据格式：
+                # [
+                #   [
+                #     1499040000000,      // 开盘时间
+                #     "0.01634000",       // 开盘价
+                #     "0.80000000",       // 最高价
+                #     "0.01575800",       // 最低价
+                #     "0.01577100",       // 收盘价
+                #     "148976.11427815",  // 成交量
+                #     1499644799999,      // 收盘时间
+                #     "2434.19055334",    // 成交额
+                #     308,                // 成交笔数
+                #     "1756.87402397",    // 主动买入成交量
+                #     "28.46694368",      // 主动买入成交额
+                #     "17928899.62484339" // 忽略
+                #   ]
+                # ]
+                
+                # 转换为更友好的格式
+                formatted_klines = []
+                for k in klines:
+                    formatted_klines.append({
+                        'open_time': k[0],
+                        'open': float(k[1]),
+                        'high': float(k[2]),
+                        'low': float(k[3]),
+                        'close': float(k[4]),
+                        'volume': float(k[5]),
+                        'close_time': k[6],
+                        'quote_volume': float(k[7]),
+                        'trades': k[8],
+                        'taker_buy_base': float(k[9]),
+                        'taker_buy_quote': float(k[10])
+                    })
+                
+                logger.info(f"成功获取 {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
+                return formatted_klines
+            else:
+                logger.error(f"币安K线API返回状态码: {response.status_code}")
+                return []
+                
+    except Exception as e:
+        logger.error(f"获取K线数据失败: {e}")
+        return []

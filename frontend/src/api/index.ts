@@ -322,3 +322,16 @@ export const watchlistApi = {
     return request.delete(`/api/watchlist/${id}`)
   }
 }
+
+// K线数据 API
+export const klinesApi = {
+  // 获取指定交易对的K线数据
+  getKlines: (symbol: string, interval: string = '1h', limit: number = 100) => {
+    return request.get(`/api/klines/${symbol}`, { params: { interval, limit } })
+  },
+  
+  // 获取关注列表中所有币种的K线数据
+  getWatchlistKlines: (interval: string = '1h', limit: number = 50) => {
+    return request.get('/api/klines/watchlist/all', { params: { interval, limit } })
+  }
+}

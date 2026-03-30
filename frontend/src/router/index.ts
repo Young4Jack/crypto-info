@@ -44,6 +44,11 @@ const router = createRouter({
       component: () => import('../views/PublicWatchlist.vue')
     },
     {
+      path: '/kline',
+      name: 'KlineChart',
+      component: () => import('../views/KlineChart.vue')
+    },
+    {
       path: '/',
       redirect: '/public'
     }
