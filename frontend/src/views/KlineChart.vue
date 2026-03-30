@@ -688,9 +688,10 @@ onUnmounted(() => {
   }
   
   .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
   }
   
   .header-left h1 {
@@ -702,7 +703,7 @@ onUnmounted(() => {
   }
   
   .header-right {
-    width: 100%;
+    flex-shrink: 0;
   }
   
   .watchlist-grid {
