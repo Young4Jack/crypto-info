@@ -399,31 +399,54 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
                 
                 if 'okx' in primary_api_url.lower():
                     # OKX K线数据格式：
-                    # [
-                    #   [
-                    #     "1597026383085",  // 开盘时间
-                    #     "3.721",          // 开盘价
-                    #     "3.743",          // 最高价
-                    #     "3.677",          // 最低价
-                    #     "3.708",          // 收盘价
-                    #     "8422410",        // 成交量
-                    #     "22698348.04828491", // 成交额
+                    # {
+                    #   "code": "0",
+                    #   "msg": "",
+                    #   "data": [
+                    #     ["1597026383085", "3.721", "3.743", "3.677", "3.708", "8422410", "22698348.04828491"],
+                    #     ...
                     #   ]
-                    # ]
+                    # }
+                    
+                    # 验证API响应
+                    if isinstance(data, dict):
+                        if data.get('code') != '0':
+                            logger.error(f"OKX API返回错误: {data.get('msg', '未知错误')}")
+                            return []
+                        klines_data = data.get('data', [])
+                    else:
+                        klines_data = data
+                    
                     formatted_klines = []
-                    for k in data:
-                        formatted_klines.append({
-                            'open_time': int(k[0]),
-                            'open': float(k[1]),
-                            'high': float(k[2]),
-                            'low': float(k[3]),
-                            'close': float(k[4]),
-                            'volume': float(k[5]),
-                            'quote_volume': float(k[6]),
-                            'trades': 0,  # OKX不提供成交笔数
-                            'taker_buy_base': 0,  # OKX不提供
-                            'taker_buy_quote': 0  # OKX不提供
-                        })
+                    for k in klines_data:
+                        try:
+                            # 验证数据长度和类型
+                            if len(k) < 7:
+                                logger.warning(f"OKX K线数据格式不完整: {k}")
+                                continue
+                            
+                            # 验证时间戳格式
+                            open_time = k[0]
+                            if not open_time or not str(open_time).isdigit():
+                                logger.warning(f"OKX K线时间戳格式错误: {open_time}")
+                                continue
+                            
+                            formatted_klines.append({
+                                'open_time': int(open_time),
+                                'open': float(k[1]),
+                                'high': float(k[2]),
+                                'low': float(k[3]),
+                                'close': float(k[4]),
+                                'volume': float(k[5]),
+                                'quote_volume': float(k[6]),
+                                'trades': 0,  # OKX不提供成交笔数
+                                'taker_buy_base': 0,  # OKX不提供
+                                'taker_buy_quote': 0  # OKX不提供
+                            })
+                        except (ValueError, TypeError, IndexError) as e:
+                            logger.warning(f"OKX K线数据解析失败: {k}, 错误: {e}")
+                            continue
+                    
                     logger.info(f"成功获取OKX {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
                 else:
                     # 币安K线数据格式
