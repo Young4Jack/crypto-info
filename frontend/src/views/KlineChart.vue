@@ -730,17 +730,38 @@ onUnmounted(() => {
   
   .control-row {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 12px;
   }
   
   .control-item {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   
   .control-item label {
     font-size: 12px;
+    min-width: 60px;
+  }
+  
+  .control-item .el-radio-group {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .control-item .el-radio-button {
+    margin-bottom: 4px;
+  }
+  
+  .control-item .el-select {
+    width: 100px !important;
+  }
+  
+  .control-item .el-button {
+    flex: 1;
+    min-width: 80px;
   }
   
   .chart-container {
