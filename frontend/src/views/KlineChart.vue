@@ -4,12 +4,11 @@
       <div class="header-content">
         <div class="header-left">
           <h1>📈 K线图</h1>
-          <p>实时查看关注币种的K线走势</p>
         </div>
         <div class="header-right">
           <el-button @click="goToLogin" type="primary" plain>系统登录</el-button>
         </div>
-      </div>
+      </div> 
     </el-header>
 
     <el-main class="page-main">
