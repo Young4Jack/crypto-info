@@ -371,10 +371,19 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
         else:
             inst_id = symbol
         
+        # OKX K线周期映射
+        okx_interval_map = {
+            '1m': '1m', '3m': '3m', '5m': '5m', '15m': '15m', '30m': '30m',
+            '1h': '1H', '2h': '2H', '4h': '4H', '6h': '6H', '12h': '12H',
+            '1d': '1D', '2d': '2D', '3d': '3D',
+            '1w': '1W', '1M': '1M'
+        }
+        okx_interval = okx_interval_map.get(interval, '1H')
+        
         url = f"{primary_api_url}/api/v5/market/history-candles"
         params = {
             'instId': inst_id,
-            'bar': interval,
+            'bar': okx_interval,
             'limit': min(limit, 300)  # OKX限制最大300
         }
     else:
