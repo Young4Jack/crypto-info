@@ -358,13 +358,33 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
     api_settings = config_manager.get_api_settings()
     primary_api_url = api_settings.get("primary_api_url", "https://api.binance.com")
     
-    # 构建币安K线API URL
-    url = f"{primary_api_url}/api/v3/klines"
-    params = {
-        'symbol': symbol,
-        'interval': interval,
-        'limit': min(limit, 1000)  # 限制最大1000
-    }
+    # 根据API类型构建正确的K线URL
+    if 'okx' in primary_api_url.lower():
+        # OKX K线API格式
+        # 将BTCUSDT转换为BTC-USDT格式
+        if symbol.endswith('USDT'):
+            inst_id = f"{symbol[:-4]}-USDT"
+        elif symbol.endswith('BTC'):
+            inst_id = f"{symbol[:-3]}-BTC"
+        elif symbol.endswith('ETH'):
+            inst_id = f"{symbol[:-3]}-ETH"
+        else:
+            inst_id = symbol
+        
+        url = f"{primary_api_url}/api/v5/market/history-candles"
+        params = {
+            'instId': inst_id,
+            'bar': interval,
+            'limit': min(limit, 300)  # OKX限制最大300
+        }
+    else:
+        # 币安K线API格式
+        url = f"{primary_api_url}/api/v3/klines"
+        params = {
+            'symbol': symbol,
+            'interval': interval,
+            'limit': min(limit, 1000)  # 币安限制最大1000
+        }
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -375,46 +395,58 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
             response = await client.get(url, params=params, headers=headers)
             
             if response.status_code == 200:
-                klines = response.json()
-                # 币安K线数据格式：
-                # [
-                #   [
-                #     1499040000000,      // 开盘时间
-                #     "0.01634000",       // 开盘价
-                #     "0.80000000",       // 最高价
-                #     "0.01575800",       // 最低价
-                #     "0.01577100",       // 收盘价
-                #     "148976.11427815",  // 成交量
-                #     1499644799999,      // 收盘时间
-                #     "2434.19055334",    // 成交额
-                #     308,                // 成交笔数
-                #     "1756.87402397",    // 主动买入成交量
-                #     "28.46694368",      // 主动买入成交额
-                #     "17928899.62484339" // 忽略
-                #   ]
-                # ]
+                data = response.json()
                 
-                # 转换为更友好的格式
-                formatted_klines = []
-                for k in klines:
-                    formatted_klines.append({
-                        'open_time': k[0],
-                        'open': float(k[1]),
-                        'high': float(k[2]),
-                        'low': float(k[3]),
-                        'close': float(k[4]),
-                        'volume': float(k[5]),
-                        'close_time': k[6],
-                        'quote_volume': float(k[7]),
-                        'trades': k[8],
-                        'taker_buy_base': float(k[9]),
-                        'taker_buy_quote': float(k[10])
-                    })
+                if 'okx' in primary_api_url.lower():
+                    # OKX K线数据格式：
+                    # [
+                    #   [
+                    #     "1597026383085",  // 开盘时间
+                    #     "3.721",          // 开盘价
+                    #     "3.743",          // 最高价
+                    #     "3.677",          // 最低价
+                    #     "3.708",          // 收盘价
+                    #     "8422410",        // 成交量
+                    #     "22698348.04828491", // 成交额
+                    #   ]
+                    # ]
+                    formatted_klines = []
+                    for k in data:
+                        formatted_klines.append({
+                            'open_time': int(k[0]),
+                            'open': float(k[1]),
+                            'high': float(k[2]),
+                            'low': float(k[3]),
+                            'close': float(k[4]),
+                            'volume': float(k[5]),
+                            'quote_volume': float(k[6]),
+                            'trades': 0,  # OKX不提供成交笔数
+                            'taker_buy_base': 0,  # OKX不提供
+                            'taker_buy_quote': 0  # OKX不提供
+                        })
+                    logger.info(f"成功获取OKX {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
+                else:
+                    # 币安K线数据格式
+                    formatted_klines = []
+                    for k in data:
+                        formatted_klines.append({
+                            'open_time': k[0],
+                            'open': float(k[1]),
+                            'high': float(k[2]),
+                            'low': float(k[3]),
+                            'close': float(k[4]),
+                            'volume': float(k[5]),
+                            'close_time': k[6],
+                            'quote_volume': float(k[7]),
+                            'trades': k[8],
+                            'taker_buy_base': float(k[9]),
+                            'taker_buy_quote': float(k[10])
+                        })
+                    logger.info(f"成功获取币安 {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
                 
-                logger.info(f"成功获取 {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
                 return formatted_klines
             else:
-                logger.error(f"币安K线API返回状态码: {response.status_code}")
+                logger.error(f"K线API返回状态码: {response.status_code}")
                 return []
                 
     except Exception as e:
