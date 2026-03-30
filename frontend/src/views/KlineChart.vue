@@ -13,108 +13,155 @@
     </el-header>
 
     <el-main class="page-main">
-      <!-- 控制面板 -->
-      <el-card class="control-card" shadow="never">
-        <div class="control-row">
-          <div class="control-item">
-            <label>选择币种：</label>
-            <el-select v-model="selectedSymbol" placeholder="选择币种" @change="loadKlineData" style="width: 200px">
-              <el-option
-                v-for="symbol in watchlistSymbols"
-                :key="symbol.crypto_symbol"
-                :label="`${symbol.crypto_name} (${symbol.crypto_symbol})`"
-                :value="symbol.crypto_symbol"
-              />
-            </el-select>
-          </div>
-          
-          <div class="control-item">
-            <label>时间周期：</label>
-            <el-radio-group v-model="selectedInterval" @change="loadKlineData">
-              <el-radio-button label="1h">1小时</el-radio-button>
-              <el-radio-button label="4h">4小时</el-radio-button>
-              <el-radio-button label="1d">1天</el-radio-button>
-              <el-radio-button label="1w">1周</el-radio-button>
-              <el-radio-button label="1M">1月</el-radio-button>
-            </el-radio-group>
-          </div>
-          
-          <div class="control-item">
-            <el-button @click="loadKlineData" :loading="loading" type="primary">
-              🔄 刷新数据
-            </el-button>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- K线图 -->
-      <el-card class="chart-card" shadow="never">
+      <!-- 关注列表 -->
+      <el-card class="watchlist-card" shadow="never">
         <template #header>
           <div class="card-header">
-            <span class="card-title">
-              {{ selectedSymbol }} - {{ intervalLabel }} K线图
-            </span>
-            <span class="data-count" v-if="klineData.length > 0">
-              共 {{ klineData.length }} 条数据
-            </span>
+            <span class="card-title">🔥 关注列表</span>
+            <el-button @click="loadWatchlist" size="small" text bg>刷新</el-button>
           </div>
         </template>
         
-        <div class="chart-container" v-loading="loading">
-          <v-chart 
-            v-if="klineData.length > 0" 
-            :option="chartOption" 
-            autoresize 
-            style="height: 500px;"
-          />
-          <el-empty v-else-if="!loading" description="暂无K线数据" />
+        <div class="watchlist-grid" v-loading="loadingWatchlist">
+          <div 
+            v-for="item in watchlistData" 
+            :key="item.crypto_symbol"
+            class="watchlist-item"
+            :class="{ active: selectedSymbol === item.crypto_symbol }"
+            @click="selectSymbol(item.crypto_symbol)"
+          >
+            <div class="item-left">
+              <el-tag effect="dark" round size="small" class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
+              <span class="item-name">{{ item.crypto_name }}</span>
+            </div>
+            <div class="item-right">
+              <div class="price-text">${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}</div>
+            </div>
+          </div>
+          <el-empty v-if="!loadingWatchlist && watchlistData.length === 0" description="暂无关注数据" />
         </div>
       </el-card>
 
-      <!-- 数据统计 -->
-      <el-row :gutter="20" v-if="klineData.length > 0">
-        <el-col :xs="12" :sm="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number text-up">${{ latestKline.high?.toFixed(2) || '0.00' }}</div>
-              <div class="stat-label">最高价</div>
+      <!-- K线图区域（点击币种后显示） -->
+      <div v-if="selectedSymbol" class="kline-section">
+        <!-- 控制面板 -->
+        <el-card class="control-card" shadow="never">
+          <div class="control-row">
+            <div class="control-item">
+              <label>当前币种：</label>
+              <el-tag effect="dark" round size="large">{{ selectedSymbol }}</el-tag>
             </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="12" :sm="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number text-down">${{ latestKline.low?.toFixed(2) || '0.00' }}</div>
-              <div class="stat-label">最低价</div>
+            
+            <div class="control-item">
+              <label>时间周期：</label>
+              <el-radio-group v-model="selectedInterval" @change="loadKlineData">
+                <el-radio-button label="1m">1分钟</el-radio-button>
+                <el-radio-button label="5m">5分钟</el-radio-button>
+                <el-radio-button label="15m">15分钟</el-radio-button>
+                <el-radio-button label="1h">1小时</el-radio-button>
+                <el-radio-button label="4h">4小时</el-radio-button>
+                <el-radio-button label="1d">1天</el-radio-button>
+              </el-radio-group>
             </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="12" :sm="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number">${{ latestKline.open?.toFixed(2) || '0.00' }}</div>
-              <div class="stat-label">开盘价</div>
+            
+            <div class="control-item">
+              <label>数据数量：</label>
+              <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 120px">
+                <el-option label="100条" :value="100" />
+                <el-option label="200条" :value="200" />
+                <el-option label="500条" :value="500" />
+                <el-option label="1000条" :value="1000" />
+              </el-select>
             </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="12" :sm="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-number">${{ latestKline.close?.toFixed(2) || '0.00' }}</div>
-              <div class="stat-label">收盘价</div>
+            
+            <div class="control-item">
+              <el-button @click="loadKlineData" :loading="loading" type="primary">
+                🔄 刷新数据
+              </el-button>
+              <el-button @click="closeKline" type="info" plain>
+                ✕ 关闭K线
+              </el-button>
             </div>
-          </el-card>
-        </el-col>
-      </el-row>
+          </div>
+        </el-card>
+
+        <!-- K线图 -->
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span class="card-title">
+                {{ selectedSymbol }} - {{ intervalLabel }} K线图
+              </span>
+              <span class="data-count" v-if="klineData.length > 0">
+                共 {{ klineData.length }} 条数据
+              </span>
+            </div>
+          </template>
+          
+          <div class="chart-container" v-loading="loading">
+            <v-chart 
+              v-if="klineData.length > 0" 
+              :option="chartOption" 
+              autoresize 
+              style="height: 500px;"
+            />
+            <el-empty v-else-if="!loading" description="暂无K线数据" />
+          </div>
+        </el-card>
+
+        <!-- 数据统计 -->
+        <el-row :gutter="20" v-if="klineData.length > 0">
+          <el-col :xs="12" :sm="6">
+            <el-card class="stat-card" shadow="hover">
+              <div class="stat-content">
+                <div class="stat-number text-up">${{ latestKline.high?.toFixed(2) || '0.00' }}</div>
+                <div class="stat-label">最高价</div>
+              </div>
+            </el-card>
+          </el-col>
+          
+          <el-col :xs="12" :sm="6">
+            <el-card class="stat-card" shadow="hover">
+              <div class="stat-content">
+                <div class="stat-number text-down">${{ latestKline.low?.toFixed(2) || '0.00' }}</div>
+                <div class="stat-label">最低价</div>
+              </div>
+            </el-card>
+          </el-col>
+          
+          <el-col :xs="12" :sm="6">
+            <el-card class="stat-card" shadow="hover">
+              <div class="stat-content">
+                <div class="stat-number">${{ latestKline.open?.toFixed(2) || '0.00' }}</div>
+                <div class="stat-label">开盘价</div>
+              </div>
+            </el-card>
+          </el-col>
+          
+          <el-col :xs="12" :sm="6">
+            <el-card class="stat-card" shadow="hover">
+              <div class="stat-content">
+                <div class="stat-number">${{ latestKline.close?.toFixed(2) || '0.00' }}</div>
+                <div class="stat-label">收盘价</div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 提示信息 -->
+      <el-card v-else class="tip-card" shadow="never">
+        <div class="tip-content">
+          <div class="tip-icon">👆</div>
+          <div class="tip-text">点击上方币种查看K线图</div>
+        </div>
+      </el-card>
     </el-main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { klinesApi, watchlistApi } from '../api'
@@ -147,19 +194,24 @@ use([
 const router = useRouter()
 
 const loading = ref(false)
-const selectedSymbol = ref('BTCUSDT')
+const loadingWatchlist = ref(false)
+const selectedSymbol = ref('')
 const selectedInterval = ref('1h')
+const selectedLimit = ref(200)
 const klineData = ref<any[]>([])
-const watchlistSymbols = ref<any[]>([])
+const watchlistData = ref<any[]>([])
+
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 // 计算属性
 const intervalLabel = computed(() => {
   const labels: Record<string, string> = {
+    '1m': '1分钟',
+    '5m': '5分钟',
+    '15m': '15分钟',
     '1h': '1小时',
     '4h': '4小时', 
-    '1d': '1天',
-    '1w': '1周',
-    '1M': '1月'
+    '1d': '1天'
   }
   return labels[selectedInterval.value] || selectedInterval.value
 })
@@ -314,19 +366,28 @@ const chartOption = computed(() => {
 
 // 加载关注列表
 const loadWatchlist = async () => {
+  loadingWatchlist.value = true
   try {
     const response = await watchlistApi.getPublic()
-    watchlistSymbols.value = response.data
-    
-    // 默认选择第一个
-    if (watchlistSymbols.value.length > 0 && !selectedSymbol.value) {
-      selectedSymbol.value = watchlistSymbols.value[0].crypto_symbol
-      loadKlineData()
-    }
+    watchlistData.value = response.data
   } catch (error) {
     console.error('加载关注列表失败:', error)
     ElMessage.error('加载关注列表失败')
+  } finally {
+    loadingWatchlist.value = false
   }
+}
+
+// 选择币种
+const selectSymbol = (symbol: string) => {
+  selectedSymbol.value = symbol
+  loadKlineData()
+}
+
+// 关闭K线
+const closeKline = () => {
+  selectedSymbol.value = ''
+  klineData.value = []
 }
 
 // 加载K线数据
@@ -338,10 +399,9 @@ const loadKlineData = async () => {
 
   loading.value = true
   try {
-    const response = await klinesApi.getKlines(selectedSymbol.value, selectedInterval.value, 200)
-    console.log('K线API响应:', response) // 调试日志
+    const response = await klinesApi.getKlines(selectedSymbol.value, selectedInterval.value, selectedLimit.value)
+    console.log('K线API响应:', response)
     
-    // 检查响应格式
     if (response.data && response.data.success) {
       klineData.value = response.data.data.klines || []
       if (klineData.value.length > 0) {
@@ -369,8 +429,29 @@ const goToLogin = () => {
   router.push('/login')
 }
 
+// 自动刷新
+const startAutoRefresh = () => {
+  refreshTimer = setInterval(() => {
+    if (selectedSymbol.value) {
+      loadKlineData()
+    }
+  }, 30000) // 30秒刷新一次
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
 onMounted(() => {
   loadWatchlist()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -418,6 +499,95 @@ onMounted(() => {
   width: 100%;
 }
 
+.watchlist-card {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-weight: 600;
+  color: #303133;
+  font-size: 15px;
+}
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.watchlist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #f0f2f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.watchlist-item:hover {
+  background: #f0f2f5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.watchlist-item.active {
+  background: #409eff;
+  color: white;
+  border-color: #409eff;
+}
+
+.watchlist-item.active .symbol-tag {
+  background: white;
+  color: #409eff;
+}
+
+.watchlist-item.active .item-name {
+  color: white;
+}
+
+.watchlist-item.active .price-text {
+  color: white;
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.symbol-tag {
+  font-weight: bold;
+  font-family: 'Monaco', monospace;
+}
+
+.item-name {
+  font-size: 13px;
+  color: #606266;
+}
+
+.price-text {
+  color: #409eff;
+  font-weight: 600;
+  font-family: 'Monaco', monospace;
+  font-size: 15px;
+}
+
+.kline-section {
+  margin-top: 20px;
+}
+
 .control-card {
   border-radius: 10px;
   border: none;
@@ -450,18 +620,6 @@ onMounted(() => {
   border: none;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
   margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-weight: 600;
-  color: #303133;
-  font-size: 15px;
 }
 
 .data-count {
@@ -513,6 +671,27 @@ onMounted(() => {
   color: #67c23a;
 }
 
+.tip-card {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.02);
+}
+
+.tip-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.tip-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.tip-text {
+  font-size: 16px;
+  color: #909399;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .page-container {
@@ -545,8 +724,8 @@ onMounted(() => {
     width: 100%;
   }
   
-  .control-card {
-    margin-bottom: 12px;
+  .watchlist-grid {
+    grid-template-columns: 1fr;
   }
   
   .control-row {
@@ -564,24 +743,8 @@ onMounted(() => {
     font-size: 12px;
   }
   
-  .chart-card {
-    margin-bottom: 12px;
-  }
-  
   .chart-container {
     min-height: 300px;
-  }
-  
-  .chart-container :deep(.el-empty) {
-    padding: 20px 0;
-  }
-  
-  .stat-card {
-    margin-bottom: 10px;
-  }
-  
-  .stat-content {
-    padding: 10px 8px;
   }
   
   .stat-number {
@@ -589,20 +752,6 @@ onMounted(() => {
   }
   
   .stat-label {
-    font-size: 11px;
-  }
-  
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .card-title {
-    font-size: 14px;
-  }
-  
-  .data-count {
     font-size: 11px;
   }
 }

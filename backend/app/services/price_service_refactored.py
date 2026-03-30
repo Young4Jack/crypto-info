@@ -346,7 +346,7 @@ def get_current_prices(db: Session) -> Dict[str, float]:
     # 目前返回空字典，实际应用中应该从数据库获取
     return {}
 
-async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) -> list:
+async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 200) -> list:
     """
     获取K线数据
     :param symbol: 交易对符号，如 BTCUSDT
