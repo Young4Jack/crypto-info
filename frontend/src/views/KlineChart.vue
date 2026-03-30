@@ -4,11 +4,12 @@
       <div class="header-content">
         <div class="header-left">
           <h1>📈 K线图</h1>
+          <p>实时查看关注币种的K线走势</p>
         </div>
         <div class="header-right">
           <el-button @click="goToLogin" type="primary" plain>系统登录</el-button>
         </div>
-      </div> 
+      </div>
     </el-header>
 
     <el-main class="page-main">
@@ -468,28 +469,9 @@ onUnmounted(() => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.header-left h1 {
-  margin: 0;
-  font-size: 22px;
-  color: #1f2f3d;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.header-left p {
-  margin: 6px 0 0;
-  color: #909399;
-  font-size: 13px;
-}
+.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+.header-left h1 { margin: 0; font-size: 22px; color: #409eff; font-weight: bold; letter-spacing: 0.5px; }
+.header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
 
 .page-main {
   padding: 20px 25px;
