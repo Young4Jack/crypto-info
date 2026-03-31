@@ -819,17 +819,17 @@ onUnmounted(() => {
   }
   
   .watchlist-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
   
   .watchlist-item {
-    padding: 10px 12px;
+    padding: 8px 12px;
     font-size: 12px;
   }
   
   .item-name {
-    font-size: 11px;
+    font-size: 12px;
   }
   
   .price-text {
