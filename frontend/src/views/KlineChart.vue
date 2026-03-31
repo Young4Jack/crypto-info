@@ -535,11 +535,11 @@ onUnmounted(() => {
   font-size: 13px; 
 }
 
-.page-main {
-  padding: 20px 25px;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
+.page-main { 
+  padding: 20px 25px; 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  width: 100%; 
 }
 
 .watchlist-card {
