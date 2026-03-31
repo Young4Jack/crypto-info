@@ -346,92 +346,101 @@ def get_current_prices(db: Session) -> Dict[str, float]:
     # 目前返回空字典，实际应用中应该从数据库获取
     return {}
 
-import httpx
-import logging
 
-# 假设这些已在你的环境中定义
-logger = logging.getLogger(__name__)
-
-async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) -> list:
+async def fetch_kline_data(symbol: str, interval: str = '1d', limit: int = 100) -> list:
     """
-    获取K线数据 (已修正币安与OKX兼容性)
+    获取K线数据 (已深度兼容 Binance 与 OKX 的底层数据差异)
     :param symbol: 交易对符号，如 BTCUSDT
-    :param interval: K线周期，如 1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M
+    :param interval: K线周期，如 1m, 1h, 1d, 1w
     :param limit: 返回数量
-    :return: 统一正序（旧->新）的K线数据列表
+    :return: 统一正序（旧->新）且时区对齐的 K 线数据列表
     """
-    # 从配置获取API设置
-    api_settings = config_manager.get_api_settings()
-    primary_api_url = api_settings.get("primary_api_url", "https://api.binance.com")
+    # 假设从你的 config_manager 获取配置
+    # api_settings = config_manager.get_api_settings()
+    # primary_api_url = api_settings.get("primary_api_url", "https://api.binance.com")
+    primary_api_url = "https://www.okx.com" # 本地测试时可写死，生产环境请用上方配置项
     
     is_okx = 'okx' in primary_api_url.lower()
     
-    # --- 1. 参数适配阶段 ---
-    # --- 1. 参数适配阶段 ---
+    # ==========================================
+    # 1. 参数适配阶段 (Symbol 与 Interval)
+    # ==========================================
     if is_okx:
-        # 修正：更稳妥的转换逻辑
+        # 稳健的交易对拼接逻辑: 自动识别基础币和计价币，转换为 BTC-USDT
         if '-' not in symbol:
-            # 常见的计价币对
             for quote in ['USDT', 'USDC', 'BTC', 'ETH']:
                 if symbol.endswith(quote):
-                    base = symbol[:-len(quote)] # 截取前面的币种，如 BTC
-                    inst_id = f"{base}-{quote}" # 拼接成 BTC-USDT
+                    base = symbol[:-len(quote)]
+                    inst_id = f"{base}-{quote}"
                     break
             else:
-                inst_id = symbol # 如果都没匹配到，保持原样
+                inst_id = symbol
         else:
             inst_id = symbol
-        
-        # OKX 周期适配: 1h -> 1H (分钟用小写，小时及以上用大写)
-        okx_bar = interval
-        if 'h' in interval or 'd' in interval or 'w' in interval:
-            okx_bar = interval.upper()
-        
+            
+        # 核心修正：大周期强制使用 UTC 对齐币安，避免 8 小时时差
+        if interval == '1d':
+            okx_bar = '1Dutc'
+        elif interval == '1w':
+            okx_bar = '1Wutc'
+        elif interval == '1M':
+            okx_bar = '1Mutc'
+        else:
+            # 分钟(m)不变，小时(h)转大写(H)
+            okx_bar = interval.replace('h', 'H')
+            
         url = f"{primary_api_url}/api/v5/market/candles"
         params = {
             'instId': inst_id,
             'bar': okx_bar,
-            'limit': min(limit, 100)
+            'limit': min(limit, 100) # OKX 此接口最大返回 100
         }
     else:
-        # 币安格式保持原样
+        # 币安保持原生格式
         url = f"{primary_api_url}/api/v3/klines"
         params = {
             'symbol': symbol,
             'interval': interval,
             'limit': min(limit, 1000)
         }
-    
+        
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
-    
+
+    # ==========================================
+    # 2. 网络请求阶段
+    # ==========================================
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(url, params=params, headers=headers)
             
             if response.status_code != 200:
-                logger.error(f"K线API返回状态码异常: {response.status_code}, URL: {url}")
+                logger.error(f"API 请求失败: 状态码 {response.status_code}, URL: {url}")
                 return []
-            
+                
             data = response.json()
             
-            # --- 2. 响应提取阶段 ---
+            # ==========================================
+            # 3. 数据校验与提取
+            # ==========================================
             if is_okx:
                 if data.get('code') != '0':
-                    logger.error(f"OKX API返回错误: {data.get('msg', '未知错误')}")
+                    logger.error(f"OKX API 业务报错: {data.get('msg')}")
                     return []
                 klines_raw = data.get('data', [])
             else:
                 klines_raw = data
-            
+                
             formatted_klines = []
             
-            # --- 3. 数据解析阶段 ---
+            # ==========================================
+            # 4. 数据解析阶段 (字段映射)
+            # ==========================================
             for k in klines_raw:
                 try:
                     if is_okx:
-                        # OKX 索引: 0:时间, 1:开, 2:高, 3:低, 4:收, 5:交易量(张/币), 6:成交额(计价币)
+                        # OKX 索引: 0:时间, 1:开, 2:高, 3:低, 4:收, 5:量(张/币), 6:成交额(计价货币)
                         item = {
                             'open_time': int(k[0]),
                             'open': float(k[1]),
@@ -439,13 +448,13 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
                             'low': float(k[3]),
                             'close': float(k[4]),
                             'volume': float(k[5]),
-                            'quote_volume': float(k[6]),  # 成交额 (USDT)
+                            'quote_volume': float(k[6]), # OKX 的成交额在索引 6
                             'trades': 0,
                             'taker_buy_base': 0,
                             'taker_buy_quote': 0
                         }
                     else:
-                        # 币安索引: 0:时间, 1:开, 2:高, 3:低, 4:收, 5:量, 7:额, 8:笔数, 9:主动买入量, 10:主动买入额
+                        # 币安索引: 0:时间, 1:开, 2:高, 3:低, 4:收, 5:量, 7:成交额, 8:笔数, 9:主动买, 10:主动买额
                         item = {
                             'open_time': int(k[0]),
                             'open': float(k[1]),
@@ -453,7 +462,7 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
                             'low': float(k[3]),
                             'close': float(k[4]),
                             'volume': float(k[5]),
-                            'quote_volume': float(k[7]),  # 成交额 (USDT)
+                            'quote_volume': float(k[7]), # 币安的成交额在索引 7
                             'trades': int(k[8]),
                             'taker_buy_base': float(k[9]),
                             'taker_buy_quote': float(k[10])
@@ -461,15 +470,24 @@ async def fetch_kline_data(symbol: str, interval: str = '1h', limit: int = 100) 
                     formatted_klines.append(item)
                 except (ValueError, TypeError, IndexError) as e:
                     continue
-            
-            # --- 4. 关键修正：统一时间序 ---
+                    
+            # ==========================================
+            # 5. 时序修正 (致命逻辑防范)
+            # ==========================================
             if is_okx:
-                # OKX 返回 [最新 -> 最旧]，手动翻转为 [最旧 -> 最新]
+                # OKX 原生返回是 [最新 -> 最旧]，必须反转为 [最旧 -> 最新] 以对齐币安
                 formatted_klines.reverse()
             
-            logger.info(f"成功获取 {'OKX' if is_okx else '币安'} {symbol} K线数据，共 {len(formatted_klines)} 条")
+            # 检查日志级别配置
+            system_settings = config_manager.get_system_settings()
+            enable_logging = system_settings.get('enable_logging', True)
+            log_level = system_settings.get('log_level', 'INFO')
+            
+            if enable_logging and log_level in ['INFO', 'DEBUG']:
+                logger.info(f"成功获取 {'OKX' if is_okx else '币安'} {symbol} [{interval}] K线数据: {len(formatted_klines)} 条")
+            
             return formatted_klines
-                
+            
     except Exception as e:
-        logger.error(f"获取K线数据发生异常: {e}")
+        logger.error(f"获取 K 线数据发生异常: {e}")
         return []

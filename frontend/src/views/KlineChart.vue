@@ -157,7 +157,7 @@ const loading = ref(false)
 const loadingWatchlist = ref(false)
 const selectedSymbol = ref('')
 const selectedInterval = ref('1d')
-const selectedLimit = ref(200)
+const selectedLimit = ref(100)
 const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
 const klineDialogVisible = ref(false)
@@ -283,7 +283,7 @@ const chartOption = computed(() => {
 
   return {
     title: {
-      text: `${selectedSymbol.value} ${intervalLabel.value} K线图`,
+      text: `${selectedSymbol.value} ${intervalLabel.value}`,
       left: 'center',
       top: 10,
       textStyle: {
@@ -317,14 +317,18 @@ const chartOption = computed(() => {
     },
     legend: {
       data: ['K线', '成交量'],
-      top: 35
+      top: 8,
+      right: 10,
+      textStyle: {
+        fontSize: 11
+      }
     },
     grid: [
       {
         left: '10%',
         right: '10%',
-        top: 60,
-        height: '50%'
+        top: 35,
+        height: '55%'
       },
       {
         left: '10%',
@@ -443,20 +447,16 @@ const loadWatchlist = async () => {
       const symbolData = klinesData[item.crypto_symbol]
       const symbolKlines = symbolData?.klines || []
       
-      console.log(`${item.crypto_symbol} klines数量:`, symbolKlines.length)
-      
-      if (symbolKlines.length >= 2) {
-        // 昨天的涨跌幅
-        const yesterday = symbolKlines[symbolKlines.length - 2]
-        const open = parseFloat(yesterday.open)
-        const close = parseFloat(yesterday.close)
-        item.change_24h = ((close - open) / open) * 100
-      } else if (symbolKlines.length === 1) {
-        // 今天实时涨跌幅
-        const today = symbolKlines[0]
-        const open = parseFloat(today.open)
-        const close = parseFloat(today.close)
-        item.change_24h = ((close - open) / open) * 100
+      // 使用最新一条K线的涨跌幅（与弹出框一致）
+      if (symbolKlines.length > 0) {
+        const latestKline = symbolKlines[symbolKlines.length - 1]
+        const open = parseFloat(latestKline.open)
+        const close = parseFloat(latestKline.close)
+        if (open && close) {
+          item.change_24h = ((close - open) / open) * 100
+        } else {
+          item.change_24h = null
+        }
       } else {
         item.change_24h = null
       }
@@ -875,7 +875,7 @@ onUnmounted(() => {
 
 .dialog-chart-container {
   min-height: 400px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   position: relative;
 }
 
