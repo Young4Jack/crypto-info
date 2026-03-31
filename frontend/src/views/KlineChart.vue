@@ -18,7 +18,10 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">🔥 关注列表</span>
-            <el-button @click="loadWatchlist" size="small" text bg>刷新</el-button>
+            <el-button @click="loadWatchlist" size="small" type="primary">
+              <el-icon v-if="!loadingWatchlist"><Refresh /></el-icon>
+              <span v-if="!loadingWatchlist">刷新</span>
+            </el-button>
           </div>
         </template>
         
@@ -29,12 +32,12 @@
             class="watchlist-item"
             @click="openKlineDialog(item)"
           >
-            <div class="item-left">
-              <el-tag effect="dark" round size="small" class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
+            <div class="item-info">
               <span class="item-name">{{ item.crypto_name }}</span>
+              <span class="item-price">${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}</span>
             </div>
-            <div class="item-right">
-              <div class="price-text">${{ item.current_price ? item.current_price.toFixed(4) : '0.0000' }}</div>
+            <div class="item-change" :class="getChangeClass(item.change_24h)">
+              {{ formatChange(item.change_24h) }}
             </div>
           </div>
           <el-empty v-if="!loadingWatchlist && watchlistData.length === 0" description="暂无关注数据" />
@@ -78,30 +81,34 @@
           
           <div class="dialog-control-item">
             <label>数据数量：</label>
-            <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 120px">
+            <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 100px">
               <el-option label="100条" :value="100" />
               <el-option label="200条" :value="200" />
               <el-option label="500条" :value="500" />
               <el-option label="1000条" :value="1000" />
             </el-select>
-          </div>
-          
-          <div class="dialog-control-item">
-            <el-button @click="loadKlineData" :loading="loading" type="primary" size="small">
-              🔄 刷新
+            <el-button @click="loadKlineData" :loading="loading" type="primary" size="small" class="refresh-btn">
+              <el-icon v-if="!loading"><Refresh /></el-icon>
+              <span v-if="!loading">刷新</span>
             </el-button>
           </div>
         </div>
 
         <!-- K线图 -->
-        <div class="dialog-chart-container" v-loading="loading">
+        <div class="dialog-chart-container">
           <v-chart 
-            v-if="klineData.length > 0" 
             :option="chartOption" 
-            autoresize 
             style="height: 400px;"
+            :notMerge="true"
+            :autoresize="true"
+            @datazoom="onDataZoom"
           />
-          <el-empty v-else-if="!loading" description="暂无K线数据" />
+          <div v-if="loading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+          </div>
+          <div v-if="!loading && klineData.length === 0" class="empty-placeholder">
+            <el-empty description="暂无K线数据" />
+          </div>
         </div>
 
         <!-- 数据统计 -->
@@ -132,6 +139,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { klinesApi, watchlistApi, systemSettingsApi } from '../api'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -164,12 +172,13 @@ const router = useRouter()
 const loading = ref(false)
 const loadingWatchlist = ref(false)
 const selectedSymbol = ref('')
-const selectedInterval = ref('1h')
+const selectedInterval = ref('1d')
 const selectedLimit = ref(200)
 const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
 const klineDialogVisible = ref(false)
 const selectedCryptoName = ref('')
+const savedDataZoom = ref<{ start: number; end: number } | null>(null)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
@@ -193,14 +202,71 @@ const latestKline = computed(() => {
   return klineData.value[klineData.value.length - 1]
 })
 
+// 格式化涨跌幅
+const formatChange = (change: number | undefined | null) => {
+  if (change === undefined || change === null || isNaN(change)) return '--'
+  const sign = change >= 0 ? '+' : ''
+  return `${sign}${change.toFixed(2)}%`
+}
+
+// 获取涨跌幅样式类
+const getChangeClass = (change: number | undefined | null) => {
+  if (change === undefined || change === null || isNaN(change)) return ''
+  return change >= 0 ? 'change-up' : 'change-down'
+}
+
+// 保存用户的缩放状态
+const onDataZoom = (params: any) => {
+  if (params.batch && params.batch.length > 0) {
+    const { start, end } = params.batch[0]
+    savedDataZoom.value = { start, end }
+  } else if (params.start !== undefined && params.end !== undefined) {
+    savedDataZoom.value = { start: params.start, end: params.end }
+  }
+}
+
 // 图表配置
 const chartOption = computed(() => {
-  if (klineData.value.length === 0) return {}
+  if (klineData.value.length === 0) {
+    return {
+      title: {
+        text: '',
+        left: 'center',
+        top: 'center',
+        textStyle: {
+          color: '#ccc',
+          fontSize: 14
+        }
+      },
+      series: []
+    }
+  }
 
-  const dates = klineData.value.map(k => {
-    const date = new Date(k.open_time)
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-  })
+  // 根据周期格式化时间
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp)
+    const interval = selectedInterval.value
+    
+    if (interval === '1m' || interval === '5m' || interval === '15m' || interval === '30m') {
+      // 分钟线：显示 月/日 时:分
+      return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    } else if (interval === '1h' || interval === '2h' || interval === '4h' || interval === '6h' || interval === '12h') {
+      // 小时线：显示 月/日 时:00
+      return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:00`
+    } else if (interval === '1d' || interval === '3d') {
+      // 天线：显示 年/月/日
+      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
+    } else if (interval === '1w') {
+      // 周线：显示 年/月/日
+      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
+    } else if (interval === '1M') {
+      // 月线：显示 年/月
+      return `${date.getFullYear()}/${date.getMonth() + 1}`
+    }
+    return date.toLocaleDateString('zh-CN')
+  }
+
+  const dates = klineData.value.map(k => formatTime(k.open_time))
   
   const ohlcData = klineData.value.map(k => [k.open, k.close, k.low, k.high])
   const volumeData = klineData.value.map(k => k.volume)
@@ -209,9 +275,10 @@ const chartOption = computed(() => {
     title: {
       text: `${selectedSymbol.value} ${intervalLabel.value} K线图`,
       left: 'center',
+      top: 10,
       textStyle: {
         color: '#303133',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 600
       }
     },
@@ -225,9 +292,10 @@ const chartOption = computed(() => {
         if (!kline) return ''
         
         const data = klineData.value[kline.dataIndex]
+        const timeStr = formatTime(data.open_time)
         return `
           <div style="font-family: Monaco, monospace;">
-            <div><strong>${dates[kline.dataIndex]}</strong></div>
+            <div><strong>${timeStr}</strong></div>
             <div>开盘: <span style="color: #409eff;">$${data.open.toFixed(2)}</span></div>
             <div>收盘: <span style="color: ${data.close >= data.open ? '#f56c6c' : '#67c23a'};">$${data.close.toFixed(2)}</span></div>
             <div>最高: <span style="color: #f56c6c;">$${data.high.toFixed(2)}</span></div>
@@ -239,20 +307,20 @@ const chartOption = computed(() => {
     },
     legend: {
       data: ['K线', '成交量'],
-      top: 30
+      top: 35
     },
     grid: [
       {
         left: '10%',
         right: '10%',
-        top: '15%',
+        top: 60,
         height: '50%'
       },
       {
         left: '10%',
         right: '10%',
-        top: '70%',
-        height: '20%'
+        top: '75%',
+        height: '15%'
       }
     ],
     xAxis: [
@@ -300,8 +368,15 @@ const chartOption = computed(() => {
       {
         type: 'inside',
         xAxisIndex: [0, 1],
-        start: 50,
-        end: 100
+        start: savedDataZoom.value ? savedDataZoom.value.start : 80,
+        end: savedDataZoom.value ? savedDataZoom.value.end : 100,
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true,
+        preventDefaultMouseMove: true,
+        disabled: false,
+        zoomLock: false,
+        throttle: 0
       }
     ],
     series: [
@@ -341,19 +416,36 @@ const loadWatchlist = async () => {
   loadingWatchlist.value = true
   try {
     const response = await watchlistApi.getPublic()
-    watchlistData.value = response.data
+    const data = response.data
+    
+    // 获取每个币种的涨跌幅
+    for (const item of data) {
+      try {
+        const klineResponse = await klinesApi.getKlines(item.crypto_symbol, '1d', 2)
+        if (klineResponse.data && klineResponse.data.success) {
+          const klines = klineResponse.data.data.klines || []
+          if (klines.length >= 2) {
+            // 昨天的涨跌幅
+            const yesterday = klines[klines.length - 2]
+            item.change_24h = ((yesterday.close - yesterday.open) / yesterday.open) * 100
+          } else if (klines.length === 1) {
+            // 今天实时涨跌幅
+            const today = klines[0]
+            item.change_24h = ((today.close - today.open) / today.open) * 100
+          }
+        }
+      } catch (e) {
+        console.error(`获取 ${item.crypto_symbol} 涨跌幅失败:`, e)
+      }
+    }
+    
+    watchlistData.value = data
   } catch (error) {
     console.error('加载关注列表失败:', error)
     ElMessage.error('加载关注列表失败')
   } finally {
     loadingWatchlist.value = false
   }
-}
-
-// 选择币种
-const selectSymbol = (symbol: string) => {
-  selectedSymbol.value = symbol
-  loadKlineData()
 }
 
 // 打开K线弹窗
@@ -372,41 +464,37 @@ const closeKlineDialog = () => {
   klineData.value = []
 }
 
-// 关闭K线
-const closeKline = () => {
-  selectedSymbol.value = ''
-  klineData.value = []
-}
-
 // 加载K线数据
-const loadKlineData = async () => {
+const loadKlineData = async (silent = false) => {
   if (!selectedSymbol.value) {
     ElMessage.warning('请先选择币种')
     return
   }
 
-  loading.value = true
+  if (!silent) {
+    loading.value = true
+  }
+  
   try {
     const response = await klinesApi.getKlines(selectedSymbol.value, selectedInterval.value, selectedLimit.value)
-    console.log('K线API响应:', response)
     
     if (response.data && response.data.success) {
       klineData.value = response.data.data.klines || []
-      if (klineData.value.length > 0) {
-        ElMessage.success(`成功加载 ${klineData.value.length} 条K线数据`)
-      } else {
+      if (klineData.value.length === 0 && !silent) {
         ElMessage.warning('K线数据为空')
       }
     } else {
-      console.error('API响应格式错误:', response)
-      ElMessage.error(response.data?.error || '获取K线数据失败')
+      if (!silent) {
+        ElMessage.error(response.data?.error || '获取K线数据失败')
+      }
     }
   } catch (error: any) {
-    console.error('获取K线数据失败:', error)
-    if (error.response?.status === 404) {
-      ElMessage.error('K线API不存在，请重启后端服务')
-    } else {
-      ElMessage.error('获取K线数据失败: ' + (error.message || '未知错误'))
+    if (!silent) {
+      if (error.response?.status === 404) {
+        ElMessage.error('K线API不存在，请重启后端服务')
+      } else {
+        ElMessage.error('获取K线数据失败: ' + (error.message || '未知错误'))
+      }
     }
   } finally {
     loading.value = false
@@ -421,7 +509,7 @@ const goToLogin = () => {
 const startAutoRefresh = () => {
   refreshTimer = setInterval(() => {
     if (selectedSymbol.value) {
-      loadKlineData()
+      loadKlineData(true) // 无感刷新
     }
   }, refreshInterval * 1000) // 使用配置的刷新间隔
 }
@@ -549,7 +637,7 @@ onUnmounted(() => {
 
 .watchlist-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
@@ -557,7 +645,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
+  padding: 15px;
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #f0f2f5;
@@ -571,46 +659,41 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.watchlist-item.active {
-  background: #409eff;
-  color: white;
-  border-color: #409eff;
-}
-
-.watchlist-item.active .symbol-tag {
-  background: white;
-  color: #409eff;
-}
-
-.watchlist-item.active .item-name {
-  color: white;
-}
-
-.watchlist-item.active .price-text {
-  color: white;
-}
-
-.item-left {
+.item-info {
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.symbol-tag {
-  font-weight: bold;
-  font-family: 'Monaco', monospace;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .item-name {
-  font-size: 13px;
-  color: #606266;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
 }
 
-.price-text {
+.item-price {
+  font-size: 16px;
+  font-weight: bold;
   color: #409eff;
-  font-weight: 600;
   font-family: 'Monaco', monospace;
-  font-size: 15px;
+}
+
+.item-change {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Monaco', monospace;
+}
+
+.change-up {
+  color: #f56c6c;
+  background: rgba(245, 108, 108, 0.1);
+}
+
+.change-down {
+  color: #67c23a;
+  background: rgba(103, 194, 58, 0.1);
 }
 
 .kline-section {
@@ -753,6 +836,47 @@ onUnmounted(() => {
 .dialog-chart-container {
   min-height: 400px;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.empty-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 1;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #409eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .dialog-stats {
@@ -801,6 +925,28 @@ onUnmounted(() => {
     padding: 12px;
   }
   
+  :deep(.el-dialog) {
+    width: 95% !important;
+    margin: 0 auto !important;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 10px !important;
+  }
+  
+  .kline-dialog-content {
+    overflow-x: hidden;
+  }
+  
+  .dialog-chart-container {
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .dialog-chart-container :deep(canvas) {
+    width: 100% !important;
+  }
+  
   .header-content {
     display: flex;
     justify-content: space-between;
@@ -820,72 +966,125 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
   
+  .watchlist-card :deep(.el-card__header) {
+    padding: 8px 12px;
+  }
+  
+  .card-title {
+    font-size: 13px;
+  }
+  
+  .card-header {
+    min-height: auto;
+  }
+  
   .watchlist-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
   
   .watchlist-item {
-    padding: 10px 12px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  
-  .item-left {
-    gap: 6px;
-    width: 100%;
-  }
-  
-  .item-right {
-    width: 100%;
-    justify-content: flex-start;
-  }
-  
-  .symbol-tag {
-    font-size: 11px;
-    padding: 2px 6px;
+    padding: 12px 15px;
   }
   
   .item-name {
-    font-size: 12px;
-    color: #909399;
+    font-size: 13px;
   }
   
-  .price-text {
+  .item-price {
     font-size: 14px;
-    font-weight: 600;
+  }
+  
+  .item-change {
+    font-size: 12px;
+    padding: 3px 6px;
   }
   
   .dialog-control-row {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+    padding: 12px;
   }
   
   .dialog-control-item {
     width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
     gap: 8px;
+  }
+  
+  .dialog-control-item:first-child {
+    justify-content: space-between;
   }
   
   .dialog-control-item label {
     font-size: 12px;
     min-width: 60px;
+    flex-shrink: 0;
   }
   
   .dialog-control-item .el-radio-group {
-    flex-wrap: wrap;
-    gap: 4px;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
   }
   
-  .dialog-control-item .el-radio-button {
-    margin-bottom: 4px;
+  .dialog-control-item .el-radio-group::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .dialog-control-item .el-radio-group :deep(.el-radio-button) {
+    flex-shrink: 0;
+  }
+  
+  .dialog-control-item .el-radio-group :deep(.el-radio-button__inner) {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  .dialog-control-item .el-radio-group::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .dialog-control-item .el-radio-group :deep(.el-radio-button) {
+    flex-shrink: 0;
+    margin-right: 0 !important;
+  }
+  
+  .dialog-control-item .el-radio-group :deep(.el-radio-button__inner) {
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+  }
+  
+  .dialog-control-item:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
   }
   
   .dialog-control-item .el-select {
     width: 100px !important;
+    flex-shrink: 0;
+  }
+  
+  .dialog-control-item .refresh-btn {
+    flex-shrink: 0;
+    min-width: 70px;
+    padding: 8px 16px;
+    font-size: 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
   
   .dialog-stats {

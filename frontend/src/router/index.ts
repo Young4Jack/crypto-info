@@ -50,7 +50,7 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/public'
+      redirect: '/kline'
     }
   ]
 })
