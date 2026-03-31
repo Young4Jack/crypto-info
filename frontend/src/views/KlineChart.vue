@@ -41,113 +41,6 @@
         </div>
       </el-card>
 
-      <!-- K线图区域（点击币种后显示） -->
-      <div v-if="selectedSymbol" class="kline-section">
-        <!-- 控制面板 -->
-        <el-card class="control-card" shadow="never">
-          <div class="control-row">
-            <div class="control-item">
-              <label>当前币种：</label>
-              <el-tag effect="dark" round size="large">{{ selectedSymbol }}</el-tag>
-            </div>
-            
-            <div class="control-item">
-              <label>时间周期：</label>
-              <el-radio-group v-model="selectedInterval" @change="loadKlineData">
-                <el-radio-button label="1m">1分钟</el-radio-button>
-                <el-radio-button label="5m">5分钟</el-radio-button>
-                <el-radio-button label="15m">15分钟</el-radio-button>
-                <el-radio-button label="1h">1小时</el-radio-button>
-                <el-radio-button label="4h">4小时</el-radio-button>
-                <el-radio-button label="1d">1天</el-radio-button>
-              </el-radio-group>
-            </div>
-            
-            <div class="control-item">
-              <label>数据数量：</label>
-              <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 120px">
-                <el-option label="100条" :value="100" />
-                <el-option label="200条" :value="200" />
-                <el-option label="500条" :value="500" />
-                <el-option label="1000条" :value="1000" />
-              </el-select>
-            </div>
-            
-            <div class="control-item">
-              <el-button @click="loadKlineData" :loading="loading" type="primary">
-                🔄 刷新数据
-              </el-button>
-              <el-button @click="closeKline" type="info" plain>
-                ✕ 关闭K线
-              </el-button>
-            </div>
-          </div>
-        </el-card>
-
-        <!-- K线图 -->
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span class="card-title">
-                {{ selectedSymbol }} - {{ intervalLabel }} K线图
-              </span>
-              <span class="data-count" v-if="klineData.length > 0">
-                共 {{ klineData.length }} 条数据
-              </span>
-            </div>
-          </template>
-          
-          <div class="chart-container" v-loading="loading">
-            <v-chart 
-              v-if="klineData.length > 0" 
-              :option="chartOption" 
-              autoresize 
-              style="height: 500px;"
-            />
-            <el-empty v-else-if="!loading" description="暂无K线数据" />
-          </div>
-        </el-card>
-
-        <!-- 数据统计 -->
-        <el-row :gutter="20" v-if="klineData.length > 0">
-          <el-col :xs="12" :sm="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-number text-up">${{ latestKline.high?.toFixed(2) || '0.00' }}</div>
-                <div class="stat-label">最高价</div>
-              </div>
-            </el-card>
-          </el-col>
-          
-          <el-col :xs="12" :sm="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-number text-down">${{ latestKline.low?.toFixed(2) || '0.00' }}</div>
-                <div class="stat-label">最低价</div>
-              </div>
-            </el-card>
-          </el-col>
-          
-          <el-col :xs="12" :sm="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-number">${{ latestKline.open?.toFixed(2) || '0.00' }}</div>
-                <div class="stat-label">开盘价</div>
-              </div>
-            </el-card>
-          </el-col>
-          
-          <el-col :xs="12" :sm="6">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-content">
-                <div class="stat-number">${{ latestKline.close?.toFixed(2) || '0.00' }}</div>
-                <div class="stat-label">收盘价</div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
-
       <!-- 提示信息 -->
       <el-card class="tip-card" shadow="never">
         <div class="tip-content">
@@ -522,13 +415,13 @@ const goToLogin = () => {
   router.push('/login')
 }
 
-// 自动刷新
+// 自动刷新（使用动态间隔）
 const startAutoRefresh = () => {
   refreshTimer = setInterval(() => {
     if (selectedSymbol.value) {
       loadKlineData()
     }
-  }, 30000) // 30秒刷新一次
+  }, refreshInterval * 1000) // 使用配置的刷新间隔
 }
 
 const stopAutoRefresh = () => {
@@ -926,55 +819,65 @@ onUnmounted(() => {
   }
   
   .watchlist-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
   
-  .control-row {
+  .watchlist-item {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .item-name {
+    font-size: 11px;
+  }
+  
+  .price-text {
+    font-size: 13px;
+  }
+  
+  .dialog-control-row {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
   
-  .control-item {
+  .dialog-control-item {
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
   }
   
-  .control-item label {
+  .dialog-control-item label {
     font-size: 12px;
     min-width: 60px;
   }
   
-  .control-item .el-radio-group {
+  .dialog-control-item .el-radio-group {
     flex-wrap: wrap;
     gap: 4px;
   }
   
-  .control-item .el-radio-button {
+  .dialog-control-item .el-radio-button {
     margin-bottom: 4px;
   }
   
-  .control-item .el-select {
+  .dialog-control-item .el-select {
     width: 100px !important;
   }
   
-  .control-item .el-button {
-    flex: 1;
-    min-width: 80px;
+  .dialog-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
   
-  .chart-container {
-    min-height: 300px;
+  .stat-item {
+    padding: 8px;
   }
   
-  .stat-number {
+  .stat-value {
     font-size: 16px;
-  }
-  
-  .stat-label {
-    font-size: 11px;
   }
 }
 </style>
