@@ -98,7 +98,7 @@
         <div class="dialog-chart-container">
           <v-chart 
             :option="chartOption" 
-            style="height: 400px;"
+            style="height: 350px;"
             :notMerge="true"
             :autoresize="true"
             @datazoom="onDataZoom"
@@ -111,23 +111,23 @@
           </div>
         </div>
 
-        <!-- 数据统计 -->
-        <div class="dialog-stats" v-if="klineData.length > 0">
-          <div class="stat-item">
-            <span class="stat-label">最高价</span>
-            <span class="stat-value text-up">${{ latestKline.high?.toFixed(2) || '0.00' }}</span>
+        <!-- 当前K线信息 -->
+        <div class="kline-info-bar" v-if="klineData.length > 0">
+          <div class="info-symbol">{{ selectedSymbol }}</div>
+          <div class="info-time">{{ formatInfoTime(latestKline.open_time) }}</div>
+          <div class="info-prices">
+            <span class="info-item">开<span class="info-value">{{ latestKline.open?.toFixed(2) }}</span></span>
+            <span class="info-item">高<span class="info-value text-up">{{ latestKline.high?.toFixed(2) }}</span></span>
+            <span class="info-item">低<span class="info-value text-down">{{ latestKline.low?.toFixed(2) }}</span></span>
+            <span class="info-item">收<span class="info-value">{{ latestKline.close?.toFixed(2) }}</span></span>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">最低价</span>
-            <span class="stat-value text-down">${{ latestKline.low?.toFixed(2) || '0.00' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">开盘价</span>
-            <span class="stat-value">${{ latestKline.open?.toFixed(2) || '0.00' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">收盘价</span>
-            <span class="stat-value">${{ latestKline.close?.toFixed(2) || '0.00' }}</span>
+          <div class="info-extra">
+            <span class="info-item" :class="getChangeClass(latestChange)">
+              {{ formatChange(latestChange) }}
+            </span>
+            <span class="info-item">
+              振幅{{ formatAmplitude(latestKline) }}
+            </span>
           </div>
         </div>
       </div>
@@ -213,6 +213,32 @@ const formatChange = (change: number | undefined | null) => {
 const getChangeClass = (change: number | undefined | null) => {
   if (change === undefined || change === null || isNaN(change)) return ''
   return change >= 0 ? 'change-up' : 'change-down'
+}
+
+// 计算最新K线的涨跌幅
+const latestChange = computed(() => {
+  if (klineData.value.length === 0) return null
+  const kline = klineData.value[klineData.value.length - 1]
+  if (!kline.open || !kline.close) return null
+  return ((kline.close - kline.open) / kline.open) * 100
+})
+
+// 格式化时间
+const formatInfoTime = (timestamp: number | undefined) => {
+  if (!timestamp) return '--'
+  const date = new Date(timestamp)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${month}-${day} ${hours}:${minutes}`
+}
+
+// 格式化振幅
+const formatAmplitude = (kline: any) => {
+  if (!kline.high || !kline.low || !kline.open) return '--'
+  const amplitude = ((kline.high - kline.low) / kline.open) * 100
+  return `${amplitude.toFixed(2)}%`
 }
 
 // 保存用户的缩放状态
@@ -371,14 +397,12 @@ const chartOption = computed(() => {
         start: savedDataZoom.value ? savedDataZoom.value.start : 80,
         end: savedDataZoom.value ? savedDataZoom.value.end : 100,
         zoomOnMouseWheel: true,
-        moveOnMouseMove: false,
-        moveOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: false,
         preventDefaultMouseMove: false,
         disabled: false,
         zoomLock: false,
-        throttle: 0,
-        minValueSpan: 5,
-        maxValueSpan: 100
+        throttle: 0
       }
     ],
     series: [
@@ -898,36 +922,65 @@ onUnmounted(() => {
   100% { transform: rotate(360deg); }
 }
 
-.dialog-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.kline-info-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 10px 12px;
   background: #f8f9fa;
   border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 10px;
 }
 
-.stat-item {
-  text-align: center;
-  padding: 12px;
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.stat-label {
-  display: block;
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 18px;
+.info-symbol {
   font-weight: bold;
   color: #303133;
+  font-size: 14px;
+}
+
+.info-time {
+  color: #909399;
+}
+
+.info-prices {
+  display: flex;
+  gap: 10px;
+}
+
+.info-item {
+  color: #606266;
+}
+
+.info-value {
+  font-weight: 600;
   font-family: 'Monaco', monospace;
+  margin-left: 2px;
+}
+
+.info-extra {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.text-up {
+  color: #f56c6c;
+}
+
+.text-down {
+  color: #67c23a;
+}
+
+.change-up {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.change-down {
+  color: #67c23a;
+  font-weight: 600;
 }
 
 /* 响应式设计 */
