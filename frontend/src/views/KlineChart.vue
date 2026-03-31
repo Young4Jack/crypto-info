@@ -164,7 +164,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { klinesApi, watchlistApi } from '../api'
+import { klinesApi, watchlistApi, systemSettingsApi } from '../api'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CandlestickChart, BarChart, LineChart } from 'echarts/charts'
@@ -202,6 +202,8 @@ const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
+let refreshInterval = 5 // 默认5秒
 
 // 计算属性
 const intervalLabel = computed(() => {
@@ -445,13 +447,57 @@ const stopAutoRefresh = () => {
   }
 }
 
-onMounted(() => {
+// 价格实时刷新（使用动态间隔）
+const startPriceRefresh = () => {
+  priceRefreshTimer = setInterval(() => {
+    loadWatchlistBackground()
+  }, refreshInterval * 1000) // 使用动态获取的刷新间隔
+}
+
+const stopPriceRefresh = () => {
+  if (priceRefreshTimer) {
+    clearInterval(priceRefreshTimer)
+    priceRefreshTimer = null
+  }
+}
+
+// 后台加载关注列表（不显示loading）
+const loadWatchlistBackground = async () => {
+  try {
+    const response = await watchlistApi.getPublic()
+    watchlistData.value = response.data
+  } catch (error) {
+    console.error('后台刷新价格失败:', error)
+  }
+}
+
+// 加载系统设置获取刷新间隔
+const loadPublicSettings = async (): Promise<number> => {
+  try {
+    const response = await systemSettingsApi.getPublicSystemSetting()
+    if (response.data) {
+      // 返回后端配置的时间，保底 5 秒
+      return response.data.refresh_interval || 5
+    }
+  } catch (error) {
+    console.error('加载配置失败，使用默认 5 秒')
+  }
+  return 5
+}
+
+onMounted(async () => {
   loadWatchlist()
+  
+  // 获取动态刷新间隔
+  refreshInterval = await loadPublicSettings()
+  
   startAutoRefresh()
+  startPriceRefresh()
 })
 
 onUnmounted(() => {
   stopAutoRefresh()
+  stopPriceRefresh()
 })
 </script>
 
@@ -469,7 +515,7 @@ onUnmounted(() => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+.header-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 .header-left h1 { margin: 0; font-size: 22px; color: #409eff; font-weight: bold; letter-spacing: 0.5px; }
 .header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
 
