@@ -448,14 +448,18 @@ const loadWatchlist = async () => {
     ])
     
     const data = watchlistRes.data
-    const klinesData = klinesRes.data?.data || {}
+    console.log('K线API完整响应:', klinesRes)
+    console.log('K线API data:', klinesRes.data)
     
+    const klinesData = klinesRes.data?.data || {}
     console.log('涨跌幅数据:', klinesData)
     
     // 合并涨跌幅数据
     for (const item of data) {
       const symbolData = klinesData[item.crypto_symbol]
       const symbolKlines = symbolData?.klines || []
+      
+      console.log(`${item.crypto_symbol} klines数量:`, symbolKlines.length)
       
       if (symbolKlines.length >= 2) {
         // 昨天的涨跌幅
@@ -472,8 +476,6 @@ const loadWatchlist = async () => {
       } else {
         item.change_24h = null
       }
-      
-      console.log(`${item.crypto_symbol}: ${item.change_24h}%`)
     }
     
     watchlistData.value = data
