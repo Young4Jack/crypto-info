@@ -45,52 +45,49 @@
       </el-card>
     </el-main>
 
-    <!-- K线弹窗 -->
-    <el-dialog 
-      v-model="klineDialogVisible" 
-      :title="`${selectedSymbol} - K线图`"
-      width="90%"
-      top="5vh"
-      :close-on-click-modal="true"
-      @close="closeKlineDialog"
-    >
+    <div class="kline-dialog-overlay" v-if="klineDialogVisible" @click.self="closeKlineDialog">
       <div class="kline-dialog-content">
-        <!-- 控制面板 -->
-        <div class="dialog-control-row">
-          <div class="dialog-control-item">
-            <label>时间周期：</label>
-              <el-radio-group v-model="selectedInterval" @change="loadKlineData">
-                <el-radio-button label="1m">1分钟</el-radio-button>
-                <el-radio-button label="5m">5分钟</el-radio-button>
-                <el-radio-button label="15m">15分钟</el-radio-button>
-                <el-radio-button label="1h">1小时</el-radio-button>
-                <el-radio-button label="4h">4小时</el-radio-button>
-                <el-radio-button label="1d">1天</el-radio-button>
-                <el-radio-button label="1w">1周</el-radio-button>
-                <el-radio-button label="1M">1月</el-radio-button>
-              </el-radio-group>
+
+        <div class="kline-header-toolbar">
+          
+          <div class="realtime-data-bar">
+            {{ formattedRealtimeInfo }}
+          </div>
+
+          <div class="header-main">
+            <div class="symbol-info">
+              <h2>{{ selectedSymbol }}</h2>
+              <span class="crypto-name">{{ selectedCryptoName }}</span>
+            </div>
+            
+            <div class="price-info" :class="getChangeClass(latestChange)">
+              <span class="current-price">{{ latestKline?.close?.toFixed(4) || '--' }}</span>
+              <span class="change-percent">{{ formatChange(latestChange) }}</span>
+            </div>
+
+            <button class="close-btn" @click="closeKlineDialog">×</button>
+          </div>
+
+          <div class="header-bottom">
+            <div class="custom-interval-selector">
+              <span 
+                v-for="interval in ['1m', '5m', '15m', '1h', '4h', '1d', '1w', '1M']" 
+                :key="interval"
+                class="interval-btn"
+                :class="{ active: selectedInterval === interval }"
+                @click="changeInterval(interval)"
+              >
+                {{ intervalLabelMap[interval] || interval }}
+              </span>
+            </div>
           </div>
           
-          <div class="dialog-control-item">
-            <label>数据数量：</label>
-            <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 100px">
-              <el-option label="100条" :value="100" />
-              <el-option label="200条" :value="200" />
-              <el-option label="500条" :value="500" />
-              <el-option label="1000条" :value="1000" />
-            </el-select>
-            <el-button @click="loadKlineData" :loading="loading" type="primary" size="small" class="refresh-btn">
-              <el-icon v-if="!loading"><Refresh /></el-icon>
-              <span v-if="!loading">刷新</span>
-            </el-button>
-          </div>
         </div>
 
-        <!-- K线图 -->
-        <div class="dialog-chart-container">
+        <div class="kline-chart-container">
           <v-chart 
             :option="chartOption" 
-            style="height: 380px;"
+            style="height: 100%; width: 100%;"
             :notMerge="true"
             :autoresize="true"
             @datazoom="onDataZoom"
@@ -99,23 +96,13 @@
             <div class="loading-spinner"></div>
           </div>
           <div v-if="!loading && klineData.length === 0" class="empty-placeholder">
-            <el-empty description="暂无K线数据" />
+            <span>暂无K线数据</span>
           </div>
         </div>
 
-        <!-- 当前K线信息 -->
-        <div class="kline-info-bar" v-if="klineData.length > 0">
-          <span class="info-symbol">{{ selectedSymbol }}</span>
-          <span class="info-time">{{ formatInfoTime(latestKline.open_time) }}</span>
-          <span class="info-item">开<span class="info-value">{{ latestKline.open?.toFixed(2) }}</span></span>
-          <span class="info-item">高<span class="info-value text-up">{{ latestKline.high?.toFixed(2) }}</span></span>
-          <span class="info-item">低<span class="info-value text-down">{{ latestKline.low?.toFixed(2) }}</span></span>
-          <span class="info-item">收<span class="info-value">{{ latestKline.close?.toFixed(2) }}</span></span>
-          <span class="info-item" :class="getChangeClass(latestChange)">{{ formatChange(latestChange) }}</span>
-          <span class="info-item">振幅{{ formatAmplitude(latestKline) }}</span>
-        </div>
       </div>
-    </el-dialog>
+    </div>
+
   </div>
 </template>
 
@@ -156,7 +143,7 @@ const router = useRouter()
 const loading = ref(false)
 const loadingWatchlist = ref(false)
 const selectedSymbol = ref('')
-const selectedInterval = ref('1d')
+const selectedInterval = ref('1m')
 const selectedLimit = ref(100)
 const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
@@ -164,9 +151,15 @@ const klineDialogVisible = ref(false)
 const selectedCryptoName = ref('')
 const savedDataZoom = ref<{ start: number; end: number } | null>(null)
 
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+let klineWs: WebSocket | null = null;
 let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
 let refreshInterval = 5 // 默认5秒
+
+const intervalLabelMap: Record<string, string> = {
+  '1m': '1分钟', '5m': '5分钟', '15m': '15分钟',
+  '1h': '1小时', '4h': '4小时', 
+  '1d': '日线', '1w': '周线', '1M': '月线'
+}
 
 // 计算属性
 const intervalLabel = computed(() => {
@@ -206,6 +199,28 @@ const latestChange = computed(() => {
   if (!kline.open || !kline.close) return null
   return ((kline.close - kline.open) / kline.open) * 100
 })
+
+// 按照指定格式生成的顶部实时数据流
+const formattedRealtimeInfo = computed(() => {
+  if (klineData.value.length === 0) return '等待数据加载...';
+  const data = klineData.value[klineData.value.length - 1]; // 取最后一根K线
+  
+  const date = new Date(data.open_time);
+  const timeStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  
+  const open = parseFloat(data.open).toFixed(2);
+  const high = parseFloat(data.high).toFixed(2);
+  const low = parseFloat(data.low).toFixed(2);
+  const close = parseFloat(data.close).toFixed(2);
+  
+  const changeObj = latestChange.value;
+  const changeStr = changeObj !== null ? (changeObj >= 0 ? `+${changeObj.toFixed(2)}%` : `${changeObj.toFixed(2)}%`) : '--%';
+  
+  const amplitude = data.open ? (((data.high - data.low) / data.open) * 100).toFixed(2) : '--';
+  
+  // 格式：BTC/USDT 2025-11-19 08:00 开92960.83 高92980.22 低88608.00 收91554.96 涨幅/跌幅-1.51% 振幅4.70%
+  return `${selectedSymbol.value.replace('USDT', '/USDT')} ${timeStr} 开${open} 高${high} 低${low} 收${close} 涨跌幅${changeStr} 振幅${amplitude}%`;
+});
 
 // 格式化时间
 const formatInfoTime = (timestamp: number | undefined) => {
@@ -294,23 +309,32 @@ const chartOption = computed(() => {
     },
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      },
+      axisPointer: { type: 'cross' },
       formatter: (params: any) => {
         const kline = params[0]
         if (!kline) return ''
         
         const data = klineData.value[kline.dataIndex]
         const timeStr = formatTime(data.open_time)
+        
+        // 动态计算该周期的涨跌幅和振幅
+        const change = (((data.close - data.open) / data.open) * 100).toFixed(2)
+        const amplitude = (((data.high - data.low) / data.open) * 100).toFixed(2)
+        const color = data.close >= data.open ? '#f56c6c' : '#67c23a'
+        const sign = data.close >= data.open ? '+' : ''
+        
         return `
-          <div style="font-family: Monaco, monospace;">
-            <div><strong>${timeStr}</strong></div>
-            <div>开盘: <span style="color: #409eff;">$${data.open.toFixed(2)}</span></div>
-            <div>收盘: <span style="color: ${data.close >= data.open ? '#f56c6c' : '#67c23a'};">$${data.close.toFixed(2)}</span></div>
-            <div>最高: <span style="color: #f56c6c;">$${data.high.toFixed(2)}</span></div>
-            <div>最低: <span style="color: #67c23a;">$${data.low.toFixed(2)}</span></div>
-            <div>成交量: ${data.volume.toFixed(2)}</div>
+          <div style="font-family: Monaco, monospace; font-size: 12px; min-width: 140px;">
+            <div style="color: #909399; margin-bottom: 8px; font-weight: bold;">${timeStr}</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>开盘</span> <span>${data.open.toFixed(4)}</span></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最高</span> <span style="color: #f56c6c;">${data.high.toFixed(4)}</span></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最低</span> <span style="color: #67c23a;">${data.low.toFixed(4)}</span></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>收盘</span> <span style="color: ${color}; font-weight: bold;">${data.close.toFixed(4)}</span></div>
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid #ebeef5; margin-top: 6px; padding-top: 6px;">
+              <span>涨跌幅</span> <span style="color: ${color};">${sign}${change}%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>振幅</span> <span>${amplitude}%</span></div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>成交量</span> <span>${data.volume.toFixed(2)}</span></div>
           </div>
         `
       }
@@ -482,11 +506,18 @@ const openKlineDialog = async (item: any) => {
   selectedSymbol.value = item.crypto_symbol
   selectedCryptoName.value = item.crypto_name
   klineDialogVisible.value = true
+  
   await loadKlineData()
+  // 移除周期限制，无论什么周期均连接 WebSocket 以更新实时现价
+  connectWebSocket(selectedSymbol.value)
 }
 
 // 关闭K线弹窗
 const closeKlineDialog = () => {
+  if (klineWs) {
+    klineWs.close()
+    klineWs = null
+  }
   klineDialogVisible.value = false
   selectedSymbol.value = ''
   selectedCryptoName.value = ''
@@ -530,25 +561,71 @@ const loadKlineData = async (silent = false) => {
   }
 }
 
+// 周期切换核心逻辑
+const changeInterval = async (newInterval: string) => {
+  if (selectedInterval.value === newInterval) return; 
+  selectedInterval.value = newInterval;
+  
+  if (klineWs) {
+    klineWs.close();
+    klineWs = null;
+  }
+  await loadKlineData();
+  // 移除周期限制，切换后重新连接
+  connectWebSocket(selectedSymbol.value);
+}
+
+// 建立WebSocket连接并处理实时数据（包含防崩溃与强制重绘）
+const connectWebSocket = (symbol: string) => {
+  if (klineWs) klineWs.close();
+  
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname;
+  const wsUrl = `${protocol}//${host}:${__BACKEND_PORT__}/api/klines/ws/${symbol}`;
+
+  klineWs = new WebSocket(wsUrl);
+
+
+  klineWs.onmessage = (event) => {
+    try {
+      if (!event.data || event.data === 'undefined') return;
+      const newKline = JSON.parse(event.data);
+      if (!newKline || typeof newKline.close === 'undefined') return;
+      if (klineData.value.length === 0) return;
+      
+      const lastIndex = klineData.value.length - 1;
+      const lastKline = klineData.value[lastIndex];
+      const currentPrice = parseFloat(newKline.close);
+
+      // 解构生成新数组，强制触发 Vue 和 ECharts 的深度响应式渲染
+      const newData = [...klineData.value];
+
+      // 无论当前处于1d还是1h周期，强制更新最后一根K线的收盘价与极值
+      newData[lastIndex] = { 
+        ...lastKline, 
+        close: currentPrice,
+        high: Math.max(lastKline.high, currentPrice),
+        low: Math.min(lastKline.low, currentPrice)
+      };
+
+      // 仅当周期为1m且产生新的分钟线时，才向图表追加新柱子
+      if (selectedInterval.value === '1m' && newKline.open_time > lastKline.open_time) {
+        newData.push(newKline);
+        if (newData.length > selectedLimit.value) newData.shift();
+      }
+
+      // 内存地址覆盖
+      klineData.value = newData;
+    } catch (error) {
+      // 拦截非标准 JSON，防止前端线程崩溃
+    }
+  };
+};
+
 const goToLogin = () => {
   router.push('/login')
 }
 
-// 自动刷新（使用动态间隔）
-const startAutoRefresh = () => {
-  refreshTimer = setInterval(() => {
-    if (selectedSymbol.value) {
-      loadKlineData(true) // 无感刷新
-    }
-  }, refreshInterval * 1000) // 使用配置的刷新间隔
-}
-
-const stopAutoRefresh = () => {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-    refreshTimer = null
-  }
-}
 
 // 价格实时刷新（使用动态间隔）
 const startPriceRefresh = () => {
@@ -605,14 +682,17 @@ onMounted(async () => {
   // 获取动态刷新间隔
   refreshInterval = await loadPublicSettings()
   
-  startAutoRefresh()
   startPriceRefresh()
 })
 
 onUnmounted(() => {
-  stopAutoRefresh()
+  // stopAutoRefresh() // <- 删掉这行
   stopPriceRefresh()
+  if (klineWs) {
+    klineWs.close()
+  }
 })
+
 </script>
 
 <style scoped>
@@ -1177,5 +1257,213 @@ onUnmounted(() => {
   .stat-value {
     font-size: 16px;
   }
+}
+
+/* ==========================================
+   K线弹窗亮色主题样式
+========================================== */
+.kline-dialog-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.kline-dialog-content {
+  width: 90vw;
+  max-width: 1200px;
+  height: 80vh;
+  background-color: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+/* 头部信息区 */
+.kline-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #ebeef5;
+  position: relative;
+}
+
+.symbol-info h2 {
+  color: #303133;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Monaco', monospace;
+}
+
+.crypto-name {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 2px;
+  display: block;
+}
+
+.price-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-left: 40px;
+}
+
+.current-price {
+  font-size: 26px;
+  font-weight: bold;
+  font-family: 'Monaco', monospace;
+  color: #303133;
+}
+
+.change-percent {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-btn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #909399;
+  font-size: 28px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #409eff;
+}
+
+/* 控制工具栏 */
+.kline-toolbar {
+  padding: 0 24px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.interval-selector {
+  display: flex;
+  gap: 24px;
+}
+
+.interval-btn {
+  color: #606266;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 12px 0;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.interval-btn:hover {
+  color: #303133;
+}
+
+.interval-btn.active {
+  color: #409eff;
+}
+
+.interval-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #409eff;
+}
+
+/* 核心绘图区 */
+.kline-chart-container {
+  flex: 1;
+  position: relative;
+  background-color: #ffffff;
+  padding: 10px 0;
+}
+
+.empty-placeholder {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background: #ffffff;
+  z-index: 1;
+}
+
+.loading-overlay {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* ========== 头部重构样式 ========== */
+.kline-header-toolbar {
+  padding: 16px 24px 0;
+  background-color: #ffffff;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-middle {
+  margin-top: 4px;
+}
+
+.header-bottom {
+  margin-top: 16px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+.header-bottom::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.custom-interval-selector {
+  display: flex;
+  gap: 24px;
+  padding-bottom: 8px;
+}
+
+.interval-btn {
+  font-size: 14px;
+  color: #909399;
+  cursor: pointer;
+  font-weight: 500;
+  padding-bottom: 4px;
+  transition: all 0.2s;
+}
+
+.interval-btn:hover {
+  color: #303133;
+}
+
+.interval-btn.active {
+  color: #409eff;
+  font-weight: bold;
+  border-bottom: 2px solid #409eff;
+}
+
+/* 覆盖原有的绝对定位 close-btn */
+.kline-header-toolbar .close-btn {
+  position: static;
+  transform: none;
 }
 </style>

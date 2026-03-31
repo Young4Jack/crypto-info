@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import fs from 'fs'
 import path from 'path'
+import fs from 'fs'
 
-// 读取后端 config.json 中的端口配置
 let frontendPort = 5173;
 let backendPort = 8000;
 
@@ -23,22 +22,23 @@ try {
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __BACKEND_PORT__: JSON.stringify(backendPort),
+  },
   server: {
     host: '0.0.0.0',
     port: frontendPort,
     cors: true,
     strictPort: false,
     hmr: {
-      host: '0.0.0.0'
+      host: 'localhost'
     },
-    // 【核心新增：Vite 本地反向代理配置】
     proxy: {
       '/api': {
-        // 将所有以 /api 开头的请求，偷偷转发给本地运行的 Python 后端
         target: `http://127.0.0.1:${backendPort}`, 
         changeOrigin: true,
-        // 重写路径：把 '/api' 抹除掉，防止后端路由匹配失败
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        ws: true  // 核心新增：开启 WebSocket 代理转发
       }
     }
   }

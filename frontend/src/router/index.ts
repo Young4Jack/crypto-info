@@ -56,16 +56,15 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to, _from) => {
   const token = localStorage.getItem('token')
-  
+
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    return '/login'
   } else if (to.path === '/login' && token) {
-    next('/dashboard')
-  } else {
-    next()
+    return '/dashboard'
   }
 })
+
 
 export default router
