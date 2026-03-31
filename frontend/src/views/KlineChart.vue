@@ -64,14 +64,16 @@
         <div class="dialog-control-row">
           <div class="dialog-control-item">
             <label>时间周期：</label>
-            <el-radio-group v-model="selectedInterval" @change="loadKlineData">
-              <el-radio-button label="1m">1分钟</el-radio-button>
-              <el-radio-button label="5m">5分钟</el-radio-button>
-              <el-radio-button label="15m">15分钟</el-radio-button>
-              <el-radio-button label="1h">1小时</el-radio-button>
-              <el-radio-button label="4h">4小时</el-radio-button>
-              <el-radio-button label="1d">1天</el-radio-button>
-            </el-radio-group>
+              <el-radio-group v-model="selectedInterval" @change="loadKlineData">
+                <el-radio-button label="1m">1分钟</el-radio-button>
+                <el-radio-button label="5m">5分钟</el-radio-button>
+                <el-radio-button label="15m">15分钟</el-radio-button>
+                <el-radio-button label="1h">1小时</el-radio-button>
+                <el-radio-button label="4h">4小时</el-radio-button>
+                <el-radio-button label="1d">1天</el-radio-button>
+                <el-radio-button label="1w">1周</el-radio-button>
+                <el-radio-button label="1M">1月</el-radio-button>
+              </el-radio-group>
           </div>
           
           <div class="dialog-control-item">
@@ -819,21 +821,40 @@ onUnmounted(() => {
   }
   
   .watchlist-grid {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
   
   .watchlist-item {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .item-left {
+    gap: 6px;
+    width: 100%;
+  }
+  
+  .item-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .symbol-tag {
+    font-size: 11px;
+    padding: 2px 6px;
   }
   
   .item-name {
     font-size: 12px;
+    color: #909399;
   }
   
   .price-text {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 600;
   }
   
   .dialog-control-row {
