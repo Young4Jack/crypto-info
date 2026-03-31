@@ -371,12 +371,14 @@ const chartOption = computed(() => {
         start: savedDataZoom.value ? savedDataZoom.value.start : 80,
         end: savedDataZoom.value ? savedDataZoom.value.end : 100,
         zoomOnMouseWheel: true,
-        moveOnMouseMove: true,
+        moveOnMouseMove: false,
         moveOnMouseWheel: true,
-        preventDefaultMouseMove: true,
+        preventDefaultMouseMove: false,
         disabled: false,
         zoomLock: false,
-        throttle: 0
+        throttle: 0,
+        minValueSpan: 5,
+        maxValueSpan: 100
       }
     ],
     series: [
@@ -424,20 +426,30 @@ const loadWatchlist = async () => {
     const data = watchlistRes.data
     const klinesData = klinesRes.data?.data || {}
     
+    console.log('涨跌幅数据:', klinesData)
+    
     // 合并涨跌幅数据
     for (const item of data) {
-      const symbolKlines = klinesData[item.crypto_symbol]?.klines || []
+      const symbolData = klinesData[item.crypto_symbol]
+      const symbolKlines = symbolData?.klines || []
+      
       if (symbolKlines.length >= 2) {
         // 昨天的涨跌幅
         const yesterday = symbolKlines[symbolKlines.length - 2]
-        item.change_24h = ((yesterday.close - yesterday.open) / yesterday.open) * 100
+        const open = parseFloat(yesterday.open)
+        const close = parseFloat(yesterday.close)
+        item.change_24h = ((close - open) / open) * 100
       } else if (symbolKlines.length === 1) {
         // 今天实时涨跌幅
         const today = symbolKlines[0]
-        item.change_24h = ((today.close - today.open) / today.open) * 100
+        const open = parseFloat(today.open)
+        const close = parseFloat(today.close)
+        item.change_24h = ((close - open) / open) * 100
       } else {
         item.change_24h = null
       }
+      
+      console.log(`${item.crypto_symbol}: ${item.change_24h}%`)
     }
     
     watchlistData.value = data
@@ -933,12 +945,19 @@ onUnmounted(() => {
   }
   
   :deep(.el-dialog) {
-    width: 95% !important;
-    margin: 0 auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
+  
+  :deep(.el-dialog__header) {
+    padding: 10px 12px !important;
+    margin: 0 !important;
   }
   
   :deep(.el-dialog__body) {
-    padding: 10px !important;
+    padding: 0 8px 10px !important;
   }
   
   .kline-dialog-content {
@@ -948,10 +967,22 @@ onUnmounted(() => {
   .dialog-chart-container {
     width: 100%;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
   }
   
   .dialog-chart-container :deep(canvas) {
     width: 100% !important;
+  }
+  
+  .dialog-control-row {
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .dialog-stats {
+    padding: 8px !important;
+    margin: 0 !important;
   }
   
   .header-content {
