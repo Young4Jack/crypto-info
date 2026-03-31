@@ -3,6 +3,7 @@ from fastapi import APIRouter, Query
 from typing import Optional
 from app.services.price_service_refactored import fetch_kline_data
 from app.models.watchlist import Watchlist
+from app.models.cryptocurrency import Cryptocurrency
 from app.database import SessionLocal
 import logging
 
@@ -46,22 +47,23 @@ async def get_watchlist_klines(
     """
     db = SessionLocal()
     try:
-        # 获取关注列表
-        watchlist = db.query(Watchlist).all()
+        # 获取关注列表，关联查询币种信息
+        watchlist = db.query(Watchlist).join(Cryptocurrency).all()
         
         result = {}
         for item in watchlist:
-            symbol = item.crypto_symbol
+            symbol = item.cryptocurrency.symbol
+            name = item.cryptocurrency.name
             try:
                 klines = await fetch_kline_data(symbol, interval, limit)
                 result[symbol] = {
-                    "name": item.crypto_name,
+                    "name": name,
                     "klines": klines
                 }
             except Exception as e:
                 logger.error(f"获取 {symbol} K线数据失败: {e}")
                 result[symbol] = {
-                    "name": item.crypto_name,
+                    "name": name,
                     "klines": [],
                     "error": str(e)
                 }
