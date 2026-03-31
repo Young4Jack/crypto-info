@@ -27,8 +27,7 @@
             v-for="item in watchlistData" 
             :key="item.crypto_symbol"
             class="watchlist-item"
-            :class="{ active: selectedSymbol === item.crypto_symbol }"
-            @click="selectSymbol(item.crypto_symbol)"
+            @click="openKlineDialog(item)"
           >
             <div class="item-left">
               <el-tag effect="dark" round size="small" class="symbol-tag">{{ item.crypto_symbol }}</el-tag>
@@ -150,13 +149,87 @@
       </div>
 
       <!-- 提示信息 -->
-      <el-card v-else class="tip-card" shadow="never">
+      <el-card class="tip-card" shadow="never">
         <div class="tip-content">
           <div class="tip-icon">👆</div>
           <div class="tip-text">点击上方币种查看K线图</div>
         </div>
       </el-card>
     </el-main>
+
+    <!-- K线弹窗 -->
+    <el-dialog 
+      v-model="klineDialogVisible" 
+      :title="`${selectedSymbol} - K线图`"
+      width="90%"
+      top="5vh"
+      :close-on-click-modal="true"
+      @close="closeKlineDialog"
+    >
+      <div class="kline-dialog-content">
+        <!-- 控制面板 -->
+        <div class="dialog-control-row">
+          <div class="dialog-control-item">
+            <label>时间周期：</label>
+            <el-radio-group v-model="selectedInterval" @change="loadKlineData">
+              <el-radio-button label="1m">1分钟</el-radio-button>
+              <el-radio-button label="5m">5分钟</el-radio-button>
+              <el-radio-button label="15m">15分钟</el-radio-button>
+              <el-radio-button label="1h">1小时</el-radio-button>
+              <el-radio-button label="4h">4小时</el-radio-button>
+              <el-radio-button label="1d">1天</el-radio-button>
+            </el-radio-group>
+          </div>
+          
+          <div class="dialog-control-item">
+            <label>数据数量：</label>
+            <el-select v-model="selectedLimit" @change="loadKlineData" style="width: 120px">
+              <el-option label="100条" :value="100" />
+              <el-option label="200条" :value="200" />
+              <el-option label="500条" :value="500" />
+              <el-option label="1000条" :value="1000" />
+            </el-select>
+          </div>
+          
+          <div class="dialog-control-item">
+            <el-button @click="loadKlineData" :loading="loading" type="primary" size="small">
+              🔄 刷新
+            </el-button>
+          </div>
+        </div>
+
+        <!-- K线图 -->
+        <div class="dialog-chart-container" v-loading="loading">
+          <v-chart 
+            v-if="klineData.length > 0" 
+            :option="chartOption" 
+            autoresize 
+            style="height: 400px;"
+          />
+          <el-empty v-else-if="!loading" description="暂无K线数据" />
+        </div>
+
+        <!-- 数据统计 -->
+        <div class="dialog-stats" v-if="klineData.length > 0">
+          <div class="stat-item">
+            <span class="stat-label">最高价</span>
+            <span class="stat-value text-up">${{ latestKline.high?.toFixed(2) || '0.00' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">最低价</span>
+            <span class="stat-value text-down">${{ latestKline.low?.toFixed(2) || '0.00' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">开盘价</span>
+            <span class="stat-value">${{ latestKline.open?.toFixed(2) || '0.00' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">收盘价</span>
+            <span class="stat-value">${{ latestKline.close?.toFixed(2) || '0.00' }}</span>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -200,6 +273,8 @@ const selectedInterval = ref('1h')
 const selectedLimit = ref(200)
 const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
+const klineDialogVisible = ref(false)
+const selectedCryptoName = ref('')
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
@@ -386,6 +461,22 @@ const selectSymbol = (symbol: string) => {
   loadKlineData()
 }
 
+// 打开K线弹窗
+const openKlineDialog = async (item: any) => {
+  selectedSymbol.value = item.crypto_symbol
+  selectedCryptoName.value = item.crypto_name
+  klineDialogVisible.value = true
+  await loadKlineData()
+}
+
+// 关闭K线弹窗
+const closeKlineDialog = () => {
+  klineDialogVisible.value = false
+  selectedSymbol.value = ''
+  selectedCryptoName.value = ''
+  klineData.value = []
+}
+
 // 关闭K线
 const closeKline = () => {
   selectedSymbol.value = ''
@@ -563,7 +654,7 @@ onUnmounted(() => {
 
 .watchlist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -733,6 +824,72 @@ onUnmounted(() => {
 .tip-text {
   font-size: 16px;
   color: #909399;
+}
+
+/* K线弹窗样式 */
+.kline-dialog-content {
+  min-height: 500px;
+}
+
+.dialog-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.dialog-control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog-control-item label {
+  font-weight: 500;
+  color: #606266;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.dialog-chart-container {
+  min-height: 400px;
+  margin-bottom: 20px;
+}
+
+.dialog-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+  font-family: 'Monaco', monospace;
 }
 
 /* 响应式设计 */
