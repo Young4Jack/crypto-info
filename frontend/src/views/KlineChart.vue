@@ -43,14 +43,6 @@
           <el-empty v-if="!loadingWatchlist && watchlistData.length === 0" description="暂无关注数据" />
         </div>
       </el-card>
-
-      <!-- 提示信息 -->
-      <el-card class="tip-card" shadow="never">
-        <div class="tip-content">
-          <div class="tip-icon">👆</div>
-          <div class="tip-text">点击上方币种查看K线图</div>
-        </div>
-      </el-card>
     </el-main>
 
     <!-- K线弹窗 -->
@@ -98,7 +90,7 @@
         <div class="dialog-chart-container">
           <v-chart 
             :option="chartOption" 
-            style="height: 350px;"
+            style="height: 380px;"
             :notMerge="true"
             :autoresize="true"
             @datazoom="onDataZoom"
@@ -113,22 +105,14 @@
 
         <!-- 当前K线信息 -->
         <div class="kline-info-bar" v-if="klineData.length > 0">
-          <div class="info-symbol">{{ selectedSymbol }}</div>
-          <div class="info-time">{{ formatInfoTime(latestKline.open_time) }}</div>
-          <div class="info-prices">
-            <span class="info-item">开<span class="info-value">{{ latestKline.open?.toFixed(2) }}</span></span>
-            <span class="info-item">高<span class="info-value text-up">{{ latestKline.high?.toFixed(2) }}</span></span>
-            <span class="info-item">低<span class="info-value text-down">{{ latestKline.low?.toFixed(2) }}</span></span>
-            <span class="info-item">收<span class="info-value">{{ latestKline.close?.toFixed(2) }}</span></span>
-          </div>
-          <div class="info-extra">
-            <span class="info-item" :class="getChangeClass(latestChange)">
-              {{ formatChange(latestChange) }}
-            </span>
-            <span class="info-item">
-              振幅{{ formatAmplitude(latestKline) }}
-            </span>
-          </div>
+          <span class="info-symbol">{{ selectedSymbol }}</span>
+          <span class="info-time">{{ formatInfoTime(latestKline.open_time) }}</span>
+          <span class="info-item">开<span class="info-value">{{ latestKline.open?.toFixed(2) }}</span></span>
+          <span class="info-item">高<span class="info-value text-up">{{ latestKline.high?.toFixed(2) }}</span></span>
+          <span class="info-item">低<span class="info-value text-down">{{ latestKline.low?.toFixed(2) }}</span></span>
+          <span class="info-item">收<span class="info-value">{{ latestKline.close?.toFixed(2) }}</span></span>
+          <span class="info-item" :class="getChangeClass(latestChange)">{{ formatChange(latestChange) }}</span>
+          <span class="info-item">振幅{{ formatAmplitude(latestKline) }}</span>
         </div>
       </div>
     </el-dialog>
@@ -583,8 +567,36 @@ const stopPriceRefresh = () => {
 // 后台加载关注列表（不显示loading）
 const loadWatchlistBackground = async () => {
   try {
-    const response = await watchlistApi.getPublic()
-    watchlistData.value = response.data
+    // 并行获取关注列表和涨跌幅数据
+    const [watchlistRes, klinesRes] = await Promise.all([
+      watchlistApi.getPublic(),
+      klinesApi.getWatchlistKlines('1d', 2)
+    ])
+    
+    const data = watchlistRes.data
+    const klinesData = klinesRes.data?.data || {}
+    
+    // 合并涨跌幅数据
+    for (const item of data) {
+      const symbolData = klinesData[item.crypto_symbol]
+      const symbolKlines = symbolData?.klines || []
+      
+      if (symbolKlines.length >= 2) {
+        const yesterday = symbolKlines[symbolKlines.length - 2]
+        const open = parseFloat(yesterday.open)
+        const close = parseFloat(yesterday.close)
+        item.change_24h = ((close - open) / open) * 100
+      } else if (symbolKlines.length === 1) {
+        const today = symbolKlines[0]
+        const open = parseFloat(today.open)
+        const close = parseFloat(today.close)
+        item.change_24h = ((close - open) / open) * 100
+      } else {
+        item.change_24h = null
+      }
+    }
+    
+    watchlistData.value = data
   } catch (error) {
     console.error('后台刷新价格失败:', error)
   }
@@ -928,27 +940,23 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   background: #f8f9fa;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-bottom: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 5px;
 }
 
 .info-symbol {
   font-weight: bold;
   color: #303133;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .info-time {
   color: #909399;
-}
-
-.info-prices {
-  display: flex;
-  gap: 10px;
+  font-size: 11px;
 }
 
 .info-item {
@@ -958,13 +966,7 @@ onUnmounted(() => {
 .info-value {
   font-weight: 600;
   font-family: 'Monaco', monospace;
-  margin-left: 2px;
-}
-
-.info-extra {
-  display: flex;
-  gap: 12px;
-  margin-left: auto;
+  margin-left: 1px;
 }
 
 .text-up {
