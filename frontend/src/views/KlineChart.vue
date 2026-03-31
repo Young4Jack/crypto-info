@@ -515,9 +515,30 @@ onUnmounted(() => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.header-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-.header-left h1 { margin: 0; font-size: 22px; color: #409eff; font-weight: bold; letter-spacing: 0.5px; }
-.header-left p { margin: 6px 0 0; color: #909399; font-size: 13px; }
+.header-content { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  width: 100%; 
+}
+.header-left { 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+}
+.header-left h1 { 
+  margin: 0; 
+  font-size: 20px; 
+  color: #303133; 
+  font-weight: 600; 
+  line-height: 1.4; 
+}
+.header-left p { 
+  margin: 4px 0 0; 
+  color: #909399; 
+  font-size: 13px; 
+  line-height: 1.4; 
+}
 
 .page-main {
   padding: 20px 25px;
