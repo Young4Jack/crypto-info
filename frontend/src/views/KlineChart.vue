@@ -567,36 +567,19 @@ const stopPriceRefresh = () => {
 // 后台加载关注列表（不显示loading）
 const loadWatchlistBackground = async () => {
   try {
-    // 并行获取关注列表和涨跌幅数据
-    const [watchlistRes, klinesRes] = await Promise.all([
-      watchlistApi.getPublic(),
-      klinesApi.getWatchlistKlines('1d', 2)
-    ])
+    // 只获取关注列表，不获取涨跌幅（涨跌幅按天变化，不需要实时更新）
+    const response = await watchlistApi.getPublic()
+    const newData = response.data
     
-    const data = watchlistRes.data
-    const klinesData = klinesRes.data?.data || {}
-    
-    // 合并涨跌幅数据
-    for (const item of data) {
-      const symbolData = klinesData[item.crypto_symbol]
-      const symbolKlines = symbolData?.klines || []
-      
-      if (symbolKlines.length >= 2) {
-        const yesterday = symbolKlines[symbolKlines.length - 2]
-        const open = parseFloat(yesterday.open)
-        const close = parseFloat(yesterday.close)
-        item.change_24h = ((close - open) / open) * 100
-      } else if (symbolKlines.length === 1) {
-        const today = symbolKlines[0]
-        const open = parseFloat(today.open)
-        const close = parseFloat(today.close)
-        item.change_24h = ((close - open) / open) * 100
-      } else {
-        item.change_24h = null
+    // 保留现有的涨跌幅数据
+    for (const newItem of newData) {
+      const existingItem = watchlistData.value.find(item => item.crypto_symbol === newItem.crypto_symbol)
+      if (existingItem && existingItem.change_24h !== undefined) {
+        newItem.change_24h = existingItem.change_24h
       }
     }
     
-    watchlistData.value = data
+    watchlistData.value = newData
   } catch (error) {
     console.error('后台刷新价格失败:', error)
   }
