@@ -68,8 +68,8 @@
             <div class="data-item"><span class="label">开</span><span class="value">{{ realtimeObj.open }}</span></div>
             <div class="data-item"><span class="label">高</span><span class="value">{{ realtimeObj.high }}</span></div>
             <div class="data-item"><span class="label">低</span><span class="value">{{ realtimeObj.low }}</span></div>
-            <div class="data-item"><span class="label">收</span><span class="value" :class="realtimeObj.changePercent >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.close }}</span></div>
-            <div class="data-item"><span class="label">涨跌幅</span><span class="value" :class="realtimeObj.changePercent >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.changePercent }}%</span></div>
+            <div class="data-item"><span class="label">收</span><span class="value" :class="Number(realtimeObj.changePercent) >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.close }}</span></div>
+            <div class="data-item"><span class="label">涨跌幅</span><span class="value" :class="Number(realtimeObj.changePercent) >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.changePercent }}%</span></div>
             <div class="data-item"><span class="label">振幅</span><span class="value">{{ realtimeObj.amplitude }}%</span></div>
             <div class="data-item"><span class="label">成交量</span><span class="value">{{ realtimeObj.volume }}</span></div>
           </div>
@@ -149,7 +149,7 @@ use([
 const router = useRouter()
 
 // 获取图表实例引用
-const chartRef = ref(null)
+const chartRef = ref<any>(null)
 
 // 2. 清理面板的函数
 const clearTooltip = () => {
@@ -187,24 +187,6 @@ const intervalLabelMap: Record<string, string> = {
   '1d': '日线', '1w': '周线', '1M': '月线'
 }
 
-// 计算属性
-const intervalLabel = computed(() => {
-  const labels: Record<string, string> = {
-    '1m': '1分钟',
-    '5m': '5分钟',
-    '15m': '15分钟',
-    '1h': '1小时',
-    '4h': '4小时', 
-    '1d': '1天'
-  }
-  return labels[selectedInterval.value] || selectedInterval.value
-})
-
-const latestKline = computed(() => {
-  if (klineData.value.length === 0) return {}
-  return klineData.value[klineData.value.length - 1]
-})
-
 // 格式化涨跌幅
 const formatChange = (change: number | undefined | null) => {
   if (change === undefined || change === null || isNaN(change)) return '--'
@@ -217,14 +199,6 @@ const getChangeClass = (change: number | undefined | null) => {
   if (change === undefined || change === null || isNaN(change)) return ''
   return change >= 0 ? 'change-up' : 'change-down'
 }
-
-// 计算最新K线的涨跌幅
-const latestChange = computed(() => {
-  if (klineData.value.length === 0) return null
-  const kline = klineData.value[klineData.value.length - 1]
-  if (!kline.open || !kline.close) return null
-  return ((kline.close - kline.open) / kline.open) * 100
-})
 
 // 新增一个响应式变量，用于记录当前鼠标指着的 K 线索引
 const hoverIndex = ref(null);
@@ -268,24 +242,6 @@ const realtimeObj = computed(() => {
   };
 });
 
-// 格式化时间
-const formatInfoTime = (timestamp: number | undefined) => {
-  if (!timestamp) return '--'
-  const date = new Date(timestamp)
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${month}-${day} ${hours}:${minutes}`
-}
-
-// 格式化振幅
-const formatAmplitude = (kline: any) => {
-  if (!kline.high || !kline.low || !kline.open) return '--'
-  const amplitude = ((kline.high - kline.low) / kline.open) * 100
-  return `${amplitude.toFixed(2)}%`
-}
-
 // 保存用户的缩放状态
 const onDataZoom = (params: any) => {
   if (params.batch && params.batch.length > 0) {
@@ -309,7 +265,7 @@ const chartOption = computed(() => {
   }
 
   // 根据周期格式化时间
-  const formatTime = (timestamp) => {
+  const formatTime = (timestamp: number) => {
     const date = new Date(timestamp)
     const interval = selectedInterval.value
     
@@ -339,7 +295,7 @@ const chartOption = computed(() => {
       appendToBody: true,   // 将 tooltip 的 DOM 节点直接挂载到 <body> 层，彻底打破外部容器的 overflow 遮挡限制
       
       axisPointer: { type: 'cross' },
-      formatter: (params) => {
+      formatter: (params: any) => {
         const kline = params[0]
         if (!kline) return ''
 
@@ -409,7 +365,7 @@ const chartOption = computed(() => {
       {
         name: '成交量', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: volumeData,
         itemStyle: {
-          color: (params) => {
+          color: (params: any) => {
             const kline = klineData.value[params.dataIndex]
             return kline && kline.close >= kline.open ? '#f56c6c' : '#67c23a'
           },
