@@ -50,22 +50,28 @@
 
         <div class="kline-header-toolbar">
           
-          <div class="realtime-data-bar">
-            {{ formattedRealtimeInfo }}
-          </div>
-
           <div class="header-main">
             <div class="symbol-info">
-              <h2>{{ selectedSymbol }}</h2>
-              <span class="crypto-name">{{ selectedCryptoName }}</span>
+              <h2>
+                {{ selectedSymbol }}
+                <span class="main-interval-text">
+                  {{ selectedInterval === '1d' ? '1天' : (intervalLabelMap[selectedInterval] || selectedInterval) }}
+                </span>
+              </h2>
             </div>
             
-            <div class="price-info" :class="getChangeClass(latestChange)">
-              <span class="current-price">{{ latestKline?.close?.toFixed(4) || '--' }}</span>
-              <span class="change-percent">{{ formatChange(latestChange) }}</span>
-            </div>
-
             <button class="close-btn" @click="closeKlineDialog">×</button>
+          </div>
+
+          <div class="realtime-data-bar" v-if="realtimeObj">
+            <div class="data-item"><span class="label">时间</span><span class="value">{{ realtimeObj.time }}</span></div>
+            <div class="data-item"><span class="label">开</span><span class="value">{{ realtimeObj.open }}</span></div>
+            <div class="data-item"><span class="label">高</span><span class="value">{{ realtimeObj.high }}</span></div>
+            <div class="data-item"><span class="label">低</span><span class="value">{{ realtimeObj.low }}</span></div>
+            <div class="data-item"><span class="label">收</span><span class="value" :class="realtimeObj.changePercent >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.close }}</span></div>
+            <div class="data-item"><span class="label">涨跌幅</span><span class="value" :class="realtimeObj.changePercent >= 0 ? 'text-up' : 'text-down'">{{ realtimeObj.changePercent }}%</span></div>
+            <div class="data-item"><span class="label">振幅</span><span class="value">{{ realtimeObj.amplitude }}%</span></div>
+            <div class="data-item"><span class="label">成交量</span><span class="value">{{ realtimeObj.volume }}</span></div>
           </div>
 
           <div class="header-bottom">
@@ -84,8 +90,10 @@
           
         </div>
 
-        <div class="kline-chart-container">
+        <div class="kline-chart-container" @touchend.capture="clearTooltip" @touchcancel.capture="clearTooltip" @mouseleave="clearTooltip">
           <v-chart 
+            ref="chartRef"
+            class="chart" 
             :option="chartOption" 
             style="height: 100%; width: 100%;"
             :notMerge="true"
@@ -140,10 +148,28 @@ use([
 
 const router = useRouter()
 
+// 获取图表实例引用
+const chartRef = ref(null)
+
+// 2. 清理面板的函数
+const clearTooltip = () => {
+  // 设置极短延迟，确保覆盖掉图表引擎自身的渲染结算
+  setTimeout(() => {
+    // 顶部数据条回退到最新数据
+    hoverIndex.value = null;
+    
+    // 强制派发隐藏动作，抹除十字准星和悬浮窗
+    if (chartRef.value) {
+      chartRef.value.dispatchAction({
+        type: 'hideTip'
+      });
+    }
+  }, 10); 
+};
 const loading = ref(false)
 const loadingWatchlist = ref(false)
 const selectedSymbol = ref('')
-const selectedInterval = ref('1m')
+const selectedInterval = ref('1d')
 const selectedLimit = ref(100)
 const klineData = ref<any[]>([])
 const watchlistData = ref<any[]>([])
@@ -200,26 +226,46 @@ const latestChange = computed(() => {
   return ((kline.close - kline.open) / kline.open) * 100
 })
 
-// 按照指定格式生成的顶部实时数据流
-const formattedRealtimeInfo = computed(() => {
-  if (klineData.value.length === 0) return '等待数据加载...';
-  const data = klineData.value[klineData.value.length - 1]; // 取最后一根K线
+// 新增一个响应式变量，用于记录当前鼠标指着的 K 线索引
+const hoverIndex = ref(null);
+
+// 修改顶部数据的数据源计算逻辑
+const realtimeObj = computed(() => {
+  if (klineData.value.length === 0) return null;
   
+  // 核心判断：如果鼠标停留在图表上，就取 hoverIndex 的数据；否则取最新一根（最后一条）数据
+  const currentIndex = hoverIndex.value !== null ? hoverIndex.value : (klineData.value.length - 1);
+  const data = klineData.value[currentIndex]; 
+  
+  // 处理时间格式
   const date = new Date(data.open_time);
-  const timeStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const Y = date.getFullYear();
+  const M = String(date.getMonth() + 1).padStart(2, '0');
+  const D = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+
+  let timeStr = '';
+  if (['1d', '1w', '1M'].includes(selectedInterval.value)) {
+    timeStr = `${Y}-${M}-${D}`;
+  } else {
+    timeStr = `${M}-${D} ${h}:${m}`;
+  }
   
-  const open = parseFloat(data.open).toFixed(2);
-  const high = parseFloat(data.high).toFixed(2);
-  const low = parseFloat(data.low).toFixed(2);
-  const close = parseFloat(data.close).toFixed(2);
-  
-  const changeObj = latestChange.value;
-  const changeStr = changeObj !== null ? (changeObj >= 0 ? `+${changeObj.toFixed(2)}%` : `${changeObj.toFixed(2)}%`) : '--%';
-  
-  const amplitude = data.open ? (((data.high - data.low) / data.open) * 100).toFixed(2) : '--';
-  
-  // 格式：BTC/USDT 2025-11-19 08:00 开92960.83 高92980.22 低88608.00 收91554.96 涨幅/跌幅-1.51% 振幅4.70%
-  return `${selectedSymbol.value.replace('USDT', '/USDT')} ${timeStr} 开${open} 高${high} 低${low} 收${close} 涨跌幅${changeStr} 振幅${amplitude}%`;
+  const open = parseFloat(data.open);
+  const close = parseFloat(data.close);
+  const changePercent = open ? (((close - open) / open) * 100).toFixed(2) : '0.00';
+
+  return {
+    time: timeStr,
+    open: open.toFixed(2),
+    high: parseFloat(data.high).toFixed(2),
+    low: parseFloat(data.low).toFixed(2),
+    close: close.toFixed(2),
+    changePercent: changePercent,
+    amplitude: open ? (((parseFloat(data.high) - parseFloat(data.low)) / open) * 100).toFixed(2) : '--',
+    volume: parseFloat(data.volume).toFixed(2)
+  };
 });
 
 // 格式化时间
@@ -255,69 +301,52 @@ const chartOption = computed(() => {
   if (klineData.value.length === 0) {
     return {
       title: {
-        text: '',
-        left: 'center',
-        top: 'center',
-        textStyle: {
-          color: '#ccc',
-          fontSize: 14
-        }
+        text: '', left: 'center', top: 'center',
+        textStyle: { color: '#ccc', fontSize: 14 }
       },
       series: []
     }
   }
 
   // 根据周期格式化时间
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp) => {
     const date = new Date(timestamp)
     const interval = selectedInterval.value
     
     if (interval === '1m' || interval === '5m' || interval === '15m' || interval === '30m') {
-      // 分钟线：显示 月/日 时:分
       return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     } else if (interval === '1h' || interval === '2h' || interval === '4h' || interval === '6h' || interval === '12h') {
-      // 小时线：显示 月/日 时:00
       return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:00`
-    } else if (interval === '1d' || interval === '3d') {
-      // 天线：显示 年/月/日
-      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-    } else if (interval === '1w') {
-      // 周线：显示 年/月/日
+    } else if (interval === '1d' || interval === '3d' || interval === '1w') {
       return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
     } else if (interval === '1M') {
-      // 月线：显示 年/月
       return `${date.getFullYear()}/${date.getMonth() + 1}`
     }
     return date.toLocaleDateString('zh-CN')
   }
 
   const dates = klineData.value.map(k => formatTime(k.open_time))
-  
   const ohlcData = klineData.value.map(k => [k.open, k.close, k.low, k.high])
   const volumeData = klineData.value.map(k => k.volume)
 
   return {
-    title: {
-      text: `${selectedSymbol.value} ${intervalLabel.value}`,
-      left: 'center',
-      top: 10,
-      textStyle: {
-        color: '#303133',
-        fontSize: 14,
-        fontWeight: 600
-      }
-    },
+    title: { show: false },
     tooltip: {
       trigger: 'axis',
+      triggerOn: 'mousemove',
+      // 新增以下两行：
+      confine: true,        // 强制将 tooltip 限制在可视范围内，如果上方空间不够，它会自动翻转显示在手指下方
+      appendToBody: true,   // 将 tooltip 的 DOM 节点直接挂载到 <body> 层，彻底打破外部容器的 overflow 遮挡限制
+      
       axisPointer: { type: 'cross' },
-      formatter: (params: any) => {
+      formatter: (params) => {
         const kline = params[0]
         if (!kline) return ''
-        
+
+        hoverIndex.value = kline.dataIndex;
+
         const data = klineData.value[kline.dataIndex]
         const timeStr = formatTime(data.open_time)
-        
-        // 动态计算该周期的涨跌幅和振幅
         const change = (((data.close - data.open) / data.open) * 100).toFixed(2)
         const amplitude = (((data.high - data.low) / data.open) * 100).toFixed(2)
         const color = data.close >= data.open ? '#f56c6c' : '#67c23a'
@@ -341,104 +370,46 @@ const chartOption = computed(() => {
     },
     legend: {
       data: ['K线', '成交量'],
-      top: 8,
-      right: 10,
-      textStyle: {
-        fontSize: 11
-      }
+      left: 'center',  // 强制绝对水平居中
+      top: 0,          // 紧贴顶部
+      textStyle: { fontSize: 11 }
     },
     grid: [
       {
-        left: '10%',
-        right: '10%',
-        top: 35,
-        height: '55%'
+        left: '8%', right: '8%',
+        top: 30,
+        bottom: '26%'  // 强制主图(K线)距离画布底部留出 26% 的绝对空间
       },
       {
-        left: '10%',
-        right: '10%',
-        top: '75%',
-        height: '15%'
+        left: '8%', right: '8%',
+        height: '16%', // 成交量图的高度占比
+        bottom: '4%'   // 强制副图(成交量)锚定在距离画布最底边 4% 的位置
       }
     ],
     xAxis: [
-      {
-        type: 'category',
-        data: dates,
-        gridIndex: 0,
-        axisLine: { onZero: false },
-        splitLine: { show: false },
-        axisLabel: { 
-          fontSize: 11,
-          color: '#909399'
-        }
-      },
-      {
-        type: 'category',
-        gridIndex: 1,
-        data: dates,
-        axisLabel: { show: false },
-        axisLine: { onZero: false },
-        splitLine: { show: false }
-      }
+      { type: 'category', data: dates, gridIndex: 0, axisLine: { onZero: false }, splitLine: { show: false }, axisLabel: { fontSize: 11, color: '#909399' } },
+      { type: 'category', gridIndex: 1, data: dates, axisLabel: { show: false }, axisLine: { onZero: false }, splitLine: { show: false } }
     ],
     yAxis: [
-      {
-        scale: true,
-        gridIndex: 0,
-        splitArea: { show: true },
-        axisLabel: {
-          formatter: '${value}',
-          fontSize: 11,
-          color: '#909399'
-        }
-      },
-      {
-        scale: true,
-        gridIndex: 1,
-        splitNumber: 2,
-        axisLabel: { show: false },
-        axisLine: { show: false },
-        splitLine: { show: false }
-      }
+      { scale: true, gridIndex: 0, splitArea: { show: true }, axisLabel: { formatter: '${value}', fontSize: 11, color: '#909399' } },
+      { scale: true, gridIndex: 1, splitNumber: 2, axisLabel: { show: false }, axisLine: { show: false }, splitLine: { show: false } }
     ],
     dataZoom: [
       {
-        type: 'inside',
-        xAxisIndex: [0, 1],
+        type: 'inside', xAxisIndex: [0, 1],
         start: savedDataZoom.value ? savedDataZoom.value.start : 80,
-        end: savedDataZoom.value ? savedDataZoom.value.end : 100,
-        zoomOnMouseWheel: true,
-        moveOnMouseMove: true,
-        moveOnMouseWheel: false,
-        preventDefaultMouseMove: false,
-        disabled: false,
-        zoomLock: false,
-        throttle: 0
+        end: savedDataZoom.value ? savedDataZoom.value.end : 100
       }
     ],
     series: [
       {
-        name: 'K线',
-        type: 'candlestick',
-        data: ohlcData,
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-        itemStyle: {
-          color: '#f56c6c',      // 阳线颜色
-          color0: '#67c23a',     // 阴线颜色
-          borderColor: '#f56c6c',
-          borderColor0: '#67c23a'
-        }
+        name: 'K线', type: 'candlestick', data: ohlcData, xAxisIndex: 0, yAxisIndex: 0,
+        itemStyle: { color: '#f56c6c', color0: '#67c23a', borderColor: '#f56c6c', borderColor0: '#67c23a' }
       },
       {
-        name: '成交量',
-        type: 'bar',
-        xAxisIndex: 1,
-        yAxisIndex: 1,
-        data: volumeData,
+        name: '成交量', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: volumeData,
         itemStyle: {
-          color: (params: any) => {
+          color: (params) => {
             const kline = klineData.value[params.dataIndex]
             return kline && kline.close >= kline.open ? '#f56c6c' : '#67c23a'
           },
@@ -460,11 +431,11 @@ const loadWatchlist = async () => {
     ])
     
     const data = watchlistRes.data
-    console.log('K线API完整响应:', klinesRes)
-    console.log('K线API data:', klinesRes.data)
+    //console.log('K线API完整响应:', klinesRes)
+    //console.log('K线API data:', klinesRes.data)
     
     const klinesData = klinesRes.data?.data || {}
-    console.log('涨跌幅数据:', klinesData)
+    //console.log('涨跌幅数据:', klinesData)
     
     // 合并涨跌幅数据
     for (const item of data) {
@@ -1465,5 +1436,205 @@ onUnmounted(() => {
 .kline-header-toolbar .close-btn {
   position: static;
   transform: none;
+}
+
+/* --- K线弹窗重构样式追加 --- */
+
+/* 头部主区域弹性布局：横向排列，垂直居中 */
+.header-main {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px; /* 元素之间的间距 */
+  width: 100%;
+}
+
+/* 占据剩余空间，将关闭按钮挤到最右边 */
+.flex-spacer {
+  flex: 1;
+}
+
+/* 现代化圆形关闭按钮 */
+.kline-header-toolbar .close-btn {
+  background: #f0f2f5;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #909399;
+  transition: all 0.2s ease;
+}
+
+.kline-header-toolbar .close-btn:hover {
+  background: #e4e7ed;
+  color: #f56c6c; /* 悬浮时变红警告 */
+}
+
+/* 实时数据条：背景卡片化与网格间距 */
+.realtime-data-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 15px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+}
+
+/* 单个数据项：标签置灰，数值加粗，采用等宽字体对齐 */
+.data-item {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+  font-family: 'Monaco', monospace;
+}
+
+.data-item .label {
+  color: #909399;
+}
+
+.data-item .value {
+  color: #303133;
+  font-weight: 600;
+}
+
+/* ==========================================
+   强制修复弹窗头部排版错位 (新手专属补丁)
+========================================== */
+
+/* 1. 强制左右分开布局 */
+.header-main {
+  display: flex !important;
+  justify-content: space-between !important; /* 让币种在左边，价格在右边 */
+  align-items: center !important;
+  width: 100% !important;
+  padding-bottom: 10px;
+}
+
+/* 2. 左侧币种名称对齐 */
+.symbol-info {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px;
+}
+.symbol-info h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #1f2937;
+  font-family: 'Monaco', monospace;
+}
+
+/* 3. 右侧容器（把价格和关闭按钮捆绑在一起） */
+.header-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
+}
+
+/* 4. 清除恶心的背景色，只留文字颜色 */
+.price-info {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  background: transparent !important; /* 强制透明背景 */
+  padding: 0 !important;
+}
+
+.current-price {
+  font-size: 26px !important;
+  font-weight: bold;
+  font-family: 'Monaco', monospace;
+}
+.change-percent {
+  font-size: 16px !important;
+  font-weight: bold;
+}
+
+/* 文字颜色翻转，根据你的截图是红涨绿跌 */
+.text-up { color: #f56c6c !important; }
+.text-down { color: #2ebd85 !important; }
+
+/* 5. 修复关闭按钮，干掉绝对定位 */
+.kline-header-toolbar .close-btn {
+  position: static !important; /* 清除错位元凶 */
+  transform: none !important;
+  background: #f4f4f5 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  color: #909399 !important;
+}
+.kline-header-toolbar .close-btn:hover {
+  background: #f56c6c !important;
+  color: #fff !important;
+}
+
+/* ==========================================
+   排版修复：左右对齐与单行周期栏
+========================================== */
+.header-main {
+  display: flex !important;
+  justify-content: space-between !important; /* 强制左(币种)右(关闭按钮)两端对齐 */
+  align-items: center !important;
+  width: 100% !important;
+  padding-bottom: 8px;
+}
+
+/* 修复关闭按钮样式 */
+.kline-header-toolbar .close-btn {
+  position: static !important;
+  transform: none !important;
+  font-size: 28px !important;
+  color: #909399 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 0 5px !important;
+}
+
+.kline-header-toolbar .close-btn:hover {
+  color: #f56c6c !important;
+}
+
+/* 强制周期栏保持单行（溢出时可滑动） */
+.header-bottom {
+  width: 100% !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+}
+
+.custom-interval-selector {
+  display: flex !important;
+  flex-wrap: nowrap !important; /* 绝对禁止换行 */
+  gap: 16px !important;
+}
+
+.main-interval-text {
+  font-size: 16px;
+  color: #606266;
+  margin-left: 8px;
+  font-weight: normal; /* 不加粗，以区分主币种 */
+}
+
+.kline-chart-container {
+  flex: 1;
+  position: relative;
+  background-color: #ffffff;
+  padding: 10px 0;
+  /* 新增下面两行，锁死高度，防止 Canvas 溢出 */
+  min-height: 0 !important; 
+  overflow: hidden; 
 }
 </style>
