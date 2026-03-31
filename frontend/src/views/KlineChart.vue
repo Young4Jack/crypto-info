@@ -415,34 +415,41 @@ const chartOption = computed(() => {
 const loadWatchlist = async () => {
   loadingWatchlist.value = true
   try {
-    const response = await watchlistApi.getPublic()
-    const data = response.data
+    // 并行获取关注列表和涨跌幅数据
+    const [watchlistRes, klinesRes] = await Promise.all([
+      watchlistApi.getPublic(),
+      klinesApi.getWatchlistKlines('1d', 2)
+    ])
     
-    // 获取每个币种的涨跌幅
+    const data = watchlistRes.data
+    const klinesData = klinesRes.data?.data || {}
+    
+    // 合并涨跌幅数据
     for (const item of data) {
-      try {
-        const klineResponse = await klinesApi.getKlines(item.crypto_symbol, '1d', 2)
-        if (klineResponse.data && klineResponse.data.success) {
-          const klines = klineResponse.data.data.klines || []
-          if (klines.length >= 2) {
-            // 昨天的涨跌幅
-            const yesterday = klines[klines.length - 2]
-            item.change_24h = ((yesterday.close - yesterday.open) / yesterday.open) * 100
-          } else if (klines.length === 1) {
-            // 今天实时涨跌幅
-            const today = klines[0]
-            item.change_24h = ((today.close - today.open) / today.open) * 100
-          }
-        }
-      } catch (e) {
-        console.error(`获取 ${item.crypto_symbol} 涨跌幅失败:`, e)
+      const symbolKlines = klinesData[item.crypto_symbol]?.klines || []
+      if (symbolKlines.length >= 2) {
+        // 昨天的涨跌幅
+        const yesterday = symbolKlines[symbolKlines.length - 2]
+        item.change_24h = ((yesterday.close - yesterday.open) / yesterday.open) * 100
+      } else if (symbolKlines.length === 1) {
+        // 今天实时涨跌幅
+        const today = symbolKlines[0]
+        item.change_24h = ((today.close - today.open) / today.open) * 100
+      } else {
+        item.change_24h = null
       }
     }
     
     watchlistData.value = data
   } catch (error) {
     console.error('加载关注列表失败:', error)
-    ElMessage.error('加载关注列表失败')
+    // 降级：只加载关注列表
+    try {
+      const response = await watchlistApi.getPublic()
+      watchlistData.value = response.data
+    } catch (e) {
+      ElMessage.error('加载关注列表失败')
+    }
   } finally {
     loadingWatchlist.value = false
   }
@@ -979,25 +986,25 @@ onUnmounted(() => {
   }
   
   .watchlist-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
   
   .watchlist-item {
-    padding: 12px 15px;
+    padding: 10px 12px;
   }
   
   .item-name {
-    font-size: 13px;
+    font-size: 12px;
   }
   
   .item-price {
-    font-size: 14px;
+    font-size: 13px;
   }
   
   .item-change {
-    font-size: 12px;
-    padding: 3px 6px;
+    font-size: 11px;
+    padding: 2px 5px;
   }
   
   .dialog-control-row {
