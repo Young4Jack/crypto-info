@@ -9,7 +9,7 @@
         <div class="header-right">
           <el-button @click="goToLogin" type="primary" plain>系统登录</el-button>
         </div>
-      </div>
+      </div> 
     </el-header>
 
     <el-main class="page-main">
@@ -508,36 +508,31 @@ onUnmounted(() => {
   padding-bottom: 30px;
 }
 
-.page-header {
-  background: white;
-  padding: 15px 25px;
-  box-shadow: 0 1px 4px rgba(0,21,41,0.04);
-  border-bottom: 1px solid #f0f0f0;
+.page-header { 
+  background: white; 
+  padding: 15px 25px; 
+  box-shadow: 0 1px 4px rgba(0,21,41,0.04); 
+  border-bottom: 1px solid #f0f0f0; 
 }
-
 .header-content { 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
+  max-width: 1200px; 
+  margin: 0 auto; 
   width: 100%; 
-}
-.header-left { 
-  display: flex; 
-  flex-direction: column; 
-  justify-content: center; 
 }
 .header-left h1 { 
   margin: 0; 
-  font-size: 20px; 
-  color: #303133; 
-  font-weight: 600; 
-  line-height: 1.4; 
+  font-size: 22px; 
+  color: #409eff; 
+  font-weight: bold; 
+  letter-spacing: 0.5px; 
 }
 .header-left p { 
-  margin: 4px 0 0; 
+  margin: 6px 0 0; 
   color: #909399; 
   font-size: 13px; 
-  line-height: 1.4; 
 }
 
 .page-main {
