@@ -183,15 +183,38 @@ onUnmounted(() => {
   
   .mobile-header-title { font-size: 16px; font-weight: bold; color: #303133; margin: 10px 0 15px 5px; }
 
-  /* 卡片流 */
-  .card-list { display: flex; flex-direction: column; gap: 12px; }
-  .mobile-data-card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-  :deep(.mobile-data-card .el-card__body) { padding: 16px; }
+  /* 卡片流 - 每行2个 */
+  .card-list { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px; 
+  }
+  .mobile-data-card { 
+    border-radius: 10px; 
+    border: none; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+  }
+  :deep(.mobile-data-card .el-card__body) { padding: 12px; }
   
-  .card-header-row { display: flex; justify-content: space-between; align-items: center; }
-  .coin-info { display: flex; align-items: center; gap: 10px; }
-  .coin-name { font-weight: 600; font-size: 14px; color: #606266; }
-  .price-highlight { font-size: 18px; font-weight: 700; color: #409eff; font-family: 'Monaco', monospace; }
+  .card-header-row { 
+    display: flex; 
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px; 
+  }
+  .coin-info { display: flex; align-items: center; gap: 8px; }
+  .coin-name { 
+    font-weight: 500; 
+    font-size: 12px; 
+    color: #606266;
+    display: none; /* 隐藏交易对名称 */
+  }
+  .price-highlight { 
+    font-size: 16px; 
+    font-weight: 600; 
+    color: #409eff; 
+    font-family: 'Monaco', monospace; 
+  }
   
   .cta-section { padding: 30px 10px; }
 }
