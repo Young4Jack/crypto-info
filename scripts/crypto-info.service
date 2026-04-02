@@ -1,0 +1,18 @@
+[Unit]
+Description=Crypto-info 数字货币价格监控系统
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/opt/crypto-info
+ExecStart=/opt/crypto-info/scripts/wrapper.sh
+ExecStop=/opt/crypto-info/scripts/stop.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,8 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import socket
+import os
+from pathlib import Path
 from app.config_manager import config_manager
 
 def get_local_ip():
@@ -27,10 +29,13 @@ DYNAMIC_CORS = [
     f"http://{_local_ip}:{_frontend_port}"
 ]
 
+# 获取 backend 目录的绝对路径
+_BACKEND_DIR = Path(__file__).parent.parent.absolute()
+
 class Settings(BaseSettings):
     """应用设置"""
-    # 数据库配置
-    DATABASE_URL: str = "sqlite:////home/jacket/Project/Crypto-info/backend/crypto.db"
+    # 数据库配置（使用相对路径，支持任意安装位置）
+    DATABASE_URL: str = f"sqlite:///{_BACKEND_DIR}/crypto.db"
     
     # JWT 配置
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
@@ -50,8 +55,8 @@ class Settings(BaseSettings):
     # 调试配置
     DEBUG: bool = True
     
-    # 日志配置
-    LOG_FILE_PATH: str = "./logs/crypto-info.log"
+    # 日志配置（使用绝对路径）
+    LOG_FILE_PATH: str = str(_BACKEND_DIR / "logs" / "crypto-info.log")
     LOG_MAX_SIZE: int = 20 * 1024 * 1024  # 20MB
     LOG_BACKUP_COUNT: int = 5
     

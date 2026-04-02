@@ -1,0 +1,227 @@
+#!/bin/bash
+# Crypto-info 命令行管理工具
+
+VERSION="1.0.0"
+
+# 检测服务管理方式
+if [ -f /etc/systemd/system/crypto-info.service ]; then
+    SERVICE_TYPE="systemd"
+elif [ -f /etc/init.d/crypto-info ]; then
+    SERVICE_TYPE="initd"
+elif [ -f "$HOME/Library/LaunchAgents/com.crypto-info.plist" ]; then
+    SERVICE_TYPE="launchd"
+else
+    SERVICE_TYPE="manual"
+fi
+
+show_help() {
+    echo ""
+    echo "============================================================"
+    echo "  Crypto-info 数字货币价格监控系统 v${VERSION}"
+    echo "============================================================"
+    echo ""
+    echo "用法: crypto-info <command>"
+    echo ""
+    echo "命令:"
+    echo "  start     启动服务"
+    echo "  stop      停止服务"
+    echo "  restart   重启服务"
+    echo "  status    查看状态"
+    echo "  logs      查看日志"
+    echo "  enable    开机自启 (仅 Linux)"
+    echo "  disable   关闭自启 (仅 Linux)"
+    echo "  version   显示版本"
+    echo "  help      显示帮助"
+    echo ""
+}
+
+show_status() {
+    echo ""
+    echo "============================================================"
+    echo "  Crypto-info 服务状态"
+    echo "============================================================"
+    echo ""
+
+    # 检查后端
+    if [ -f "/opt/crypto-info/.backend.pid" ]; then
+        PID=$(cat /opt/crypto-info/.backend.pid)
+        if ps -p "$PID" > /dev/null 2>&1; then
+            echo "✅ 后端服务: 运行中 (PID: $PID)"
+        else
+            echo "❌ 后端服务: 未运行"
+        fi
+    else
+        BACKEND_PID=$(pgrep -f "python.*run.py" 2>/dev/null | head -1)
+        if [ -n "$BACKEND_PID" ]; then
+            echo "✅ 后端服务: 运行中 (PID: $BACKEND_PID)"
+        else
+            echo "❌ 后端服务: 未运行"
+        fi
+    fi
+
+    # 检查代理
+    if [ -f "/opt/crypto-info/.proxy.pid" ]; then
+        PID=$(cat /opt/crypto-info/.proxy.pid)
+        if ps -p "$PID" > /dev/null 2>&1; then
+            echo "✅ 代理服务: 运行中 (PID: $PID)"
+        else
+            echo "❌ 代理服务: 未运行"
+        fi
+    else
+        PROXY_PID=$(pgrep -f "python.*proxy.py" 2>/dev/null | head -1)
+        if [ -n "$PROXY_PID" ]; then
+            echo "✅ 代理服务: 运行中 (PID: $PROXY_PID)"
+        else
+            echo "❌ 代理服务: 未运行"
+        fi
+    fi
+
+    # 读取端口配置
+    if [ -f "/opt/crypto-info/backend/config.json" ]; then
+        BACKEND_PORT=$(python3 -c "import json; print(json.load(open('/opt/crypto-info/backend/config.json'))['system_settings'].get('backend_port', 8000))" 2>/dev/null || echo "8000")
+        FRONTEND_PORT=$(python3 -c "import json; print(json.load(open('/opt/crypto-info/backend/config.json'))['system_settings'].get('frontend_port', 5173))" 2>/dev/null || echo "5173")
+    else
+        BACKEND_PORT=8000
+        FRONTEND_PORT=5173
+    fi
+
+    # 获取本机IP
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "127.0.0.1")
+    else
+        LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "127.0.0.1")
+    fi
+
+    echo ""
+    echo "访问地址:"
+    echo "  📍 本地访问: http://localhost:$FRONTEND_PORT"
+    echo "  📍 局域网访问: http://$LOCAL_IP:$FRONTEND_PORT"
+    echo "  📚 API文档: http://localhost:$BACKEND_PORT/docs"
+    echo ""
+    echo "============================================================"
+    echo ""
+}
+
+show_logs() {
+    echo ""
+    echo "============================================================"
+    echo "  Crypto-info 日志"
+    echo "============================================================"
+    echo ""
+    echo "选择要查看的日志:"
+    echo "  1) 后端日志"
+    echo "  2) 代理日志"
+    echo "  3) 全部日志"
+    echo ""
+    read -p "请选择 [1-3]: " choice
+
+    case $choice in
+        1)
+            if [ -f "/opt/crypto-info/backend/logs/backend.log" ]; then
+                tail -f /opt/crypto-info/backend/logs/backend.log
+            else
+                echo "后端日志文件不存在"
+            fi
+            ;;
+        2)
+            if [ -f "/opt/crypto-info/backend/logs/proxy.log" ]; then
+                tail -f /opt/crypto-info/backend/logs/proxy.log
+            else
+                echo "代理日志文件不存在"
+            fi
+            ;;
+        3)
+            echo "=== 后端日志 (最后50行) ==="
+            tail -50 /opt/crypto-info/backend/logs/backend.log 2>/dev/null || echo "日志文件不存在"
+            echo ""
+            echo "=== 代理日志 (最后50行) ==="
+            tail -50 /opt/crypto-info/backend/logs/proxy.log 2>/dev/null || echo "日志文件不存在"
+            ;;
+        *)
+            echo "无效选择"
+            ;;
+    esac
+}
+
+case "$1" in
+    start)
+        case $SERVICE_TYPE in
+            systemd)
+                sudo systemctl start crypto-info
+                ;;
+            launchd)
+                launchctl load ~/Library/LaunchAgents/com.crypto-info.plist
+                ;;
+            *)
+                /opt/crypto-info/scripts/wrapper.sh &
+                ;;
+        esac
+        echo "服务启动命令已执行"
+        sleep 2
+        show_status
+        ;;
+    stop)
+        case $SERVICE_TYPE in
+            systemd)
+                sudo systemctl stop crypto-info
+                ;;
+            launchd)
+                launchctl unload ~/Library/LaunchAgents/com.crypto-info.plist
+                ;;
+            *)
+                /opt/crypto-info/scripts/stop.sh
+                ;;
+        esac
+        echo "服务停止命令已执行"
+        ;;
+    restart)
+        case $SERVICE_TYPE in
+            systemd)
+                sudo systemctl restart crypto-info
+                ;;
+            launchd)
+                launchctl unload ~/Library/LaunchAgents/com.crypto-info.plist 2>/dev/null
+                launchctl load ~/Library/LaunchAgents/com.crypto-info.plist
+                ;;
+            *)
+                /opt/crypto-info/scripts/stop.sh
+                sleep 1
+                /opt/crypto-info/scripts/wrapper.sh &
+                ;;
+        esac
+        echo "服务重启命令已执行"
+        sleep 2
+        show_status
+        ;;
+    status)
+        show_status
+        ;;
+    logs)
+        show_logs
+        ;;
+    enable)
+        if [ "$SERVICE_TYPE" = "systemd" ]; then
+            sudo systemctl enable crypto-info
+            echo "已启用开机自启"
+        else
+            echo "当前系统不支持此操作"
+        fi
+        ;;
+    disable)
+        if [ "$SERVICE_TYPE" = "systemd" ]; then
+            sudo systemctl disable crypto-info
+            echo "已关闭开机自启"
+        else
+            echo "当前系统不支持此操作"
+        fi
+        ;;
+    version)
+        echo "Crypto-info v${VERSION}"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        show_help
+        ;;
+esac
