@@ -10,6 +10,7 @@
           <span class="welcome-text">欢迎，{{ authStore.user?.username || '用户' }}</span>
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="goToHome">返回主页</el-button>
             <el-button type="danger" @click="handleLogout">退出登录</el-button>
           </el-button-group>
         </div>
@@ -402,6 +403,8 @@ const handleSaveAccount = async () => {
 }
 
 const goToDashboard = () => router.push('/dashboard')
+
+const goToHome = () => router.push('/')
 const handleLogout = () => {
   authStore.logout()
   ElMessage.success('已退出')

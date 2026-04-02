@@ -9,6 +9,7 @@
         <div class="header-right">
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="goToHome">返回主页</el-button>
             <el-button @click="() => loadAssets(false)" :loading="loading">刷新价格</el-button>
             <el-button type="primary" :icon="Plus" @click="openAddDialog">添加资产</el-button>
           </el-button-group>
@@ -441,6 +442,7 @@ const handleDelete = (row: any) => {
 
 const goToDashboard = () => router.push('/dashboard')
 
+const goToHome = () => router.push('/')
 
 onMounted(async () => {
   loadAssets(false)

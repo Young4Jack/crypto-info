@@ -9,6 +9,7 @@
         <div class="header-right">
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="goToHome">返回主页</el-button>
             <el-button @click="() => loadAlerts(false)" :loading="loading">刷新状态</el-button>
             <el-button type="primary" :icon="Plus" @click="openAddDialog">创建预警</el-button>
           </el-button-group>
@@ -607,6 +608,7 @@ const formatTime = (timeStr: string) => {
 
 const goToDashboard = () => router.push('/dashboard')
 
+const goToHome = () => router.push('/')
 
 onMounted(async () => {
   // 先调用你的基础拉取方法

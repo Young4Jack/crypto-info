@@ -8,6 +8,7 @@
         </div>
         <div class="header-right">
           <el-button-group class="action-buttons">
+            <el-button @click="goToHome">返回主页</el-button>
             <el-button type="primary" @click="goToAlerts" plain>预警管理</el-button>
             <el-button type="success" @click="goToAssets" plain>资产管理</el-button>
             <el-button type="info" @click="goToWatchlist" plain>关注列表</el-button>
@@ -278,6 +279,7 @@ const goToAssets = () => router.push('/assets')
 const goToWatchlist = () => router.push('/watchlist')
 const goToSettings = () => router.push('/settings')
 
+const goToHome = () => router.push('/')
 // 🚀 修复点：将其改造为返回配置刷新间隔时间的异步函数
 const loadPublicSettings = async (): Promise<number> => {
   try {

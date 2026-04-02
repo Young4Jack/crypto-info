@@ -9,6 +9,7 @@
         <div class="header-right">
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
+            <el-button @click="goToHome">返回主页</el-button>
             <el-button @click="() => loadWatchlist(false)" :loading="loading">刷新行情</el-button>
             <el-button type="primary" :icon="Plus" @click="dialogVisible = true">添加关注</el-button>
           </el-button-group>
@@ -312,6 +313,7 @@ const formatTime = (timeStr: string) => {
 
 const goToDashboard = () => router.push('/dashboard')
 
+const goToHome = () => router.push('/')
 
 onMounted(async () => {
   loadWatchlist(false)
