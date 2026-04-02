@@ -87,7 +87,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def proxy_to_backend(self):
         """代理请求到后端"""
-        url = f"http://127.0.0.1:{BACKEND_PORT}{self.path}"
+        # 去掉 /api 前缀（前端请求 /api/xxx，后端实际路径是 /xxx）
+        backend_path = self.path[4:] if self.path.startswith('/api') else self.path
+        url = f"http://127.0.0.1:{BACKEND_PORT}{backend_path}"
 
         # 复制请求头
         headers = {}
