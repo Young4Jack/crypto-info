@@ -46,3 +46,12 @@ PROJECT_PLAN.md
 ISSUES_LOG.md
 docker-compose.yml
 .clinerules
+
+# --- PID 文件和运行时文件 ---
+*.pid
+.backend.pid
+.proxy.pid
+.frontend.pid
+
+# --- Release 构建 ---
+release/
