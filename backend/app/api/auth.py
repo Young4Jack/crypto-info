@@ -139,6 +139,16 @@ async def login(form_data: LoginForm):
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """获取当前用户信息"""
+    if current_user.id == 0:
+        from datetime import datetime
+        return {
+            "id": 0,
+            "username": "system",
+            "email": "system@local",
+            "is_active": True,
+            "created_at": datetime.now(),
+            "is_system": True
+        }
     return current_user
 
 class AccountUpdate(BaseModel):
