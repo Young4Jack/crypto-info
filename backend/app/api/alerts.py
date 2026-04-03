@@ -2,6 +2,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.alert import PriceAlert, AlertType
@@ -223,6 +224,11 @@ async def create_alert_rule(
     if threshold_value is None:
         threshold_value = alert_data.threshold_price
     
+    # 获取最大排序值+1，确保新项目排在最后
+    max_sort = db.query(func.coalesce(func.max(PriceAlert.sort_order), 0)).filter(
+        PriceAlert.user_id == current_user.id
+    ).scalar()
+    
     alert = create_alert(
         db=db,
         user_id=current_user.id,
@@ -234,7 +240,8 @@ async def create_alert_rule(
         threshold_value=threshold_value,
         is_continuous=alert_data.is_continuous,
         interval_minutes=alert_data.interval_minutes,
-        max_notifications=alert_data.max_notifications
+        max_notifications=alert_data.max_notifications,
+        sort_order=max_sort + 1
     )
     
     return AlertResponse(
@@ -345,6 +352,18 @@ async def update_alert_rule(
         triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
         created_at=alert.created_at.isoformat() if alert.created_at else None
     )
+
+@router.delete("/all")
+async def delete_all_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """删除当前用户的所有预警规则"""
+    count = db.query(PriceAlert).filter(
+        PriceAlert.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": f"已删除 {count} 条预警规则"}
 
 @router.delete("/{alert_id}")
 async def delete_alert_rule(

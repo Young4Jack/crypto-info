@@ -78,6 +78,11 @@ export const alertsApi = {
   // 批量更新排序
   updateSortOrder: (items: { id: number; sort_order: number }[]) => {
     return request.put('/api/alerts/sort-order', { items })
+  },
+  
+  // 删除全部预警
+  deleteAll: () => {
+    return request.delete('/api/alerts/all')
   }
 }
 
@@ -161,6 +166,11 @@ export const assetsApi = {
   // 批量更新排序
   updateSortOrder: (items: { id: number; sort_order: number }[]) => {
     return request.put('/api/assets/sort-order', { items })
+  },
+  
+  // 删除全部资产
+  deleteAll: () => {
+    return request.delete('/api/assets/all')
   }
 }
 
@@ -337,6 +347,11 @@ export const watchlistApi = {
   // 批量更新排序
   updateSortOrder: (items: { id: number; sort_order: number }[]) => {
     return request.put('/api/watchlist/sort-order', { items })
+  },
+  
+  // 删除全部关注
+  deleteAll: () => {
+    return request.delete('/api/watchlist/all')
   }
 }
 

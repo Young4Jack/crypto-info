@@ -16,6 +16,7 @@
               <el-button type="success" :icon="Check" @click="saveSortOrder">保存排序</el-button>
               <el-button @click="cancelSortMode">取消</el-button>
             </template>
+            <el-button type="danger" :icon="Delete" @click="handleDeleteAll">全部删除</el-button>
             <el-button type="primary" :icon="Plus" @click="openAddDialog">添加资产</el-button>
           </el-button-group>
         </div>
@@ -642,6 +643,19 @@ const cancelSortMode = () => {
     sortableInstance = null
   }
   loadAssets(false)
+}
+
+const handleDeleteAll = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除所有资产记录吗？此操作不可恢复。', '警告', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await assetsApi.deleteAll()
+    ElMessage.success('已删除所有资产记录')
+    loadAssets(false)
+  } catch (error) {}
 }
 
 onMounted(async () => {

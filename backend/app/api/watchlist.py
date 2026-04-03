@@ -2,6 +2,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.watchlist import Watchlist
@@ -165,12 +166,18 @@ async def create_watchlist_item(
     
     tz = config_manager.get_timezone()
 
+    # 获取最大排序值+1，确保新项目排在最后
+    max_sort = db.query(func.coalesce(func.max(Watchlist.sort_order), 0)).filter(
+        Watchlist.user_id == current_user.id
+    ).scalar()
+
     # 创建关注项
     watchlist_item = Watchlist(
         user_id=current_user.id,
         crypto_id=crypto.id,
         notes=watchlist_data.notes,
         is_public=watchlist_data.is_public,
+        sort_order=max_sort + 1,
         created_at=datetime.now(tz)
     )
     
@@ -246,6 +253,18 @@ async def update_watchlist_item(
         sort_order=watchlist_item.sort_order or 0,
         is_public=watchlist_item.is_public
     )
+
+@router.delete("/all")
+async def delete_all_watchlist(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """删除当前用户的所有关注项"""
+    count = db.query(Watchlist).filter(
+        Watchlist.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": f"已删除 {count} 条关注记录"}
 
 @router.delete("/{watchlist_id}")
 async def delete_watchlist_item(

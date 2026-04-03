@@ -2,6 +2,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.asset import Asset
@@ -169,6 +170,11 @@ async def create_asset(
     # 获取配置中的时区 (Asia/Shanghai)
     tz = config_manager.get_timezone()
     
+    # 获取最大排序值+1，确保新项目排在最后
+    max_sort = db.query(func.coalesce(func.max(Asset.sort_order), 0)).filter(
+        Asset.user_id == current_user.id
+    ).scalar()
+    
     # 补充 created_at 字段
     asset = Asset(
         user_id=current_user.id,
@@ -176,6 +182,7 @@ async def create_asset(
         buy_price=asset_data.buy_price,
         quantity=asset_data.quantity,
         notes=asset_data.notes,
+        sort_order=max_sort + 1,
         created_at=datetime.now(tz)  # 强制写入当前时区时间
     )
     
@@ -237,6 +244,18 @@ async def update_asset(
         total_value=asset.buy_price * asset.quantity,
         created_at=asset.created_at.isoformat() if asset.created_at else None
     )
+
+@router.delete("/all")
+async def delete_all_assets(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """删除当前用户的所有资产记录"""
+    count = db.query(Asset).filter(
+        Asset.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": f"已删除 {count} 条资产记录"}
 
 @router.delete("/{asset_id}")
 async def delete_asset(

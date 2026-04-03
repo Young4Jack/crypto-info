@@ -16,6 +16,7 @@
               <el-button type="success" :icon="Check" @click="saveSortOrder">保存排序</el-button>
               <el-button @click="cancelSortMode">取消</el-button>
             </template>
+            <el-button type="danger" :icon="Delete" @click="handleDeleteAll">全部删除</el-button>
             <el-button type="primary" :icon="Plus" @click="openAddDialog">创建预警</el-button>
           </el-button-group>
         </div>
@@ -400,7 +401,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Sort, Check, Rank } from '@element-plus/icons-vue'
+import { Plus, Sort, Check, Rank, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { alertsApi,  systemSettingsApi } from '../api'
 import Sortable from 'sortablejs'
@@ -795,6 +796,19 @@ const cancelSortMode = () => {
     sortableInstance = null
   }
   loadAlerts(false)
+}
+
+const handleDeleteAll = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除所有预警规则吗？此操作不可恢复。', '警告', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await alertsApi.deleteAll()
+    ElMessage.success('已删除所有预警规则')
+    loadAlerts(false)
+  } catch (error) {}
 }
 
 const sortModeRowClass = (_: { row: any; rowIndex: number }) => {

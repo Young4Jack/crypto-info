@@ -116,7 +116,8 @@ def create_alert(
     db: Session, user_id: int, crypto_id: int, alert_type: AlertType,
     threshold_price: float, webhook_url: str = None, base_price: float = None,
     threshold_value: float = None, is_continuous: bool = False,
-    interval_minutes: int = 5, max_notifications: int = 1
+    interval_minutes: int = 5, max_notifications: int = 1,
+    sort_order: int = 0
 ) -> PriceAlert:
     tz = config_manager.get_timezone()
     alert = PriceAlert(
@@ -125,6 +126,7 @@ def create_alert(
         is_active=True, base_price=base_price, threshold_value=threshold_value,
         is_continuous=is_continuous, interval_minutes=interval_minutes,
         max_notifications=max_notifications, notified_count=0,
+        sort_order=sort_order,
         created_at=datetime.now(tz)
     )
     db.add(alert)
