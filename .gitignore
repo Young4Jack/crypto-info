@@ -23,6 +23,9 @@ backend/.env
 # --- 数据库 (SQLite) ---
 # 你的数据文件 crypto.db
 backend/*.db
+# SQLite WAL 模式临时文件
+backend/*.db-shm
+backend/*.db-wal
 # 备份文件
 backend/*.db.bak
 # 数据库迁移文件 (建议保留 versions 文件夹，忽略缓存)
