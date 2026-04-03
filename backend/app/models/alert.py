@@ -24,6 +24,7 @@ class PriceAlert(Base):
     threshold_price = Column(Float, nullable=False)
     webhook_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0, index=True)
     triggered_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

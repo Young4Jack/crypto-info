@@ -172,7 +172,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { dashboardApi, alertsApi, watchlistApi, systemSettingsApi } from '../api'
+import { dashboardApi, systemSettingsApi } from '../api'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { PieChart } from 'echarts/charts'
@@ -197,6 +197,12 @@ const loadDashboardData = async (isBackground = false) => {
   try {
     const response = await dashboardApi.getSummary()
     dashboardData.value = response.data
+    if (response.data.watchlist) {
+      watchlist.value = response.data.watchlist
+    }
+    if (response.data.alerts) {
+      alerts.value = response.data.alerts
+    }
   } catch (error) {
     if (!isBackground) ElMessage.error('加载仪表盘数据失败')
   } finally {
@@ -204,26 +210,8 @@ const loadDashboardData = async (isBackground = false) => {
   }
 }
 
-// 🚀 修复点：移除了未使用到的 isBackground 参数
-const loadAlerts = async () => {
-  try {
-    const response = await alertsApi.getAll()
-    alerts.value = response.data
-  } catch (error) {}
-}
-
-// 🚀 修复点：移除了未使用到的 isBackground 参数
-const loadWatchlist = async () => {
-  try {
-    const response = await watchlistApi.getAll()
-    watchlist.value = response.data
-  } catch (error) {}
-}
-
 const fetchAllData = (isBackground = false) => {
   loadDashboardData(isBackground)
-  loadAlerts()
-  loadWatchlist()
 }
 
 const allocationChartOption = computed(() => {

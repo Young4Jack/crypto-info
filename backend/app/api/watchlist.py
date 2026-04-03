@@ -19,10 +19,19 @@ class WatchlistCreate(BaseModel):
     """创建关注项请求"""
     crypto_symbol: str
     notes: Optional[str] = None
+    is_public: bool = True
 
 class WatchlistUpdate(BaseModel):
     """更新关注项请求"""
     notes: Optional[str] = None
+    is_public: Optional[bool] = None
+
+class SortOrderItem(BaseModel):
+    id: int
+    sort_order: int
+
+class SortOrderUpdate(BaseModel):
+    items: List[SortOrderItem]
 
 class WatchlistResponse(BaseModel):
     """关注项响应"""
@@ -33,6 +42,8 @@ class WatchlistResponse(BaseModel):
     notes: Optional[str] = None
     created_at: str
     current_price: Optional[float] = None
+    sort_order: int = 0
+    is_public: bool = True
 
 @router.get("/", response_model=List[WatchlistResponse])
 async def get_watchlist(
@@ -42,7 +53,7 @@ async def get_watchlist(
     """获取当前用户的所有关注项"""
     watchlist_items = db.query(Watchlist).filter(
         Watchlist.user_id == current_user.id
-    ).all()
+    ).order_by(Watchlist.sort_order.asc()).all()
     
     # 获取当前价格数据
     try:
@@ -68,7 +79,9 @@ async def get_watchlist(
             crypto_name=crypto.name if crypto else "Unknown",
             notes=item.notes,
             created_at=item.created_at.isoformat() if item.created_at else None,
-            current_price=current_price
+            current_price=current_price,
+            sort_order=item.sort_order or 0,
+            is_public=item.is_public
         ))
     
     return result
@@ -76,8 +89,9 @@ async def get_watchlist(
 @router.get("/public", response_model=List[WatchlistResponse])
 async def get_public_watchlist(db: Session = Depends(get_db)):
     """获取公开的关注列表（无需认证）"""
-    # 获取所有用户的关注项，去重
-    watchlist_items = db.query(Watchlist).all()
+    watchlist_items = db.query(Watchlist).filter(
+        Watchlist.is_public == True
+    ).order_by(Watchlist.sort_order.asc()).all()
     
     # 获取当前价格数据
     try:
@@ -107,7 +121,9 @@ async def get_public_watchlist(db: Session = Depends(get_db)):
                 crypto_name=crypto.name,
                 notes=item.notes,
                 created_at=item.created_at.isoformat() if item.created_at else None,
-                current_price=current_price
+                current_price=current_price,
+                sort_order=item.sort_order or 0,
+                is_public=item.is_public
             ))
     
     return result
@@ -154,6 +170,7 @@ async def create_watchlist_item(
         user_id=current_user.id,
         crypto_id=crypto.id,
         notes=watchlist_data.notes,
+        is_public=watchlist_data.is_public,
         created_at=datetime.now(tz)
     )
     
@@ -167,8 +184,27 @@ async def create_watchlist_item(
         crypto_symbol=crypto.symbol,
         crypto_name=crypto.name,
         notes=watchlist_item.notes,
-        created_at=watchlist_item.created_at.isoformat() if watchlist_item.created_at else None
+        created_at=watchlist_item.created_at.isoformat() if watchlist_item.created_at else None,
+        sort_order=watchlist_item.sort_order or 0,
+        is_public=watchlist_item.is_public
     )
+
+@router.put("/sort-order")
+async def update_watchlist_sort_order(
+    update_data: SortOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """批量更新关注列表排序"""
+    for item in update_data.items:
+        watchlist_item = db.query(Watchlist).filter(
+            Watchlist.id == item.id,
+            Watchlist.user_id == current_user.id
+        ).first()
+        if watchlist_item:
+            watchlist_item.sort_order = item.sort_order
+    db.commit()
+    return {"message": "排序已更新"}
 
 @router.put("/{watchlist_id}", response_model=WatchlistResponse)
 async def update_watchlist_item(
@@ -189,6 +225,8 @@ async def update_watchlist_item(
     # 更新字段
     if watchlist_data.notes is not None:
         watchlist_item.notes = watchlist_data.notes
+    if watchlist_data.is_public is not None:
+        watchlist_item.is_public = watchlist_data.is_public
     
     db.commit()
     db.refresh(watchlist_item)
@@ -204,7 +242,9 @@ async def update_watchlist_item(
         crypto_symbol=crypto.symbol if crypto else "Unknown",
         crypto_name=crypto.name if crypto else "Unknown",
         notes=watchlist_item.notes,
-        created_at=watchlist_item.created_at.isoformat() if watchlist_item.created_at else None
+        created_at=watchlist_item.created_at.isoformat() if watchlist_item.created_at else None,
+        sort_order=watchlist_item.sort_order or 0,
+        is_public=watchlist_item.is_public
     )
 
 @router.delete("/{watchlist_id}")

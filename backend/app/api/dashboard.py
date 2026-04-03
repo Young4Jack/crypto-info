@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.asset import Asset
 from app.models.alert import PriceAlert
 from app.models.cryptocurrency import Cryptocurrency
+from app.models.watchlist import Watchlist
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.price_service_refactored import fetch_crypto_prices
@@ -71,11 +72,12 @@ async def get_dashboard_summary(
             "buy_value": round(buy_value, 2),
             "profit_loss": round(profit_loss, 2),
             "profit_loss_percentage": round(profit_loss_percentage, 2),
+            "sort_order": asset.sort_order or 0,
             "created_at": asset.created_at.isoformat() if asset.created_at else None
         })
     
-    # 按持有价值排序
-    asset_allocation.sort(key=lambda x: x["holding_value"], reverse=True)
+    # 按 sort_order 排序
+    asset_allocation.sort(key=lambda x: x["sort_order"])
     
     # 4. 计算总盈亏
     total_buy_value = sum(item["buy_value"] for item in asset_allocation)
@@ -88,13 +90,54 @@ async def get_dashboard_summary(
         PriceAlert.is_active == True
     ).count()
     
-    # 6. 返回仪表盘数据（新闻功能已移除）
+    # 6. 获取关注列表(按sort_order排序)
+    watchlist_items = db.query(Watchlist, Cryptocurrency).join(
+        Cryptocurrency, Watchlist.crypto_id == Cryptocurrency.id
+    ).filter(
+        Watchlist.user_id == current_user.id
+    ).order_by(Watchlist.sort_order.asc()).all()
+    
+    watchlist_data = []
+    for item, crypto in watchlist_items:
+        current_price = current_prices.get(crypto.symbol, 0)
+        watchlist_data.append({
+            "id": item.id,
+            "crypto_symbol": crypto.symbol,
+            "crypto_name": crypto.name,
+            "current_price": current_price,
+            "sort_order": item.sort_order or 0
+        })
+    
+    # 7. 获取预警规则(按sort_order排序)
+    alerts = db.query(PriceAlert, Cryptocurrency).join(
+        Cryptocurrency, PriceAlert.crypto_id == Cryptocurrency.id
+    ).filter(
+        PriceAlert.user_id == current_user.id
+    ).order_by(PriceAlert.sort_order.asc()).all()
+    
+    alerts_data = []
+    for alert, crypto in alerts:
+        current_price = current_prices.get(crypto.symbol, 0)
+        alerts_data.append({
+            "id": alert.id,
+            "crypto_symbol": crypto.symbol,
+            "crypto_name": crypto.name,
+            "alert_type": alert.alert_type.value,
+            "threshold_price": alert.threshold_price,
+            "current_price": current_price,
+            "is_active": alert.is_active,
+            "sort_order": alert.sort_order or 0
+        })
+    
+    # 8. 返回仪表盘数据（新闻功能已移除）
     return {
         "total_value": round(total_value, 2),
         "total_profit_loss": round(total_profit_loss, 2),
         "total_profit_loss_percentage": round(total_profit_loss_percentage, 2),
         "active_alerts_count": active_alerts_count,
         "asset_allocation": asset_allocation,
+        "watchlist": watchlist_data,
+        "alerts": alerts_data,
         "latest_news": [],  # 新闻功能已移除
         "summary": {
             "total_assets": len(assets_with_crypto),

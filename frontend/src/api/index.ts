@@ -73,6 +73,11 @@ export const alertsApi = {
   // 删除预警规则
   delete: (id: number) => {
     return request.delete(`/api/alerts/${id}`)
+  },
+  
+  // 批量更新排序
+  updateSortOrder: (items: { id: number; sort_order: number }[]) => {
+    return request.put('/api/alerts/sort-order', { items })
   }
 }
 
@@ -151,6 +156,11 @@ export const assetsApi = {
   // 删除资产
   delete: (id: number) => {
     return request.delete(`/api/assets/${id}`)
+  },
+  
+  // 批量更新排序
+  updateSortOrder: (items: { id: number; sort_order: number }[]) => {
+    return request.put('/api/assets/sort-order', { items })
   }
 }
 
@@ -306,6 +316,7 @@ export const watchlistApi = {
   create: (data: {
     crypto_symbol: string
     notes?: string
+    is_public?: boolean
   }) => {
     return request.post('/api/watchlist/', data)
   },
@@ -313,6 +324,7 @@ export const watchlistApi = {
   // 更新关注项
   update: (id: number, data: {
     notes?: string
+    is_public?: boolean
   }) => {
     return request.put(`/api/watchlist/${id}`, data)
   },
@@ -320,6 +332,11 @@ export const watchlistApi = {
   // 删除关注项
   delete: (id: number) => {
     return request.delete(`/api/watchlist/${id}`)
+  },
+  
+  // 批量更新排序
+  updateSortOrder: (items: { id: number; sort_order: number }[]) => {
+    return request.put('/api/watchlist/sort-order', { items })
   }
 }
 

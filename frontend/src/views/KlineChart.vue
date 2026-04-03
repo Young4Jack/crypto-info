@@ -413,13 +413,18 @@ const loadWatchlist = async () => {
       }
     }
     
+    // 按 sort_order 排序
+    data.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+    
     watchlistData.value = data
   } catch (error) {
     console.error('加载关注列表失败:', error)
     // 降级：只加载关注列表
     try {
       const response = await watchlistApi.getPublic()
-      watchlistData.value = response.data
+      const data = response.data
+      data.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      watchlistData.value = data
     } catch (e) {
       ElMessage.error('加载关注列表失败')
     }

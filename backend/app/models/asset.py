@@ -14,6 +14,7 @@ class Asset(Base):
     buy_price = Column(Float, nullable=False)
     quantity = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
+    sort_order = Column(Integer, default=0, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # 关系

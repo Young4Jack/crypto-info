@@ -39,6 +39,7 @@ class AssetResponse(BaseModel):
     notes: Optional[str] = None
     total_value: float
     current_price: float = 0.0
+    sort_order: int = 0
     created_at: str
 
 @router.get("/", response_model=List[AssetResponse])
@@ -49,7 +50,7 @@ async def get_assets(
     """获取当前用户的所有资产"""
     assets = db.query(Asset).filter(
         Asset.user_id == current_user.id
-    ).all()
+    ).order_by(Asset.sort_order.asc()).all()
     
     # 获取所有币种的当前价格
     try:
@@ -77,10 +78,35 @@ async def get_assets(
             notes=asset.notes,
             total_value=asset.buy_price * asset.quantity,
             current_price=current_price,
+            sort_order=asset.sort_order or 0,
             created_at=asset.created_at.isoformat() if asset.created_at else None
         ))
     
     return result
+
+class SortOrderItem(BaseModel):
+    id: int
+    sort_order: int
+
+class SortOrderUpdate(BaseModel):
+    items: List[SortOrderItem]
+
+@router.put("/sort-order")
+async def update_assets_sort_order(
+    update_data: SortOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """批量更新资产排序"""
+    for item in update_data.items:
+        asset = db.query(Asset).filter(
+            Asset.id == item.id,
+            Asset.user_id == current_user.id
+        ).first()
+        if asset:
+            asset.sort_order = item.sort_order
+    db.commit()
+    return {"message": "排序已更新"}
 
 @router.get("/{asset_id}", response_model=AssetResponse)
 async def get_asset(

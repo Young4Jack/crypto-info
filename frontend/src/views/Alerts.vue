@@ -11,6 +11,11 @@
             <el-button @click="goToDashboard">返回面板</el-button>
             <el-button @click="goToHome">返回主页</el-button>
             <el-button @click="() => loadAlerts(false)" :loading="loading">刷新状态</el-button>
+            <el-button v-if="!isSortMode" type="warning" :icon="Sort" @click="enterSortMode">排序模式</el-button>
+            <template v-else>
+              <el-button type="success" :icon="Check" @click="saveSortOrder">保存排序</el-button>
+              <el-button @click="cancelSortMode">取消</el-button>
+            </template>
             <el-button type="primary" :icon="Plus" @click="openAddDialog">创建预警</el-button>
           </el-button-group>
         </div>
@@ -75,7 +80,35 @@
         
         <div class="desktop-view">
           <el-card shadow="never" class="table-card">
-            <el-table :data="alerts" stripe hover style="width: 100%">
+            <div v-if="isSortMode" class="sort-mode-hint">
+              <el-icon><Rank /></el-icon>
+              <span>拖拽行调整顺序，完成后点击"保存排序"</span>
+            </div>
+            <el-table 
+              :data="alerts" 
+              stripe 
+              hover 
+              style="width: 100%"
+              :row-class-name="sortModeRowClass"
+            >
+              <el-table-column v-if="isSortMode" label="排序" width="60" align="center">
+                <template #default>
+                  <el-icon class="drag-handle"><Rank /></el-icon>
+                </template>
+              </el-table-column>
+              <el-table-column label="排序" width="80" align="center">
+                <template #default="{ row }">
+                  <el-input-number 
+                    v-model="row.sort_order" 
+                    :min="0" 
+                    :max="9999" 
+                    size="small" 
+                    controls-position="right"
+                    style="width: 70px"
+                    @change="handleSortOrderChange(row)"
+                  />
+                </template>
+              </el-table-column>
               <el-table-column label="交易对" min-width="110">
                 <template #default="{ row }">
                   <el-tag effect="dark" round size="small" class="symbol-tag">{{ row._symbol }}</el-tag>
@@ -159,16 +192,25 @@
 
         <div class="mobile-view">
           <el-empty v-if="alerts.length === 0" description="暂无预警规则，请在上方创建" />
-          <div v-else class="card-list">
-            <el-card v-for="item in alerts" :key="item.id" shadow="hover" :class="['mobile-data-card', !item.is_active && 'card-inactive']">
+          <div v-else class="card-list" :class="{ 'sort-mode': isSortMode }">
+            <el-card v-for="item in alerts" :key="item.id" shadow="hover" :class="['mobile-data-card', !item.is_active && 'card-inactive', isSortMode && 'draggable-card']">
+              <div v-if="isSortMode" class="mobile-sort-handle">
+                <el-icon><Rank /></el-icon>
+              </div>
               <div class="card-header-row">
                 <div class="coin-info">
                   <el-tag effect="dark" round class="symbol-tag">{{ item._symbol }}</el-tag>
                   <span style="font-size: 13px; color: #909399; margin-left: 6px;">{{ item.crypto_name }}</span>
                 </div>
-                <div class="status-indicator" @click="handleToggleActiveMobile(item)">
-                  <span :class="['status-dot', item.is_active ? 'dot-active' : 'dot-inactive']"></span>
-                  <span class="status-text">{{ item.is_active ? '监控中' : '已停用' }}</span>
+                <div class="header-right-group">
+                  <span class="sort-order-mini" @click.stop="startEditSort(item)">
+                    <el-icon class="sort-icon"><Rank /></el-icon>
+                    <span class="sort-num">{{ item.sort_order ?? 0 }}</span>
+                  </span>
+                  <div class="status-indicator" @click="handleToggleActiveMobile(item)">
+                    <span :class="['status-dot', item.is_active ? 'dot-active' : 'dot-inactive']"></span>
+                    <span class="status-text">{{ item.is_active ? '监控中' : '已停用' }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -229,6 +271,35 @@
             </el-card>
           </div>
         </div>
+
+        <el-dialog
+          v-model="sortDialogVisible"
+          title="修改排序序号"
+          class="responsive-dialog"
+          width="280px"
+        >
+          <div class="sort-dialog-content">
+            <div class="sort-dialog-coin">
+              <el-tag effect="dark" round size="small">{{ sortEditItem?._symbol }}</el-tag>
+              <span class="sort-dialog-name">{{ sortEditItem?.crypto_name }}</span>
+            </div>
+            <div class="sort-dialog-input">
+              <span class="sort-dialog-label">排序序号</span>
+              <el-input-number 
+                v-model="sortEditValue" 
+                :min="0" 
+                :max="9999" 
+                size="large"
+                controls-position="right"
+                class="sort-dialog-number"
+              />
+            </div>
+          </div>
+          <template #footer>
+            <el-button @click="sortDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveSortEdit">保存</el-button>
+          </template>
+        </el-dialog>
 
       </div>
     </el-main>
@@ -327,17 +398,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Sort, Check, Rank } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { alertsApi,  systemSettingsApi } from '../api'
+import Sortable from 'sortablejs'
+import { formatTimeWithTimezoneSync, getTimezone } from '../utils/timezone'
 
 const router = useRouter()
 const loading = ref(false)
 const submitLoading = ref(false)
 const alerts = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+const isSortMode = ref(false)
+let sortableInstance: Sortable | null = null
+const timezone = ref('Asia/Shanghai')
+const sortDialogVisible = ref(false)
+const sortEditItem = ref<any>(null)
+const sortEditValue = ref(0)
 
 const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
@@ -600,8 +679,7 @@ const handleDeleteAlert = async (alert: any) => {
 
 const formatTime = (timeStr: string) => {
   if (!timeStr) return '-'
-  const dateStr = timeStr.endsWith('Z') || timeStr.includes('+') ? timeStr : timeStr + 'Z'
-  return new Date(dateStr).toLocaleString('zh-CN', { 
+  return formatTimeWithTimezoneSync(timeStr, timezone.value, { 
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
   })
 }
@@ -610,8 +688,124 @@ const goToDashboard = () => router.push('/dashboard')
 
 const goToHome = () => router.push('/')
 
+const enterSortMode = () => {
+  isSortMode.value = true
+  nextTick(() => {
+    initSortable()
+  })
+}
+
+const initSortable = () => {
+  if (sortableInstance) {
+    sortableInstance.destroy()
+    sortableInstance = null
+  }
+  
+  const el = document.querySelector('.desktop-view .el-table__body-wrapper tbody') as HTMLElement
+  if (el) {
+    sortableInstance = Sortable.create(el, {
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: (evt) => {
+        const { oldIndex, newIndex } = evt
+        if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+        const item = alerts.value.splice(oldIndex, 1)[0]
+        alerts.value.splice(newIndex, 0, item)
+      }
+    })
+  }
+  
+  const mobileEl = document.querySelector('.mobile-view .card-list') as HTMLElement
+  if (mobileEl) {
+    sortableInstance = Sortable.create(mobileEl, {
+      animation: 150,
+      handle: '.mobile-sort-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: (evt) => {
+        const { oldIndex, newIndex } = evt
+        if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+        const item = alerts.value.splice(oldIndex, 1)[0]
+        alerts.value.splice(newIndex, 0, item)
+      }
+    })
+  }
+}
+
+const saveSortOrder = async () => {
+  try {
+    const items = alerts.value.map((item, index) => ({
+      id: item.id,
+      sort_order: index
+    }))
+    await alertsApi.updateSortOrder(items)
+    ElMessage.success('排序已保存')
+    isSortMode.value = false
+    if (sortableInstance) {
+      sortableInstance.destroy()
+      sortableInstance = null
+    }
+  } catch (error) {
+    ElMessage.error('保存排序失败')
+  }
+}
+
+const startEditSort = (item: any) => {
+  sortEditItem.value = item
+  sortEditValue.value = item.sort_order ?? 0
+  sortDialogVisible.value = true
+}
+
+const handleSortOrderChange = async (_row: any) => {
+  try {
+    const items = alerts.value.map((item) => ({
+      id: item.id,
+      sort_order: item.sort_order ?? 0
+    }))
+    await alertsApi.updateSortOrder(items)
+  } catch (error) {
+    ElMessage.error('保存排序失败')
+  }
+}
+
+const saveSortEdit = async () => {
+  if (!sortEditItem.value) return
+  try {
+    sortEditItem.value.sort_order = sortEditValue.value
+    const items = alerts.value.map((item) => ({
+      id: item.id,
+      sort_order: item.sort_order ?? 0
+    }))
+    await alertsApi.updateSortOrder(items)
+    ElMessage.success('排序已更新')
+    sortDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error('保存排序失败')
+  }
+}
+
+const cancelSortMode = () => {
+  isSortMode.value = false
+  if (sortableInstance) {
+    sortableInstance.destroy()
+    sortableInstance = null
+  }
+  loadAlerts(false)
+}
+
+const sortModeRowClass = (_: { row: any; rowIndex: number }) => {
+  return isSortMode.value ? 'sort-mode-row' : ''
+}
+
 onMounted(async () => {
-  // 先调用你的基础拉取方法
+  // 先加载时区配置
+  timezone.value = await getTimezone()
+  
+  // 再调用你的基础拉取方法
   loadAlerts(false) 
 
   // 拉取配置时间
@@ -647,6 +841,47 @@ onUnmounted(() => {
 .price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
 .condition-group { display: flex; align-items: center; justify-content: flex-end; }
 .time-text { color: #909399; font-size: 13px; }
+
+.sort-mode-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fff7e6;
+  border-bottom: 1px solid #ffe58f;
+  color: #d48806;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 18px;
+  color: #909399;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+:deep(.sort-mode-row) {
+  cursor: grab;
+}
+
+:deep(.sortable-ghost) {
+  opacity: 0.4;
+  background: #f0f9ff !important;
+}
+
+:deep(.sortable-chosen) {
+  background: #ecf5ff !important;
+}
+
+:deep(.sortable-drag) {
+  opacity: 0.8;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 
 @media (min-width: 769px) {
   .desktop-view { display: block; }
@@ -705,5 +940,98 @@ onUnmounted(() => {
   .form-row-2 { display: flex; flex-direction: column; gap: 0; }
   :deep(.dialog-footer) { display: flex; flex-wrap: wrap; gap: 10px; }
   :deep(.dialog-footer .el-button) { flex: 1 1 100%; margin-left: 0 !important; }
+  
+  .mobile-sort-handle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    background: #fff7e6;
+    border-radius: 8px 8px 0 0;
+    color: #d48806;
+    font-size: 20px;
+    cursor: grab;
+  }
+  
+  .header-right-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .sort-order-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    background: #f0f5ff;
+    border: 1px solid #adc6ff;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .sort-order-mini:active {
+    background: #d6e4ff;
+    transform: scale(0.95);
+  }
+  
+  .sort-order-mini .sort-icon {
+    font-size: 13px;
+    color: #597ef7;
+  }
+  
+  .sort-order-mini .sort-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: #597ef7;
+    font-family: 'Monaco', monospace;
+    min-width: 12px;
+    text-align: center;
+  }
+  
+  .sort-dialog-content {
+    padding: 8px 0;
+  }
+  
+  .sort-dialog-coin {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .sort-dialog-name {
+    font-size: 14px;
+    color: #606266;
+  }
+  
+  .sort-dialog-input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .sort-dialog-label {
+    font-size: 14px;
+    color: #606266;
+  }
+  
+  .sort-dialog-number {
+    width: 120px;
+  }
+  
+  .card-list.sort-mode {
+    cursor: default;
+  }
+  
+  .draggable-card {
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .draggable-card:active {
+    cursor: grabbing;
+  }
 }
 </style>

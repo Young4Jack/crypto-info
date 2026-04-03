@@ -54,6 +54,7 @@ class AlertResponse(BaseModel):
     is_active: bool
     triggered_at: Optional[str] = None
     created_at: str
+    sort_order: int = 0
     # 新增字段
     base_price: Optional[float] = None
     threshold_value: Optional[float] = None
@@ -99,6 +100,7 @@ async def get_alerts(
             is_active=alert.is_active,
             triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
             created_at=alert.created_at.isoformat() if alert.created_at else None,
+            sort_order=alert.sort_order or 0,
             # 新增字段
             base_price=alert.base_price,
             threshold_value=alert.threshold_value,
@@ -110,6 +112,30 @@ async def get_alerts(
         ))
     
     return result
+
+class SortOrderItem(BaseModel):
+    id: int
+    sort_order: int
+
+class SortOrderUpdate(BaseModel):
+    items: List[SortOrderItem]
+
+@router.put("/sort-order")
+async def update_alerts_sort_order(
+    update_data: SortOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """批量更新预警规则排序"""
+    for item in update_data.items:
+        alert = db.query(PriceAlert).filter(
+            PriceAlert.id == item.id,
+            PriceAlert.user_id == current_user.id
+        ).first()
+        if alert:
+            alert.sort_order = item.sort_order
+    db.commit()
+    return {"message": "排序已更新"}
 
 @router.get("/{alert_id}", response_model=AlertResponse)
 async def get_alert(

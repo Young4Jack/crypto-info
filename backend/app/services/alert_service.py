@@ -110,7 +110,7 @@ async def check_price_alerts(prices: Dict[str, float], user_id: int = None):
         db.close()
 
 def get_user_alerts(db: Session, user_id: int) -> List[PriceAlert]:
-    return db.query(PriceAlert).filter(PriceAlert.user_id == user_id).all()
+    return db.query(PriceAlert).filter(PriceAlert.user_id == user_id).order_by(PriceAlert.sort_order.asc()).all()
 
 def create_alert(
     db: Session, user_id: int, crypto_id: int, alert_type: AlertType,
