@@ -136,13 +136,26 @@ main() {
     BACKEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('backend_port', 8000))" 2>/dev/null || echo "8000")
     FRONTEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('frontend_port', 5173))" 2>/dev/null || echo "5173")
     
-    # 7. 启动服务
+    # 7. 检查端口占用
+    print_info "检查端口占用..."
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        print_warning "后端端口 $BACKEND_PORT 已被占用，尝试清理..."
+        pkill -f "python.*run.py" 2>/dev/null
+        sleep 1
+    fi
+    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        print_warning "前端端口 $FRONTEND_PORT 已被占用，尝试清理..."
+        pkill -f "python.*proxy.py" 2>/dev/null
+        sleep 1
+    fi
+    
+    # 8. 启动服务
     echo ""
     print_info "启动服务..."
     
     # 启动后端
     cd backend
-    nohup python run.py > /dev/null 2>&1 &
+    nohup python run.py >> ../backend.log 2>&1 &
     BACKEND_PID=$!
     cd ..
     echo $BACKEND_PID > .backend.pid
@@ -151,13 +164,32 @@ main() {
     # 等待后端启动
     sleep 3
     
+    # 验证后端是否启动成功
+    if ps -p $BACKEND_PID > /dev/null 2>&1; then
+        print_success "后端服务启动成功 (PID: $BACKEND_PID)"
+    else
+        print_error "后端服务启动失败，查看日志: cat backend.log"
+        exit 1
+    fi
+    
     # 启动代理
     cd scripts
-    nohup python3 proxy.py > /dev/null 2>&1 &
+    nohup python3 proxy.py >> ../proxy.log 2>&1 &
     PROXY_PID=$!
     cd ..
     echo $PROXY_PID > .proxy.pid
     echo "   代理 PID: $PROXY_PID"
+    
+    # 等待代理启动
+    sleep 2
+    
+    # 验证代理是否启动成功
+    if ps -p $PROXY_PID > /dev/null 2>&1; then
+        print_success "代理服务启动成功 (PID: $PROXY_PID)"
+    else
+        print_error "代理服务启动失败，查看日志: cat proxy.log"
+        exit 1
+    fi
     
     # 获取本机IP
     if [[ "$OSTYPE" == "darwin"* ]]; then

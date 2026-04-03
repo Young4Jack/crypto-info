@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" :class="{ 'dark-mode': isDarkMode }">
     <el-header class="page-header" height="auto">
       <div class="header-content">
         <div class="header-left">
@@ -7,6 +7,9 @@
           <p>实时查看关注币种的K线走势</p>
         </div>
         <div class="header-right">
+          <el-button @click="toggleDarkMode" class="dark-mode-btn" :type="isDarkMode ? 'warning' : 'default'" plain>
+            {{ isDarkMode ? '☀️ 日间模式' : '🌙 夜间模式' }}
+          </el-button>
           <el-button @click="goToLogin" type="primary" plain>系统登录</el-button>
         </div>
       </div> 
@@ -176,6 +179,7 @@ const watchlistData = ref<any[]>([])
 const klineDialogVisible = ref(false)
 const selectedCryptoName = ref('')
 const savedDataZoom = ref<{ start: number; end: number } | null>(null)
+const isDarkMode = ref(false)
 
 let klineWs: WebSocket | null = null;
 let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
@@ -254,11 +258,22 @@ const onDataZoom = (params: any) => {
 
 // 图表配置
 const chartOption = computed(() => {
+  const dark = isDarkMode.value
+  const bgColor = dark ? '#1a1a2e' : '#ffffff'
+  const textColor = dark ? '#a0a0b0' : '#909399'
+  const borderColor = dark ? '#2a2a3e' : '#ebeef5'
+  const splitAreaColor = dark ? 'rgba(255,255,255,0.03)' : 'rgba(245,247,250,0.5)'
+  const tooltipBg = dark ? '#2a2a3e' : '#ffffff'
+  const tooltipBorder = dark ? '#3a3a5e' : '#ebeef5'
+  const tooltipText = dark ? '#d0d0e0' : '#303133'
+  const tooltipLabel = dark ? '#8080a0' : '#909399'
+
   if (klineData.value.length === 0) {
     return {
+      backgroundColor: bgColor,
       title: {
         text: '', left: 'center', top: 'center',
-        textStyle: { color: '#ccc', fontSize: 14 }
+        textStyle: { color: textColor, fontSize: 14 }
       },
       series: []
     }
@@ -286,15 +301,17 @@ const chartOption = computed(() => {
   const volumeData = klineData.value.map(k => k.volume)
 
   return {
+    backgroundColor: bgColor,
     title: { show: false },
     tooltip: {
       trigger: 'axis',
       triggerOn: 'mousemove',
-      // 新增以下两行：
-      confine: true,        // 强制将 tooltip 限制在可视范围内，如果上方空间不够，它会自动翻转显示在手指下方
-      appendToBody: true,   // 将 tooltip 的 DOM 节点直接挂载到 <body> 层，彻底打破外部容器的 overflow 遮挡限制
-      
-      axisPointer: { type: 'cross' },
+      confine: true,
+      appendToBody: true,
+      backgroundColor: tooltipBg,
+      borderColor: tooltipBorder,
+      textStyle: { color: tooltipText },
+      axisPointer: { type: 'cross', lineStyle: { color: dark ? '#4a4a6e' : '#dcdfe6' } },
       formatter: (params: any) => {
         const kline = params[0]
         if (!kline) return ''
@@ -310,12 +327,12 @@ const chartOption = computed(() => {
         
         return `
           <div style="font-family: Monaco, monospace; font-size: 12px; min-width: 140px;">
-            <div style="color: #909399; margin-bottom: 8px; font-weight: bold;">${timeStr}</div>
+            <div style="color: ${tooltipLabel}; margin-bottom: 8px; font-weight: bold;">${timeStr}</div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>开盘</span> <span>${data.open.toFixed(4)}</span></div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最高</span> <span style="color: #f56c6c;">${data.high.toFixed(4)}</span></div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最低</span> <span style="color: #67c23a;">${data.low.toFixed(4)}</span></div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>收盘</span> <span style="color: ${color}; font-weight: bold;">${data.close.toFixed(4)}</span></div>
-            <div style="display: flex; justify-content: space-between; border-top: 1px solid #ebeef5; margin-top: 6px; padding-top: 6px;">
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid ${tooltipBorder}; margin-top: 6px; padding-top: 6px;">
               <span>涨跌幅</span> <span style="color: ${color};">${sign}${change}%</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>振幅</span> <span>${amplitude}%</span></div>
@@ -326,28 +343,28 @@ const chartOption = computed(() => {
     },
     legend: {
       data: ['K线', '成交量'],
-      left: 'center',  // 强制绝对水平居中
-      top: 0,          // 紧贴顶部
-      textStyle: { fontSize: 11 }
+      left: 'center',
+      top: 0,
+      textStyle: { fontSize: 11, color: textColor }
     },
     grid: [
       {
         left: '8%', right: '8%',
         top: 30,
-        bottom: '26%'  // 强制主图(K线)距离画布底部留出 26% 的绝对空间
+        bottom: '26%'
       },
       {
         left: '8%', right: '8%',
-        height: '16%', // 成交量图的高度占比
-        bottom: '4%'   // 强制副图(成交量)锚定在距离画布最底边 4% 的位置
+        height: '16%',
+        bottom: '4%'
       }
     ],
     xAxis: [
-      { type: 'category', data: dates, gridIndex: 0, axisLine: { onZero: false }, splitLine: { show: false }, axisLabel: { fontSize: 11, color: '#909399' } },
-      { type: 'category', gridIndex: 1, data: dates, axisLabel: { show: false }, axisLine: { onZero: false }, splitLine: { show: false } }
+      { type: 'category', data: dates, gridIndex: 0, axisLine: { onZero: false, lineStyle: { color: borderColor } }, splitLine: { show: false }, axisLabel: { fontSize: 11, color: textColor } },
+      { type: 'category', gridIndex: 1, data: dates, axisLabel: { show: false }, axisLine: { onZero: false, lineStyle: { color: borderColor } }, splitLine: { show: false } }
     ],
     yAxis: [
-      { scale: true, gridIndex: 0, splitArea: { show: true }, axisLabel: { formatter: '${value}', fontSize: 11, color: '#909399' } },
+      { scale: true, gridIndex: 0, splitArea: { show: true, areaStyle: { color: [splitAreaColor, 'transparent'] } }, axisLabel: { formatter: '${value}', fontSize: 11, color: textColor }, splitLine: { lineStyle: { color: borderColor } } },
       { scale: true, gridIndex: 1, splitNumber: 2, axisLabel: { show: false }, axisLine: { show: false }, splitLine: { show: false } }
     ],
     dataZoom: [
@@ -382,7 +399,7 @@ const loadWatchlist = async () => {
   try {
     // 并行获取关注列表和涨跌幅数据
     const [watchlistRes, klinesRes] = await Promise.all([
-      watchlistApi.getPublic(),
+      watchlistApi.getAllWatchlist(),
       klinesApi.getWatchlistKlines('1d', 2)
     ])
     
@@ -421,7 +438,7 @@ const loadWatchlist = async () => {
     console.error('加载关注列表失败:', error)
     // 降级：只加载关注列表
     try {
-      const response = await watchlistApi.getPublic()
+      const response = await watchlistApi.getAllWatchlist()
       const data = response.data
       data.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
       watchlistData.value = data
@@ -558,6 +575,11 @@ const goToLogin = () => {
   router.push('/login')
 }
 
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  localStorage.setItem('kline_dark_mode', isDarkMode.value.toString())
+}
+
 
 // 价格实时刷新（使用动态间隔）
 const startPriceRefresh = () => {
@@ -577,7 +599,7 @@ const stopPriceRefresh = () => {
 const loadWatchlistBackground = async () => {
   try {
     // 只获取关注列表，不获取涨跌幅（涨跌幅按天变化，不需要实时更新）
-    const response = await watchlistApi.getPublic()
+    const response = await watchlistApi.getAllWatchlist()
     const newData = response.data
     
     // 保留现有的涨跌幅数据
@@ -609,6 +631,16 @@ const loadPublicSettings = async (): Promise<number> => {
 }
 
 onMounted(async () => {
+  // 从公开API获取默认夜间模式设置
+  try {
+    const response = await systemSettingsApi.getPublicSystemSetting()
+    if (response.data && response.data.default_dark_mode !== undefined) {
+      isDarkMode.value = response.data.default_dark_mode
+    }
+  } catch (error) {
+    console.error('获取夜间模式设置失败，使用默认值')
+  }
+  
   loadWatchlist()
   
   // 获取动态刷新间隔
@@ -1323,6 +1355,139 @@ onUnmounted(() => {
   position: relative;
   background-color: #ffffff;
   padding: 10px 0;
+  min-height: 0 !important; 
+  overflow: hidden; 
+}
+
+/* ==========================================
+   夜间模式
+========================================== */
+.page-container.dark-mode {
+  background-color: #0f0f1a;
+}
+
+.page-container.dark-mode .page-header {
+  background: #1a1a2e;
+  border-bottom-color: #2a2a3e;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.page-container.dark-mode .header-left h1 {
+  color: #60a5fa;
+}
+
+.page-container.dark-mode .header-left p {
+  color: #8080a0;
+}
+
+.page-container.dark-mode .watchlist-card {
+  background: #1a1a2e;
+  border-color: #2a2a3e;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.3);
+}
+
+.page-container.dark-mode .card-title {
+  color: #d0d0e0;
+}
+
+.page-container.dark-mode .watchlist-item {
+  background: #16162a;
+  border-color: #2a2a3e;
+}
+
+.page-container.dark-mode .watchlist-item:hover {
+  background: #1e1e36;
+}
+
+.page-container.dark-mode .item-name {
+  color: #d0d0e0;
+}
+
+.page-container.dark-mode .item-price {
+  color: #60a5fa;
+}
+
+.page-container.dark-mode .kline-dialog-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.page-container.dark-mode .kline-dialog-content {
+  background-color: #1a1a2e;
+}
+
+.page-container.dark-mode .kline-header-toolbar {
+  background-color: #1a1a2e;
+  border-bottom-color: #2a2a3e;
+}
+
+.page-container.dark-mode .symbol-info h2 {
+  color: #e0e0f0;
+}
+
+.page-container.dark-mode .main-interval-text {
+  color: #a0a0b0;
+}
+
+.page-container.dark-mode .kline-header-toolbar .close-btn {
+  background: #2a2a3e;
+  color: #a0a0b0;
+}
+
+.page-container.dark-mode .kline-header-toolbar .close-btn:hover {
+  background: #3a3a5e;
+  color: #f56c6c;
+}
+
+.page-container.dark-mode .realtime-data-bar {
+  background: #16162a;
+  border-color: #2a2a3e;
+}
+
+.page-container.dark-mode .data-item .label {
+  color: #8080a0;
+}
+
+.page-container.dark-mode .data-item .value {
+  color: #d0d0e0;
+}
+
+.page-container.dark-mode .header-bottom {
+  border-bottom-color: #2a2a3e;
+}
+
+.page-container.dark-mode .custom-interval-selector .interval-btn {
+  color: #8080a0;
+}
+
+.page-container.dark-mode .custom-interval-selector .interval-btn:hover {
+  color: #d0d0e0;
+}
+
+.page-container.dark-mode .custom-interval-selector .interval-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+.page-container.dark-mode .kline-chart-container {
+  background-color: #1a1a2e;
+}
+
+.page-container.dark-mode .loading-overlay {
+  background: rgba(26, 26, 46, 0.8);
+}
+
+.page-container.dark-mode .empty-placeholder {
+  background: #1a1a2e;
+  color: #8080a0;
+}
+
+.page-container.dark-mode :deep(.el-card__header) {
+  background: #1a1a2e;
+  border-bottom-color: #2a2a3e;
+}
+
+.page-container.dark-mode :deep(.el-card__body) {
+  background: #1a1a2e;
 }
 
 .empty-placeholder {

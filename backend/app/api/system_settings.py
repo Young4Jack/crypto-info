@@ -18,6 +18,7 @@ class SystemSettingCreate(BaseModel):
     site_description: str = "数字货币价格监控和预警系统"
     log_level: str = "INFO"
     enable_logging: bool = True
+    default_dark_mode: bool = False
     timezone: str = "Asia/Shanghai"
 
 class SystemSettingUpdate(BaseModel):
@@ -28,6 +29,7 @@ class SystemSettingUpdate(BaseModel):
     site_description: Optional[str] = None
     log_level: Optional[str] = None
     enable_logging: Optional[bool] = None
+    default_dark_mode: Optional[bool] = None
     timezone: Optional[str] = None
 
 class SystemSettingResponse(BaseModel):
@@ -36,9 +38,9 @@ class SystemSettingResponse(BaseModel):
     enable_captcha: bool
     site_title: str
     site_description: str
-    refresh_interval: int = 1
     log_level: str
     enable_logging: bool
+    default_dark_mode: bool
     timezone: str
 
 @router.get("/", response_model=SystemSettingResponse)
@@ -52,6 +54,7 @@ async def get_system_setting():
         site_description=system_settings.get("site_description", "数字货币价格监控和预警系统"),
         log_level=system_settings.get("log_level", "INFO"),
         enable_logging=system_settings.get("enable_logging", True),
+        default_dark_mode=system_settings.get("default_dark_mode", False),
         timezone=system_settings.get("timezone", "Asia/Shanghai")
     )
 
@@ -65,6 +68,7 @@ async def create_system_setting(setting_data: SystemSettingCreate):
         "site_description": setting_data.site_description,
         "log_level": setting_data.log_level,
         "enable_logging": setting_data.enable_logging,
+        "default_dark_mode": setting_data.default_dark_mode,
         "timezone": setting_data.timezone
     }
     
@@ -81,6 +85,7 @@ async def create_system_setting(setting_data: SystemSettingCreate):
         site_description=system_settings["site_description"],
         log_level=system_settings["log_level"],
         enable_logging=system_settings["enable_logging"],
+        default_dark_mode=system_settings["default_dark_mode"],
         timezone=system_settings["timezone"]
     )
 
@@ -103,6 +108,8 @@ async def update_system_setting(setting_data: SystemSettingUpdate):
         current_settings["log_level"] = setting_data.log_level
     if setting_data.enable_logging is not None:
         current_settings["enable_logging"] = setting_data.enable_logging
+    if setting_data.default_dark_mode is not None:
+        current_settings["default_dark_mode"] = setting_data.default_dark_mode
     if setting_data.timezone is not None:
         current_settings["timezone"] = setting_data.timezone
     
@@ -119,6 +126,7 @@ async def update_system_setting(setting_data: SystemSettingUpdate):
         site_description=current_settings["site_description"],
         log_level=current_settings["log_level"],
         enable_logging=current_settings["enable_logging"],
+        default_dark_mode=current_settings["default_dark_mode"],
         timezone=current_settings["timezone"]
     )
 
@@ -149,5 +157,6 @@ async def get_public_system_settings():
     return {
         "site_title": system_settings.get("site_title", "Crypto-info"),
         "site_description": system_settings.get("site_description", "数字货币价格监控和预警系统"),
-        "refresh_interval": system_settings.get("refresh_interval", 1)
+        "refresh_interval": system_settings.get("refresh_interval", 1),
+        "default_dark_mode": system_settings.get("default_dark_mode", False)
     }

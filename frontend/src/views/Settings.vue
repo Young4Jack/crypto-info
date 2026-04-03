@@ -134,6 +134,9 @@
                 <el-form-item label="记录系统日志" class="inline-switch">
                   <el-switch v-model="systemForm.enable_logging" active-text="启用" inactive-text="禁用" />
                 </el-form-item>
+                <el-form-item label="默认夜间模式" class="inline-switch">
+                  <el-switch v-model="systemForm.default_dark_mode" active-text="启用" inactive-text="禁用" />
+                </el-form-item>
               </div>
 
               <el-form-item>
@@ -219,7 +222,7 @@ const accountSaveLoading = ref(false)
 
 const settingForm = reactive({ api_url: '', auth_token: '', channel: 'email' })
 const apiSettingForm = reactive({ primary_api_url: '', backup_api_url: '', api_key: '', api_secret: '' })
-const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', log_level: 'INFO', enable_logging: true, timezone: 'Asia/Shanghai' })
+const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', log_level: 'INFO', enable_logging: true, default_dark_mode: false, timezone: 'Asia/Shanghai' })
 const accountForm = reactive({ username: '', email: '', current_password: '', new_password: '', confirm_password: '' })
 
 const settingRules: FormRules = {

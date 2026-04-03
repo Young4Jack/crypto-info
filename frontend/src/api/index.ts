@@ -286,6 +286,7 @@ export const systemSettingsApi = {
     site_description?: string
     log_level?: string
     enable_logging?: boolean
+    default_dark_mode?: boolean
     timezone?: string
   }) => {
     return request.post('/api/system-settings/', data)
@@ -299,6 +300,7 @@ export const systemSettingsApi = {
     site_description?: string
     log_level?: string
     enable_logging?: boolean
+    default_dark_mode?: boolean
     timezone?: string
   }) => {
     return request.put('/api/system-settings/', data)
@@ -320,6 +322,11 @@ export const watchlistApi = {
   // 获取公开的关注列表（无需认证）
   getPublic: () => {
     return request.get('/api/watchlist/public')
+  },
+  
+  // 获取所有关注列表（包含is_public为false的，无需认证）
+  getAllWatchlist: () => {
+    return request.get('/api/watchlist/all')
   },
   
   // 创建新的关注项

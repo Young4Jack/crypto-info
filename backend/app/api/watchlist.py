@@ -129,6 +129,46 @@ async def get_public_watchlist(db: Session = Depends(get_db)):
     
     return result
 
+@router.get("/all", response_model=List[WatchlistResponse])
+async def get_all_watchlist(db: Session = Depends(get_db)):
+    """获取所有关注列表（包含is_public为false的，无需认证）"""
+    watchlist_items = db.query(Watchlist).order_by(Watchlist.sort_order.asc()).all()
+    
+    # 获取当前价格数据
+    try:
+        current_prices = await fetch_crypto_prices()
+    except Exception as e:
+        print(f"获取价格失败: {e}")
+        current_prices = {}
+    
+    # 按币种去重
+    seen_symbols = set()
+    result = []
+    
+    for item in watchlist_items:
+        crypto = db.query(Cryptocurrency).filter(
+            Cryptocurrency.id == item.crypto_id
+        ).first()
+        
+        if crypto and crypto.symbol not in seen_symbols:
+            seen_symbols.add(crypto.symbol)
+            # 获取当前价格
+            current_price = current_prices.get(crypto.symbol, 0)
+            
+            result.append(WatchlistResponse(
+                id=item.id,
+                crypto_id=item.crypto_id,
+                crypto_symbol=crypto.symbol,
+                crypto_name=crypto.name,
+                notes=item.notes,
+                created_at=item.created_at.isoformat() if item.created_at else None,
+                current_price=current_price,
+                sort_order=item.sort_order or 0,
+                is_public=item.is_public
+            ))
+    
+    return result
+
 @router.post("/", response_model=WatchlistResponse)
 async def create_watchlist_item(
     watchlist_data: WatchlistCreate,
