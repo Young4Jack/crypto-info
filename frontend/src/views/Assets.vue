@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" :class="{ 'dark-mode': isDarkMode }">
     <el-header class="page-header" height="auto">
       <div class="header-content">
         <div class="header-left">
@@ -7,6 +7,9 @@
           <p>管理数字货币持仓组合与盈亏监控</p>
         </div>
         <div class="header-right">
+          <el-button @click="toggleDarkMode" class="dark-mode-btn" :type="isDarkMode ? 'warning' : 'default'" plain>
+            {{ isDarkMode ? '☀️' : '🌙' }}
+          </el-button>
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
             <el-button @click="goToHome">返回主页</el-button>
@@ -306,10 +309,12 @@ import { useRouter } from 'vue-router'
 import { Plus, Edit, Delete, Notebook, Sort, Check, Rank } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { assetsApi, systemSettingsApi } from '../api'
+import { useDarkMode } from '../composables/useDarkMode'
 import Sortable from 'sortablejs'
 import { formatTimeWithTimezoneSync, getTimezone } from '../utils/timezone'
 
 const router = useRouter()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 const loading = ref(false)
 const submitLoading = ref(false)
 const assets = ref<any[]>([])
@@ -911,4 +916,21 @@ onUnmounted(() => {
     cursor: grabbing;
   }
 }
+
+/* 夜间模式 */
+.page-container.dark-mode { background-color: #0f0f1a; }
+.page-container.dark-mode .page-header { background: #1a1a2e; border-bottom-color: #2a2a3e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.page-container.dark-mode .header-left h1 { color: #60a5fa; }
+.page-container.dark-mode .header-left p { color: #8080a0; }
+.page-container.dark-mode .form-card { background: #1a1a2e; border: none; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.page-container.dark-mode .card-header { color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-card__header) { background: #1a1a2e; border-bottom-color: #2a2a3e; }
+.page-container.dark-mode :deep(.el-card__body) { background: #1a1a2e; }
+.page-container.dark-mode :deep(.el-table) { background: #1a1a2e; color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-table td), .page-container.dark-mode :deep(.el-table th.is-leaf) { background: #1a1a2e; border-color: #2a2a3e; color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-table--striped .el-table__body tr.el-table__row--striped td) { background: #16162a; }
+.page-container.dark-mode :deep(.el-input__wrapper) { background: #16162a; }
+.page-container.dark-mode :deep(.el-select .el-input__wrapper) { background: #16162a; }
+.page-container.dark-mode .draggable-card { background: #16162a; border-color: #2a2a3e; }
+.page-container.dark-mode .draggable-card:hover { background: #1e1e36; }
 </style>

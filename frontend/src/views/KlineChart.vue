@@ -123,6 +123,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { klinesApi, watchlistApi, systemSettingsApi } from '../api'
+import { useDarkMode } from '../composables/useDarkMode'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CandlestickChart, BarChart, LineChart } from 'echarts/charts'
@@ -179,7 +180,7 @@ const watchlistData = ref<any[]>([])
 const klineDialogVisible = ref(false)
 const selectedCryptoName = ref('')
 const savedDataZoom = ref<{ start: number; end: number } | null>(null)
-const isDarkMode = ref(false)
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 let klineWs: WebSocket | null = null;
 let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
@@ -575,11 +576,6 @@ const goToLogin = () => {
   router.push('/login')
 }
 
-const toggleDarkMode = () => {
-  isDarkMode.value = !isDarkMode.value
-  localStorage.setItem('kline_dark_mode', isDarkMode.value.toString())
-}
-
 
 // 价格实时刷新（使用动态间隔）
 const startPriceRefresh = () => {
@@ -631,16 +627,6 @@ const loadPublicSettings = async (): Promise<number> => {
 }
 
 onMounted(async () => {
-  // 从公开API获取默认夜间模式设置
-  try {
-    const response = await systemSettingsApi.getPublicSystemSetting()
-    if (response.data && response.data.default_dark_mode !== undefined) {
-      isDarkMode.value = response.data.default_dark_mode
-    }
-  } catch (error) {
-    console.error('获取夜间模式设置失败，使用默认值')
-  }
-  
   loadWatchlist()
   
   // 获取动态刷新间隔

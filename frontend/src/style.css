@@ -593,3 +593,10 @@ input, textarea, select {
     display: none !important;
   }
 }
+
+/* 夜间模式按钮 */
+.dark-mode-btn {
+  font-size: 14px;
+  min-width: auto;
+  padding: 0 10px;
+}

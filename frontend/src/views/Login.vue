@@ -1,5 +1,8 @@
 <template>
-  <div class="login-wrapper">
+  <div class="login-wrapper" :class="{ 'dark-mode': isDarkMode }">
+    <el-button @click="toggleDarkMode" class="dark-mode-float-btn" :type="isDarkMode ? 'warning' : 'default'" plain circle>
+      {{ isDarkMode ? '☀️' : '🌙' }}
+    </el-button>
     <div class="login-card">
       <div class="login-header">
         <div class="logo-box">
@@ -83,9 +86,11 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { authApi, systemSettingsApi } from '../api'
+import { useDarkMode } from '../composables/useDarkMode'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 const captchaEnabled = ref(false)
@@ -407,5 +412,30 @@ onMounted(() => {
     width: 110px;
     height: 44px;
   }
+}
+
+/* 夜间模式 */
+.login-wrapper.dark-mode { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); }
+.login-wrapper.dark-mode .login-card { background: #1a1a2e; border-color: #2a2a3e; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+.login-wrapper.dark-mode .login-header h1 { color: #e0e0f0; }
+.login-wrapper.dark-mode .login-header p { color: #8080a0; }
+.login-wrapper.dark-mode .logo-box { background: #2a2a3e; }
+.login-wrapper.dark-mode .logo-text { color: #60a5fa; }
+.login-wrapper.dark-mode :deep(.el-input__wrapper) { background: #16162a; }
+.login-wrapper.dark-mode :deep(.el-input__inner) { color: #d0d0e0; }
+.login-wrapper.dark-mode .captcha-tip { color: #8080a0; }
+.login-wrapper.dark-mode :deep(.el-divider__text) { background: #1a1a2e; color: #8080a0; }
+.login-wrapper.dark-mode .captcha-image-container { background: #16162a; border-color: #2a2a3e; }
+
+/* 登录页浮动夜间模式按钮 */
+.dark-mode-float-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 18px;
 }
 </style>

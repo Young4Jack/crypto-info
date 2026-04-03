@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" :class="{ 'dark-mode': isDarkMode }">
     <el-header class="page-header" height="auto">
       <div class="header-content">
         <div class="header-left">
@@ -7,6 +7,9 @@
           <p>欢迎回来，{{ authStore.user?.username || 'Jack' }}</p>
         </div>
         <div class="header-right">
+          <el-button @click="toggleDarkMode" class="dark-mode-btn" :type="isDarkMode ? 'warning' : 'default'" plain>
+            {{ isDarkMode ? '☀️' : '🌙' }}
+          </el-button>
           <el-button-group class="action-buttons">
             <el-button @click="goToHome">返回主页</el-button>
             <el-button type="primary" @click="goToAlerts" plain>预警管理</el-button>
@@ -173,6 +176,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { dashboardApi, systemSettingsApi } from '../api'
+import { useDarkMode } from '../composables/useDarkMode'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { PieChart } from 'echarts/charts'
@@ -183,6 +187,7 @@ use([PieChart, TitleComponent, TooltipComponent, LegendComponent, CanvasRenderer
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 const loading = ref(false)
 const dashboardData = ref<any>({})
@@ -425,4 +430,24 @@ onUnmounted(() => {
   .list-item { padding: 10px 12px; }
   .primary-text { font-size: 13px; }
 }
+
+/* 夜间模式 */
+.page-container.dark-mode { background-color: #0f0f1a; }
+.page-container.dark-mode .page-header { background: #1a1a2e; border-bottom-color: #2a2a3e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.page-container.dark-mode .header-left h1 { color: #60a5fa; }
+.page-container.dark-mode .header-left p { color: #8080a0; }
+.page-container.dark-mode .content-card { background: #1a1a2e; border: none; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.page-container.dark-mode .card-header { color: #d0d0e0; }
+.page-container.dark-mode .stat-card { background: #16162a; }
+.page-container.dark-mode .stat-number { color: #e0e0f0; }
+.page-container.dark-mode .stat-label { color: #8080a0; }
+.page-container.dark-mode .list-item { background: #16162a; border-color: #2a2a3e; }
+.page-container.dark-mode .primary-text { color: #d0d0e0; }
+.page-container.dark-mode .secondary-text { color: #8080a0; }
+.page-container.dark-mode :deep(.el-card__header) { background: #1a1a2e; border-bottom-color: #2a2a3e; }
+.page-container.dark-mode :deep(.el-card__body) { background: #1a1a2e; }
+.page-container.dark-mode :deep(.el-table) { background: #1a1a2e; color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-table tr) { background: #1a1a2e; }
+.page-container.dark-mode :deep(.el-table td), .page-container.dark-mode :deep(.el-table th.is-leaf) { background: #1a1a2e; border-color: #2a2a3e; color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-table--striped .el-table__body tr.el-table__row--striped td) { background: #16162a; }
 </style>

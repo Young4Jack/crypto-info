@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" :class="{ 'dark-mode': isDarkMode }">
     <el-header class="page-header" height="auto">
       <div class="header-content">
         <div class="header-left">
@@ -7,6 +7,9 @@
           <p>管理您的账户、API密钥及系统偏好</p>
         </div>
         <div class="header-right">
+          <el-button @click="toggleDarkMode" class="dark-mode-btn" :type="isDarkMode ? 'warning' : 'default'" plain>
+            {{ isDarkMode ? '☀️' : '🌙' }}
+          </el-button>
           <span class="welcome-text">欢迎，{{ authStore.user?.username || '用户' }}</span>
           <el-button-group class="action-buttons">
             <el-button @click="goToDashboard">返回面板</el-button>
@@ -199,9 +202,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { settingsApi, apiSettingsApi, systemSettingsApi, authApi } from '../api'
+import { useDarkMode } from '../composables/useDarkMode'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 const settingFormRef = ref<FormInstance>()
 const apiSettingFormRef = ref<FormInstance>()
@@ -459,4 +464,22 @@ onMounted(() => {
   .switch-group { flex-direction: column; gap: 15px; }
   .form-actions :deep(.el-button) { width: 100%; margin-left: 0; margin-bottom: 10px; }
 }
+
+/* 夜间模式 */
+.page-container.dark-mode { background-color: #0f0f1a; }
+.page-container.dark-mode .page-header { background: #1a1a2e; border-bottom-color: #2a2a3e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.page-container.dark-mode .header-left h1 { color: #60a5fa; }
+.page-container.dark-mode .header-left p { color: #8080a0; }
+.page-container.dark-mode .welcome-text { color: #a0a0b0; }
+.page-container.dark-mode .content-card { background: #1a1a2e; border: none; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.page-container.dark-mode .card-header { color: #d0d0e0; }
+.page-container.dark-mode :deep(.el-card__header) { background: #1a1a2e; border-bottom-color: #2a2a3e; }
+.page-container.dark-mode :deep(.el-card__body) { background: #1a1a2e; }
+.page-container.dark-mode :deep(.el-form-item__label) { color: #a0a0b0; }
+.page-container.dark-mode :deep(.el-input__wrapper) { background: #16162a; }
+.page-container.dark-mode :deep(.el-select .el-input__wrapper) { background: #16162a; }
+.page-container.dark-mode :deep(.el-textarea__inner) { background: #16162a; color: #d0d0e0; }
+.page-container.dark-mode .switch-group { background: #16162a; }
+.page-container.dark-mode .info-content p { color: #8080a0; }
+.page-container.dark-mode .info-content strong { color: #d0d0e0; }
 </style>
