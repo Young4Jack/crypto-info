@@ -144,6 +144,7 @@ def check_port(port):
     """检查端口是否被占用"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(('0.0.0.0', port))
             return False
         except socket.error:
@@ -162,13 +163,9 @@ def main():
         print("   或者下载包含预编译前端的 Release 包")
         sys.exit(1)
 
-    # 检查端口是否被占用
-    if check_port(PROXY_PORT):
-        print(f"❌ 端口 {PROXY_PORT} 已被占用")
-        sys.exit(1)
-
     # 启动服务器
     try:
+        http.server.HTTPServer.allow_reuse_address = True
         server = http.server.HTTPServer(('0.0.0.0', PROXY_PORT), ProxyHandler)
         print("=" * 60)
         print("🚀 Crypto-info 代理服务器启动")
@@ -180,6 +177,12 @@ def main():
         print("按 Ctrl+C 停止服务器")
         print("=" * 60)
         server.serve_forever()
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print(f"❌ 端口 {PROXY_PORT} 已被其他进程占用")
+        else:
+            print(f"❌ 服务器启动失败: {e}")
+        sys.exit(1)
     except KeyboardInterrupt:
         print("\n⏹️  服务器已停止")
     except Exception as e:

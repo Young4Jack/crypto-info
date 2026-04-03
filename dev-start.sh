@@ -129,27 +129,21 @@ main() {
     # 4. 检查数据库
     check_database
     
-    # 5. 强制清理残留进程（不管脚本是否认为在运行）
-    pkill -f "python.*run.py" 2>/dev/null
-    pkill -f "python.*proxy.py" 2>/dev/null
+    # 5. 强制清理残留进程
+    pkill -9 -f "python.*run.py" 2>/dev/null
+    pkill -9 -f "python.*proxy.py" 2>/dev/null
     rm -f .backend.pid .proxy.pid
+    rm -f proxy.log backend.log
     sleep 2
     
     # 6. 读取端口配置
     BACKEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('backend_port', 8000))" 2>/dev/null || echo "8000")
     FRONTEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('frontend_port', 5173))" 2>/dev/null || echo "5173")
     
-    # 7. 确认端口已释放
-    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-        print_warning "后端端口 $BACKEND_PORT 仍被占用，强制 kill..."
-        fuser -k $BACKEND_PORT/tcp 2>/dev/null
-        sleep 2
-    fi
-    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-        print_warning "前端端口 $FRONTEND_PORT 仍被占用，强制 kill..."
-        fuser -k $FRONTEND_PORT/tcp 2>/dev/null
-        sleep 2
-    fi
+    # 7. 强制释放端口（fuser -k 会 kill 占用端口的进程并释放 TIME_WAIT）
+    fuser -k $BACKEND_PORT/tcp 2>/dev/null
+    fuser -k $FRONTEND_PORT/tcp 2>/dev/null
+    sleep 2
     
     # 8. 启动服务
     echo ""
