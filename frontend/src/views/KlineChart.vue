@@ -398,46 +398,41 @@ const chartOption = computed(() => {
 const loadWatchlist = async () => {
   loadingWatchlist.value = true
   try {
-    // 并行获取关注列表和涨跌幅数据
-    const [watchlistRes, klinesRes] = await Promise.all([
-      watchlistApi.getAllWatchlist(),
-      klinesApi.getWatchlistKlines('1d', 2)
-    ])
-    
+    // 先获取关注列表，立即渲染
+    const watchlistRes = await watchlistApi.getAllWatchlist()
     const data = watchlistRes.data
-    //console.log('K线API完整响应:', klinesRes)
-    //console.log('K线API data:', klinesRes.data)
     
-    const klinesData = klinesRes.data?.data || {}
-    //console.log('涨跌幅数据:', klinesData)
-    
-    // 合并涨跌幅数据
+    // 初始化涨跌幅为 null（显示 "-"）
     for (const item of data) {
-      const symbolData = klinesData[item.crypto_symbol]
-      const symbolKlines = symbolData?.klines || []
-      
-      // 使用最新一条K线的涨跌幅（与弹出框一致）
-      if (symbolKlines.length > 0) {
-        const latestKline = symbolKlines[symbolKlines.length - 1]
-        const open = parseFloat(latestKline.open)
-        const close = parseFloat(latestKline.close)
-        if (open && close) {
-          item.change_24h = ((close - open) / open) * 100
-        } else {
-          item.change_24h = null
-        }
-      } else {
-        item.change_24h = null
-      }
+      item.change_24h = null
     }
     
     // 按 sort_order 排序
     data.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-    
     watchlistData.value = data
+    
+    // 后台异步加载涨跌幅数据（不阻塞渲染）
+    klinesApi.getWatchlistKlines('1d', 2).then(klinesRes => {
+      const klinesData = klinesRes.data?.data || {}
+      
+      for (const item of watchlistData.value) {
+        const symbolData = klinesData[item.crypto_symbol]
+        const symbolKlines = symbolData?.klines || []
+        
+        if (symbolKlines.length > 0) {
+          const latestKline = symbolKlines[symbolKlines.length - 1]
+          const open = parseFloat(latestKline.open)
+          const close = parseFloat(latestKline.close)
+          if (open && close) {
+            item.change_24h = ((close - open) / open) * 100
+          }
+        }
+      }
+    }).catch(err => {
+      console.error('后台加载涨跌幅失败:', err)
+    })
   } catch (error) {
     console.error('加载关注列表失败:', error)
-    // 降级：只加载关注列表
     try {
       const response = await watchlistApi.getAllWatchlist()
       const data = response.data
