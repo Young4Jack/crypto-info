@@ -7,7 +7,7 @@ from app.models.cryptocurrency import Cryptocurrency
 from app.api.deps import get_current_user
 from app.models.user import User
 
-router = APIRouter(prefix="/api/cryptocurrencies", tags=["币种管理"])
+router = APIRouter(prefix="/cryptocurrencies", tags=["币种管理"])
 
 @router.get("/", response_model=List[dict])
 async def get_cryptocurrencies(

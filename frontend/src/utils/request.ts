@@ -6,7 +6,7 @@ import router from '../router'
 // 采用反向代理架构后，所有 API 请求直接发送到当前域名的 /api 路径
 // 本地开发由 Vite proxy 转发，生产环境由 Nginx 转发
 const request = axios.create({
-  baseURL: '/api',
+  baseURL: '', // 将原本的 '/api' 清空
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

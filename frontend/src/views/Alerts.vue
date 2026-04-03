@@ -920,11 +920,15 @@ onUnmounted(() => {
   .mobile-view { display: block; }
   .page-container { padding-bottom: 80px; }
   .page-main { padding: 12px; }
-  .page-header { padding: 15px; }
-  .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
-  .header-right { width: 100%; }
-  :deep(.action-buttons) { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; }
-  :deep(.action-buttons .el-button) { flex: 1 1 auto; margin: 0 !important; border-radius: 6px !important; }
+  .page-header { padding: 10px 12px; }
+  .header-content { display: flex; flex-direction: column; gap: 8px; }
+  .header-left { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .header-left h1 { font-size: 16px; margin: 0; }
+  .header-left p { display: none; }
+  .header-right { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .dark-mode-btn { font-size: 14px; min-width: 36px; height: 32px; padding: 0; align-self: flex-end; }
+  :deep(.action-buttons.el-button-group) { display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100%; }
+  :deep(.action-buttons.el-button-group .el-button) { width: 100% !important; margin: 0 !important; border-radius: 6px !important; justify-content: center; font-size: 13px !important; height: 36px !important; }
   .form-responsive-row { display: flex; flex-direction: column; gap: 0; }
   .flex-item-large, .flex-item-medium, .flex-item-small { margin-bottom: 16px; }
   .flex-btn { margin-bottom: 4px; }

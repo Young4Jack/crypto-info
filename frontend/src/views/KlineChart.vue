@@ -190,7 +190,7 @@ let priceRefreshTimer: ReturnType<typeof setInterval> | null = null
 let refreshInterval = 5 // 默认5秒
 
 const intervalLabelMap: Record<string, string> = {
-  '1m': '1分钟', '5m': '5分钟', '15m': '15分钟',
+  '1m': '1分钟', '5m': '5分钟', '15m': '15分钟', '30m': '30分钟',
   '1h': '1小时', '4h': '4小时', 
   '1d': '日线', '1w': '周线', '1M': '月线'
 }
@@ -217,6 +217,7 @@ const realtimeObj = computed(() => {
   
   // 核心判断：如果鼠标停留在图表上，就取 hoverIndex 的数据；否则取最新一根（最后一条）数据
   const currentIndex = hoverIndex.value !== null ? hoverIndex.value : (klineData.value.length - 1);
+  if (currentIndex < 0 || currentIndex >= klineData.value.length) return null;
   const data = klineData.value[currentIndex]; 
   
   // 处理时间格式
@@ -324,8 +325,8 @@ const chartOption = computed(() => {
 
         const data = klineData.value[kline.dataIndex]
         const timeStr = formatTime(data.open_time)
-        const change = (((data.close - data.open) / data.open) * 100).toFixed(2)
-        const amplitude = (((data.high - data.low) / data.open) * 100).toFixed(2)
+        const change = data.open ? (((data.close - data.open) / data.open) * 100).toFixed(2) : '0.00'
+        const amplitude = data.open ? (((data.high - data.low) / data.open) * 100).toFixed(2) : '0.00'
         const color = data.close >= data.open ? '#f56c6c' : '#67c23a'
         const sign = data.close >= data.open ? '+' : ''
         
@@ -533,6 +534,9 @@ const connectWebSocket = (symbol: string) => {
   const wsUrl = `${protocol}//${host}/api/klines/ws/${symbol}`;
   klineWs = new WebSocket(wsUrl);
 
+  klineWs.onopen = () => {
+    console.log(`WebSocket 已连接: ${symbol}`);
+  };
 
   klineWs.onmessage = (event) => {
     try {
@@ -567,6 +571,15 @@ const connectWebSocket = (symbol: string) => {
     } catch (error) {
       // 拦截非标准 JSON，防止前端线程崩溃
     }
+  };
+
+  klineWs.onerror = (error) => {
+    console.error('WebSocket 连接错误:', error);
+  };
+
+  klineWs.onclose = (event) => {
+    console.log(`WebSocket 已断开: ${symbol}, code: ${event.code}`);
+    klineWs = null;
   };
 };
 

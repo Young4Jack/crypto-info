@@ -10,7 +10,7 @@ from app.schemas.user import TokenData
 from app.config_manager import config_manager
 
 # OAuth2 密码承载令牌
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 def get_db() -> Generator:
     """获取数据库会话"""

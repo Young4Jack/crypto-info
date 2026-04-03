@@ -459,11 +459,14 @@ onMounted(() => {
   .page-main { padding: 12px; }
   
   .page-header { padding: 15px; }
-  .header-content { flex-direction: column; align-items: flex-start; gap: 15px; }
-  .header-right { width: 100%; justify-content: space-between; }
-  
-  :deep(.action-buttons) { display: flex; flex-wrap: wrap; gap: 6px; }
-  :deep(.action-buttons .el-button) { margin: 0 !important; border-radius: 6px !important; }
+  .header-content { flex-direction: column; gap: 8px; }
+  .header-left { display: flex; align-items: center; justify-content: space-between; }
+  .header-left h1 { font-size: 18px; margin: 0; white-space: nowrap; }
+  .header-left p { display: none; }
+  .header-right { display: flex; flex-direction: column; gap: 8px; }
+  .dark-mode-btn { font-size: 16px; min-width: 36px; padding: 0; flex-shrink: 0; align-self: flex-end; }
+  :deep(.action-buttons) { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; width: 100%; }
+  :deep(.action-buttons .el-button) { margin: 0 !important; border-radius: 6px !important; justify-content: center; }
   
   .switch-group { flex-direction: column; gap: 15px; }
   .form-actions :deep(.el-button) { width: 100%; margin-left: 0; margin-bottom: 10px; }

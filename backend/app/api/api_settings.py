@@ -9,7 +9,7 @@ from app.config_manager import config_manager
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/api-settings", tags=["API设置"])
+router = APIRouter(prefix="/api-settings", tags=["API设置"])
 
 class ApiSettingCreate(BaseModel):
     """创建API设置请求"""

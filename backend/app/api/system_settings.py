@@ -9,7 +9,7 @@ from app.utils.security import verify_token
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/system-settings", tags=["系统设置"])
+router = APIRouter(prefix="/system-settings", tags=["系统设置"])
 
 def _mask_secret(secret: str) -> str:
     """掩码处理：显示前3位 + ... + 后3位"""

@@ -12,7 +12,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.price_service_refactored import fetch_crypto_prices
 
-router = APIRouter(prefix="/api/dashboard", tags=["仪表盘"])
+router = APIRouter(prefix="/dashboard", tags=["仪表盘"])
 
 @router.get("/summary", response_model=Dict[str, Any])
 async def get_dashboard_summary(

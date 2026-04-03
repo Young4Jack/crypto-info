@@ -186,6 +186,13 @@ onUnmounted(() => {
   .page-main { padding: 12px; }
   .page-header { padding: 15px; }
   
+  .header-content { flex-direction: column; gap: 8px; }
+  .header-left { display: flex; align-items: center; justify-content: space-between; }
+  .header-left h1 { font-size: 18px; margin: 0; white-space: nowrap; }
+  .header-left p { display: none; }
+  .header-right { display: flex; flex-direction: column; gap: 8px; }
+  .dark-mode-btn { font-size: 16px; min-width: 36px; padding: 0; flex-shrink: 0; align-self: flex-end; }
+  
   .mobile-header-title { font-size: 16px; font-weight: bold; color: #303133; margin: 10px 0 15px 5px; }
 
   /* 卡片流 - 每行2个 */

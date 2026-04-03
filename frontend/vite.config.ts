@@ -31,7 +31,8 @@ export default defineConfig({
     cors: true,
     strictPort: false,
     hmr: {
-      host: 'localhost'
+      protocol: 'ws',
+      clientPort: frontendPort
     },
     proxy: {
       '/api': {

@@ -15,7 +15,7 @@ from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_
 from datetime import datetime
 from app.config_manager import config_manager
 
-router = APIRouter(prefix="/api/alerts", tags=["预警管理"])
+router = APIRouter(prefix="/alerts", tags=["预警管理"])
 
 class AlertCreate(BaseModel):
     """创建预警规则请求"""
