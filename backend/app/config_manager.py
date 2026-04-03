@@ -32,6 +32,7 @@ class ConfigManager:
                 "log_level": "INFO",
                 "enable_logging": True,
                 "default_dark_mode": False,
+                "api_shared_secret": "",
                 "timezone": "Asia/Shanghai",
                 "backend_port": 8000,
                 "frontend_port": 5173
