@@ -129,24 +129,26 @@ main() {
     # 4. 检查数据库
     check_database
     
-    # 5. 检查是否在运行
-    check_running
+    # 5. 强制清理残留进程（不管脚本是否认为在运行）
+    pkill -f "python.*run.py" 2>/dev/null
+    pkill -f "python.*proxy.py" 2>/dev/null
+    rm -f .backend.pid .proxy.pid
+    sleep 2
     
     # 6. 读取端口配置
     BACKEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('backend_port', 8000))" 2>/dev/null || echo "8000")
     FRONTEND_PORT=$(python -c "import json; print(json.load(open('backend/config.json'))['system_settings'].get('frontend_port', 5173))" 2>/dev/null || echo "5173")
     
-    # 7. 检查端口占用
-    print_info "检查端口占用..."
+    # 7. 确认端口已释放
     if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-        print_warning "后端端口 $BACKEND_PORT 已被占用，尝试清理..."
-        pkill -f "python.*run.py" 2>/dev/null
-        sleep 1
+        print_warning "后端端口 $BACKEND_PORT 仍被占用，强制 kill..."
+        fuser -k $BACKEND_PORT/tcp 2>/dev/null
+        sleep 2
     fi
     if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-        print_warning "前端端口 $FRONTEND_PORT 已被占用，尝试清理..."
-        pkill -f "python.*proxy.py" 2>/dev/null
-        sleep 1
+        print_warning "前端端口 $FRONTEND_PORT 仍被占用，强制 kill..."
+        fuser -k $FRONTEND_PORT/tcp 2>/dev/null
+        sleep 2
     fi
     
     # 8. 启动服务

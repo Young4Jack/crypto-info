@@ -142,6 +142,10 @@
                 </el-form-item>
               </div>
 
+              <el-form-item label="API 共享密钥">
+                <el-input v-model="systemForm.api_shared_secret" type="password" show-password clearable placeholder="设置密钥后，外部应用可通过 X-Shared-Secret 请求头修改系统设置" />
+              </el-form-item>
+
               <el-form-item>
                 <el-button type="primary" :loading="systemSaveLoading" @click="handleSaveSystem" style="width: 100%; max-width: 200px;">
                   保存系统偏好
@@ -227,7 +231,7 @@ const accountSaveLoading = ref(false)
 
 const settingForm = reactive({ api_url: '', auth_token: '', channel: 'email' })
 const apiSettingForm = reactive({ primary_api_url: '', backup_api_url: '', api_key: '', api_secret: '' })
-const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', log_level: 'INFO', enable_logging: true, default_dark_mode: false, timezone: 'Asia/Shanghai' })
+const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', log_level: 'INFO', enable_logging: true, default_dark_mode: false, api_shared_secret: '', timezone: 'Asia/Shanghai' })
 const accountForm = reactive({ username: '', email: '', current_password: '', new_password: '', confirm_password: '' })
 
 const settingRules: FormRules = {

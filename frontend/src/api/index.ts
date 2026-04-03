@@ -287,6 +287,7 @@ export const systemSettingsApi = {
     log_level?: string
     enable_logging?: boolean
     default_dark_mode?: boolean
+    api_shared_secret?: string
     timezone?: string
   }) => {
     return request.post('/api/system-settings/', data)
@@ -301,6 +302,7 @@ export const systemSettingsApi = {
     log_level?: string
     enable_logging?: boolean
     default_dark_mode?: boolean
+    api_shared_secret?: string
     timezone?: string
   }) => {
     return request.put('/api/system-settings/', data)
