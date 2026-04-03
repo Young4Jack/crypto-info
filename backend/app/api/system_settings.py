@@ -11,6 +11,14 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/system-settings", tags=["系统设置"])
 
+def _mask_secret(secret: str) -> str:
+    """掩码处理：显示前3位 + ... + 后3位"""
+    if not secret:
+        return ""
+    if len(secret) <= 6:
+        return "***"
+    return secret[:3] + "..." + secret[-3:]
+
 async def verify_system_write_access(
     request: Request,
     x_shared_secret: str | None = Header(None, alias="X-Shared-Secret"),
@@ -84,7 +92,7 @@ async def get_system_setting():
         log_level=system_settings.get("log_level", "INFO"),
         enable_logging=system_settings.get("enable_logging", True),
         default_dark_mode=system_settings.get("default_dark_mode", False),
-        api_shared_secret=system_settings.get("api_shared_secret", ""),
+        api_shared_secret=_mask_secret(system_settings.get("api_shared_secret", "")),
         timezone=system_settings.get("timezone", "Asia/Shanghai")
     )
 
@@ -94,6 +102,7 @@ async def create_system_setting(
     _: None = Depends(verify_system_write_access)
 ):
     """创建或更新系统设置（需要认证）"""
+    current_settings = config_manager.get_system_settings()
     system_settings = {
         "refresh_interval": setting_data.refresh_interval,
         "enable_captcha": setting_data.enable_captcha,
@@ -102,7 +111,7 @@ async def create_system_setting(
         "log_level": setting_data.log_level,
         "enable_logging": setting_data.enable_logging,
         "default_dark_mode": setting_data.default_dark_mode,
-        "api_shared_secret": setting_data.api_shared_secret,
+        "api_shared_secret": setting_data.api_shared_secret or current_settings.get("api_shared_secret", ""),
         "timezone": setting_data.timezone
     }
     
