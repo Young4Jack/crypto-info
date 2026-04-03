@@ -69,6 +69,7 @@ class SystemSettingResponse(BaseModel):
     log_level: str
     enable_logging: bool
     default_dark_mode: bool
+    api_shared_secret: str
     timezone: str
 
 @router.get("/", response_model=SystemSettingResponse)
@@ -83,6 +84,7 @@ async def get_system_setting():
         log_level=system_settings.get("log_level", "INFO"),
         enable_logging=system_settings.get("enable_logging", True),
         default_dark_mode=system_settings.get("default_dark_mode", False),
+        api_shared_secret=system_settings.get("api_shared_secret", ""),
         timezone=system_settings.get("timezone", "Asia/Shanghai")
     )
 
@@ -118,6 +120,7 @@ async def create_system_setting(
         log_level=system_settings["log_level"],
         enable_logging=system_settings["enable_logging"],
         default_dark_mode=system_settings["default_dark_mode"],
+        api_shared_secret=system_settings["api_shared_secret"],
         timezone=system_settings["timezone"]
     )
 
@@ -162,6 +165,7 @@ async def update_system_setting(
         log_level=current_settings["log_level"],
         enable_logging=current_settings["enable_logging"],
         default_dark_mode=current_settings["default_dark_mode"],
+        api_shared_secret=current_settings.get("api_shared_secret", ""),
         timezone=current_settings["timezone"]
     )
 
