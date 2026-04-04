@@ -8,7 +8,7 @@ from app.models.user import User
 from app.api.deps import get_current_user
 from app.utils.security import verify_password, get_password_hash
 
-router = APIRouter(prefix="/auth", tags=["账户设置"])
+router = APIRouter(prefix="/api/auth", tags=["账户设置"])
 
 class AccountUpdate(BaseModel):
     """更新账户信息请求"""

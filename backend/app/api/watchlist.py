@@ -14,7 +14,7 @@ from app.services.price_service_refactored import fetch_crypto_prices
 from datetime import datetime
 from app.config_manager import config_manager
 
-router = APIRouter(prefix="/watchlist", tags=["关注列表"])
+router = APIRouter(prefix="/api/watchlist", tags=["关注列表"])
 
 class WatchlistCreate(BaseModel):
     """创建关注项请求"""

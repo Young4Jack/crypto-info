@@ -19,14 +19,13 @@ server {
 
     # 1. API 请求转发给后端 (8000)
     location /api/ {
-        # 注意 8000 后面的斜杠 / 极其重要，它会将 /api 前缀抹除后再转发给后端
-        proxy_pass http://127.0.0.1:$BACKEND_PORT/;
+        proxy_pass http://127.0.0.1:$BACKEND_PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         
-        # --- 以下3行为新增的 WebSocket 支持 ---
+        # --- WebSocket 支持 ---
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";

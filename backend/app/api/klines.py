@@ -13,7 +13,7 @@ import websockets
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/klines", tags=["K线数据"])
+router = APIRouter(prefix="/api/klines", tags=["K线数据"])
 
 @router.get("/{symbol}")
 async def get_kline_data(

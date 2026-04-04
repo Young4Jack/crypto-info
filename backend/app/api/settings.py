@@ -9,7 +9,7 @@ from app.config_manager import config_manager
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/settings", tags=["系统设置"])
+router = APIRouter(prefix="/api/settings", tags=["系统设置"])
 
 class NotificationSettingCreate(BaseModel):
     """创建通知设置请求"""

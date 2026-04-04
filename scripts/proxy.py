@@ -92,7 +92,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def handle_websocket(self):
         """代理 WebSocket 连接（原始 socket 双向转发）"""
         try:
-            backend_path = self.path[4:] if self.path.startswith('/api') else self.path
+            backend_path = self.path
             backend_addr = ('127.0.0.1', BACKEND_PORT)
 
             # 构建 WebSocket 握手请求
@@ -175,8 +175,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def proxy_to_backend(self):
         """代理请求到后端"""
-        # 去掉 /api 前缀（前端请求 /api/xxx，后端实际路径是 /xxx）
-        backend_path = self.path[4:] if self.path.startswith('/api') else self.path
+        backend_path = self.path
         url = f"http://127.0.0.1:{BACKEND_PORT}{backend_path}"
 
         # 复制请求头

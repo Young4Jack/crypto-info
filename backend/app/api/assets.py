@@ -14,7 +14,7 @@ from app.utils.crypto_utils import extract_coin_name_from_symbol, get_coin_full_
 from datetime import datetime
 from app.config_manager import config_manager
 
-router = APIRouter(prefix="/assets", tags=["资产管理"])
+router = APIRouter(prefix="/api/assets", tags=["资产管理"])
 
 class AssetCreate(BaseModel):
     """创建资产请求"""

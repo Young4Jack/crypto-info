@@ -10,7 +10,7 @@ from app.models.cryptocurrency import Cryptocurrency
 from app.api.deps import get_current_user
 from app.models.user import User
 
-router = APIRouter(prefix="/alert-histories", tags=["预警历史"])
+router = APIRouter(prefix="/api/alert-histories", tags=["预警历史"])
 
 class AlertHistoryResponse(BaseModel):
     """预警历史响应"""

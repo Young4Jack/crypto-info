@@ -38,8 +38,7 @@ export default defineConfig({
       '/api': {
         target: `http://127.0.0.1:${backendPort}`, 
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        ws: true  // 核心新增：开启 WebSocket 代理转发
+        ws: true
       }
     }
   }
