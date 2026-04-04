@@ -4,15 +4,17 @@ Crypto-info 轻量代理服务器
 功能：
   1. 服务前端静态文件 (dist/)
   2. 将 /api/* 请求代理到后端
-  3. 支持 WebSocket 代理
+  3. 支持 WebSocket 代理（原始 socket 双向转发）
 """
 import http.server
+import socketserver
 import urllib.request
 import urllib.error
 import json
 import os
 import sys
 import socket
+import select
 import threading
 from pathlib import Path
 
@@ -50,7 +52,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """处理 GET 请求"""
-        if self.path.startswith('/api/') or self.path.startswith('/docs') or self.path.startswith('/openapi'):
+        if self.path.startswith('/api/klines/ws/'):
+            self.handle_websocket()
+        elif self.path.startswith('/api/') or self.path.startswith('/docs') or self.path.startswith('/openapi'):
             self.proxy_to_backend()
         elif self.path == '/health':
             self.send_response(200)
@@ -84,6 +88,90 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.send_header('Access-Control-Max-Age', '86400')
         self.end_headers()
+
+    def handle_websocket(self):
+        """代理 WebSocket 连接（原始 socket 双向转发）"""
+        try:
+            backend_path = self.path[4:] if self.path.startswith('/api') else self.path
+            backend_addr = ('127.0.0.1', BACKEND_PORT)
+
+            # 构建 WebSocket 握手请求
+            handshake_lines = [
+                f"GET {backend_path} HTTP/1.1",
+                f"Host: 127.0.0.1:{BACKEND_PORT}",
+                f"Upgrade: websocket",
+                f"Connection: Upgrade",
+            ]
+
+            for key, val in self.headers.items():
+                if key.lower() not in ['host', 'connection', 'upgrade']:
+                    handshake_lines.append(f"{key}: {val}")
+
+            handshake_lines.append("")
+            handshake_lines.append("")
+            handshake_request = "\r\n".join(handshake_lines)
+
+            # 连接后端
+            backend_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            backend_sock.settimeout(10)
+            backend_sock.connect(backend_addr)
+            backend_sock.settimeout(None)
+            backend_sock.sendall(handshake_request.encode())
+
+            # 读取后端握手响应
+            response = b""
+            while b"\r\n\r\n" not in response:
+                chunk = backend_sock.recv(4096)
+                if not chunk:
+                    self.send_error(502, "Backend closed connection during handshake")
+                    backend_sock.close()
+                    return
+                response += chunk
+
+            # 将握手响应返回给客户端
+            self.wfile.write(response)
+            self.wfile.flush()
+
+            # 获取客户端 socket
+            client_sock = self.request
+
+            self.log_message(f"WebSocket 代理已建立: {self.path}")
+
+            # 双向数据转发
+            def forward(src, dst, direction):
+                try:
+                    while True:
+                        data = src.recv(4096)
+                        if not data:
+                            break
+                        dst.sendall(data)
+                except Exception as e:
+                    pass
+                finally:
+                    try:
+                        src.close()
+                    except:
+                        pass
+                    try:
+                        dst.close()
+                    except:
+                        pass
+
+            t1 = threading.Thread(target=forward, args=(client_sock, backend_sock, "client->backend"), daemon=True)
+            t2 = threading.Thread(target=forward, args=(backend_sock, client_sock, "backend->client"), daemon=True)
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+
+            self.log_message(f"WebSocket 代理已关闭: {self.path}")
+
+        except Exception as e:
+            self.log_message(f"WebSocket 代理错误: {e}")
+            try:
+                self.send_error(502, f"WebSocket proxy error: {str(e)}")
+            except:
+                pass
 
     def proxy_to_backend(self):
         """代理请求到后端"""
@@ -140,6 +228,12 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
 
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    """支持多线程的 HTTP 服务器（WebSocket 需要长连接）"""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 def check_port(port):
     """检查端口是否被占用"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -163,16 +257,16 @@ def main():
         print("   或者下载包含预编译前端的 Release 包")
         sys.exit(1)
 
-    # 启动服务器
+    # 启动服务器（使用多线程版本支持 WebSocket）
     try:
-        http.server.HTTPServer.allow_reuse_address = True
-        server = http.server.HTTPServer(('0.0.0.0', PROXY_PORT), ProxyHandler)
+        server = ThreadedHTTPServer(('0.0.0.0', PROXY_PORT), ProxyHandler)
         print("=" * 60)
         print("🚀 Crypto-info 代理服务器启动")
         print("=" * 60)
         print(f"📍 访问地址: http://localhost:{PROXY_PORT}")
         print(f"📚 API文档: http://localhost:{BACKEND_PORT}/docs")
         print(f"📁 静态文件: {FRONTEND_DIR}")
+        print("🔌 WebSocket 代理: 已启用")
         print("=" * 60)
         print("按 Ctrl+C 停止服务器")
         print("=" * 60)

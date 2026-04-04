@@ -632,16 +632,26 @@ onUnmounted(() => {
   .page-container { padding-bottom: 80px; }
   .page-main { padding: 12px; }
   
-  .page-header { padding: 15px; }
-  .header-content { flex-direction: column; gap: 8px; }
-  .header-left { display: flex; align-items: center; justify-content: space-between; }
-  .header-left h1 { font-size: 18px; margin: 0; white-space: nowrap; }
-  .header-left p { display: none; }
-  .header-right { display: flex; flex-direction: column; gap: 8px; }
-  .dark-mode-btn { font-size: 16px; min-width: 36px; padding: 0; flex-shrink: 0; align-self: flex-end; }
-  :deep(.action-buttons) { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; width: 100%; }
-  :deep(.action-buttons .el-button) { margin: 0 !important; border-radius: 6px !important; justify-content: center; }
+  /* 1. 顶部容器改为相对定位，打断原有的 Flex 弹性流 */
+  .page-header { padding: 15px; position: relative; }
+  .header-content { display: block; }
+  
+  /* 2. 左侧标题区限制宽度，防止文字挤占右侧按钮空间 */
+  .header-left { width: calc(100% - 50px); margin-bottom: 12px; }
+  .header-left h1 { font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 恢复副标题显示，并强制单行超出显示省略号 */
+  .header-left p { display: block; font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  /* 3. 剥离暗黑模式按钮，使用绝对定位固定在右上角 */
+  .header-right { display: block; width: 100%; }
+  .dark-mode-btn { position: absolute; top: 15px; right: 15px; font-size: 16px; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; z-index: 10; }
 
+  /* 4. 按钮组重构为 CSS Grid 网格布局，强制一行三列 */
+  :deep(.action-buttons) { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; width: 100%; }
+  /* 抹除 Element Plus 按钮组默认的清除浮动伪元素，防止高度塌陷或间距异常 */
+  :deep(.action-buttons::before), :deep(.action-buttons::after) { display: none !important; }
+  /* 重置子按钮：清除浮动、独立赋予圆角、缩小字号以适应三列排版 */
+  :deep(.action-buttons .el-button) { width: 100% !important; margin: 0 !important; border-radius: 6px !important; float: none !important; justify-content: center; padding: 8px 0 !important; font-size: 12px !important; height: auto !important; }
   .form-responsive-row { display: flex; flex-direction: column; gap: 0; }
   .flex-item { margin-bottom: 16px; }
   .flex-btn { margin-bottom: 4px; }
