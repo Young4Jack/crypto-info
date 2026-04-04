@@ -40,6 +40,11 @@ frontend/.vscode/
 frontend/.env.local
 frontend/.env
 
+# --- uni-poc (验证项目) ---
+uni-poc/node_modules/
+uni-poc/unpackage/
+uni-poc/dist/
+
 # --- 其他 ---
 **/config.json
 *.log
