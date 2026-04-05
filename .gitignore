@@ -54,6 +54,8 @@ PROJECT_PLAN.md
 ISSUES_LOG.md
 docker-compose.yml
 .clinerules
+.cursor/
+AGENTS.md
 
 # --- PID 文件和运行时文件 ---
 *.pid
