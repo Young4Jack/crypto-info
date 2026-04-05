@@ -1,18 +1,87 @@
 {
-  "pages": [
-    {
-      "path": "pages/kline/kline",
-      "style": {
-        "navigationBarTitleText": "K线图",
-        "enablePullDownRefresh": false,
-        "navigationStyle": "custom"
-      }
-    }
-  ],
-  "globalStyle": {
-    "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "Crypto-info",
-    "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F5F7FA"
-  }
+	"pages": [
+		{
+			"path": "pages/market/market",
+			"style": {
+				"navigationBarTitleText": "关注列表",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/alert/alert",
+			"style": {
+				"navigationBarTitleText": "预警中心",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/assets/assets",
+			"style": {
+				"navigationBarTitleText": "资产列表",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/mine/mine",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/kline/kline",
+			"style": {
+				"navigationBarTitleText": "K线图",
+				"enablePullDownRefresh": false,
+				"navigationStyle": "custom"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "Crypto-info",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F5F7FA"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#409EFF",
+		"backgroundColor": "#FFFFFF",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/market/market",
+				"text": "关注",
+				"iconPath": "static/tab-market.png",
+				"selectedIconPath": "static/tab-market-active.png"
+			},
+			{
+				"pagePath": "pages/alert/alert",
+				"text": "预警",
+				"iconPath": "static/tab-alert.png",
+				"selectedIconPath": "static/tab-alert-active.png"
+			},
+			{
+				"pagePath": "pages/assets/assets",
+				"text": "资产",
+				"iconPath": "static/tab-assets.png",
+				"selectedIconPath": "static/tab-assets-active.png"
+			},
+			{
+				"pagePath": "pages/mine/mine",
+				"text": "我的",
+				"iconPath": "static/tab-mine.png",
+				"selectedIconPath": "static/tab-mine-active.png"
+			}
+		]
+	},
+	"leftWindow": {
+		"path": "windows/left-window.vue",
+		"style": {
+			"width": "240px"
+		},
+		"matchMedia": {
+			"minWidth": 768
+		}
+	}
 }
