@@ -1,0 +1,18 @@
+{
+  "pages": [
+    {
+      "path": "pages/kline/kline",
+      "style": {
+        "navigationBarTitleText": "K线图",
+        "enablePullDownRefresh": false,
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Crypto-info",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F7FA"
+  }
+}
