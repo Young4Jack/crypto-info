@@ -284,6 +284,7 @@ export const systemSettingsApi = {
     enable_captcha?: boolean
     site_title?: string
     site_description?: string
+    base_url?: string
     log_level?: string
     enable_logging?: boolean
     default_dark_mode?: boolean
@@ -299,6 +300,7 @@ export const systemSettingsApi = {
     enable_captcha?: boolean
     site_title?: string
     site_description?: string
+    base_url?: string
     log_level?: string
     enable_logging?: boolean
     default_dark_mode?: boolean

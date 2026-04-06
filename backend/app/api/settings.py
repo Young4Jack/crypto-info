@@ -1,11 +1,13 @@
 """通知设置 API 路由 - 使用配置文件存储"""
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import httpx
 import logging
 from app.utils.logger import get_logger
 from app.config_manager import config_manager
+from app.api.deps import get_current_user
+from app.models.user import User
 
 logger = get_logger(__name__)
 
@@ -30,8 +32,10 @@ class NotificationSettingResponse(BaseModel):
     channel: Optional[str] = None
 
 @router.get("/notification", response_model=NotificationSettingResponse)
-async def get_notification_setting():
-    """获取通知设置"""
+async def get_notification_setting(
+    current_user: User = Depends(get_current_user)
+):
+    """获取通知设置（需要认证）"""
     notification_settings = config_manager.get_notification_settings()
     return NotificationSettingResponse(
         api_url=notification_settings.get("api_url"),
@@ -40,8 +44,11 @@ async def get_notification_setting():
     )
 
 @router.post("/notification", response_model=NotificationSettingResponse)
-async def create_notification_setting(setting_data: NotificationSettingCreate):
-    """创建或更新通知设置"""
+async def create_notification_setting(
+    setting_data: NotificationSettingCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """创建或更新通知设置（需要认证）"""
     notification_settings = {
         "api_url": setting_data.api_url,
         "auth_token": setting_data.auth_token,
@@ -59,8 +66,11 @@ async def create_notification_setting(setting_data: NotificationSettingCreate):
     )
 
 @router.put("/notification", response_model=NotificationSettingResponse)
-async def update_notification_setting(setting_data: NotificationSettingUpdate):
-    """更新通知设置"""
+async def update_notification_setting(
+    setting_data: NotificationSettingUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """更新通知设置（需要认证）"""
     # 获取当前设置
     current_settings = config_manager.get_notification_settings()
     
@@ -83,8 +93,10 @@ async def update_notification_setting(setting_data: NotificationSettingUpdate):
     )
 
 @router.delete("/notification")
-async def delete_notification_setting():
-    """删除通知设置（重置为默认值）"""
+async def delete_notification_setting(
+    current_user: User = Depends(get_current_user)
+):
+    """删除通知设置（重置为默认值）（需要认证）"""
     default_settings = {
         "api_url": "",
         "auth_token": "",
@@ -99,8 +111,10 @@ async def delete_notification_setting():
 
 
 @router.post("/notification/test")
-async def test_notification_setting():
-    """测试通知设置连接"""
+async def test_notification_setting(
+    current_user: User = Depends(get_current_user)
+):
+    """测试通知设置连接（需要认证）"""
     notification_settings = config_manager.get_notification_settings()
     api_url = notification_settings.get("api_url")
     

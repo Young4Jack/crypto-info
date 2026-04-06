@@ -50,6 +50,7 @@ class SystemSettingCreate(BaseModel):
     enable_captcha: bool = False
     site_title: str = "Crypto-info"
     site_description: str = "数字货币价格监控和预警系统"
+    base_url: str = ""
     log_level: str = "INFO"
     enable_logging: bool = True
     default_dark_mode: bool = False
@@ -62,6 +63,7 @@ class SystemSettingUpdate(BaseModel):
     enable_captcha: Optional[bool] = None
     site_title: Optional[str] = None
     site_description: Optional[str] = None
+    base_url: Optional[str] = None
     log_level: Optional[str] = None
     enable_logging: Optional[bool] = None
     default_dark_mode: Optional[bool] = None
@@ -74,6 +76,7 @@ class SystemSettingResponse(BaseModel):
     enable_captcha: bool
     site_title: str
     site_description: str
+    base_url: str
     log_level: str
     enable_logging: bool
     default_dark_mode: bool
@@ -81,18 +84,21 @@ class SystemSettingResponse(BaseModel):
     timezone: str
 
 @router.get("/", response_model=SystemSettingResponse)
-async def get_system_setting():
-    """获取系统设置（公开只读）"""
+async def get_system_setting(
+    _: None = Depends(verify_system_write_access)
+):
+    """获取系统设置（需要认证）"""
     system_settings = config_manager.get_system_settings()
     return SystemSettingResponse(
         refresh_interval=system_settings.get("refresh_interval", 5),
         enable_captcha=system_settings.get("enable_captcha", False),
         site_title=system_settings.get("site_title", "Crypto-info"),
         site_description=system_settings.get("site_description", "数字货币价格监控和预警系统"),
+        base_url=system_settings.get("base_url", ""),
         log_level=system_settings.get("log_level", "INFO"),
         enable_logging=system_settings.get("enable_logging", True),
         default_dark_mode=system_settings.get("default_dark_mode", False),
-        api_shared_secret=_mask_secret(system_settings.get("api_shared_secret", "")),
+        api_shared_secret=system_settings.get("api_shared_secret", ""),
         timezone=system_settings.get("timezone", "Asia/Shanghai")
     )
 
@@ -108,6 +114,7 @@ async def create_system_setting(
         "enable_captcha": setting_data.enable_captcha,
         "site_title": setting_data.site_title,
         "site_description": setting_data.site_description,
+        "base_url": setting_data.base_url,
         "log_level": setting_data.log_level,
         "enable_logging": setting_data.enable_logging,
         "default_dark_mode": setting_data.default_dark_mode,
@@ -126,6 +133,7 @@ async def create_system_setting(
         enable_captcha=system_settings["enable_captcha"],
         site_title=system_settings["site_title"],
         site_description=system_settings["site_description"],
+        base_url=system_settings["base_url"],
         log_level=system_settings["log_level"],
         enable_logging=system_settings["enable_logging"],
         default_dark_mode=system_settings["default_dark_mode"],
@@ -149,6 +157,8 @@ async def update_system_setting(
         current_settings["site_title"] = setting_data.site_title
     if setting_data.site_description is not None:
         current_settings["site_description"] = setting_data.site_description
+    if setting_data.base_url is not None:
+        current_settings["base_url"] = setting_data.base_url
     if setting_data.log_level is not None:
         current_settings["log_level"] = setting_data.log_level
     if setting_data.enable_logging is not None:
@@ -171,6 +181,7 @@ async def update_system_setting(
         enable_captcha=current_settings["enable_captcha"],
         site_title=current_settings["site_title"],
         site_description=current_settings["site_description"],
+        base_url=current_settings.get("base_url", ""),
         log_level=current_settings["log_level"],
         enable_logging=current_settings["enable_logging"],
         default_dark_mode=current_settings["default_dark_mode"],
@@ -207,6 +218,10 @@ async def get_public_system_settings():
     return {
         "site_title": system_settings.get("site_title", "Crypto-info"),
         "site_description": system_settings.get("site_description", "数字货币价格监控和预警系统"),
+        "base_url": system_settings.get("base_url", ""),
         "refresh_interval": system_settings.get("refresh_interval", 1),
-        "default_dark_mode": system_settings.get("default_dark_mode", False)
+        "default_dark_mode": system_settings.get("default_dark_mode", False),
+        "backend_port": system_settings.get("backend_port", 8000),
+        "frontend_port": system_settings.get("frontend_port", 5173),
+        "timezone": system_settings.get("timezone", "Asia/Shanghai")
     }

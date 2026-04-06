@@ -6,6 +6,8 @@ import httpx
 import logging
 from app.utils.logger import get_logger
 from app.config_manager import config_manager
+from app.api.deps import get_current_user
+from app.models.user import User
 
 logger = get_logger(__name__)
 
@@ -33,8 +35,10 @@ class ApiSettingResponse(BaseModel):
     api_secret: Optional[str] = None
 
 @router.get("/", response_model=ApiSettingResponse)
-async def get_api_setting():
-    """获取API设置"""
+async def get_api_setting(
+    current_user: User = Depends(get_current_user)
+):
+    """获取API设置（需要认证）"""
     api_settings = config_manager.get_api_settings()
     return ApiSettingResponse(
         primary_api_url=api_settings.get("primary_api_url"),
@@ -44,8 +48,11 @@ async def get_api_setting():
     )
 
 @router.post("/", response_model=ApiSettingResponse)
-async def create_api_setting(setting_data: ApiSettingCreate):
-    """创建或更新API设置"""
+async def create_api_setting(
+    setting_data: ApiSettingCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """创建或更新API设置（需要认证）"""
     api_settings = {
         "primary_api_url": setting_data.primary_api_url,
         "backup_api_url": setting_data.backup_api_url or "",
@@ -65,8 +72,11 @@ async def create_api_setting(setting_data: ApiSettingCreate):
     )
 
 @router.put("/", response_model=ApiSettingResponse)
-async def update_api_setting(setting_data: ApiSettingUpdate):
-    """更新API设置"""
+async def update_api_setting(
+    setting_data: ApiSettingUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """更新API设置（需要认证）"""
     # 获取当前设置
     current_settings = config_manager.get_api_settings()
     
@@ -92,8 +102,10 @@ async def update_api_setting(setting_data: ApiSettingUpdate):
     )
 
 @router.delete("/")
-async def delete_api_setting():
-    """删除API设置（重置为默认值）"""
+async def delete_api_setting(
+    current_user: User = Depends(get_current_user)
+):
+    """删除API设置（重置为默认值）（需要认证）"""
     default_settings = {
         "primary_api_url": "https://api.binance.com/api/v3/ticker/price",
         "backup_api_url": "",
@@ -109,8 +121,10 @@ async def delete_api_setting():
 
 
 @router.post("/test-primary")
-async def test_primary_api():
-    """测试主API连接"""
+async def test_primary_api(
+    current_user: User = Depends(get_current_user)
+):
+    """测试主API连接（需要认证）"""
     api_settings = config_manager.get_api_settings()
     primary_api_url = api_settings.get("primary_api_url")
     
@@ -153,8 +167,10 @@ async def test_primary_api():
 
 
 @router.post("/test-backup")
-async def test_backup_api():
-    """测试备用API连接"""
+async def test_backup_api(
+    current_user: User = Depends(get_current_user)
+):
+    """测试备用API连接（需要认证）"""
     api_settings = config_manager.get_api_settings()
     backup_api_url = api_settings.get("backup_api_url")
     

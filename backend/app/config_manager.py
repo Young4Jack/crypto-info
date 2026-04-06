@@ -29,6 +29,7 @@ class ConfigManager:
                 "enable_captcha": False,
                 "site_title": "Crypto-info",
                 "site_description": "数字货币价格监控和预警系统",
+                "base_url": "",
                 "log_level": "INFO",
                 "enable_logging": True,
                 "default_dark_mode": False,

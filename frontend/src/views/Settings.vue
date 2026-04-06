@@ -107,6 +107,9 @@
               <el-form-item label="网站描述" prop="site_description">
                 <el-input v-model="systemForm.site_description" type="textarea" :rows="2" placeholder="请输入网站描述" />
               </el-form-item>
+              <el-form-item label="应用 Base URL" prop="base_url">
+                <el-input v-model="systemForm.base_url" placeholder="如：http://192.168.31.77:5173，用于外部访问的基础地址" clearable />
+              </el-form-item>
               
               <el-row :gutter="20">
                 <el-col :xs="24" :sm="12">
@@ -231,7 +234,7 @@ const accountSaveLoading = ref(false)
 
 const settingForm = reactive({ api_url: '', auth_token: '', channel: 'email' })
 const apiSettingForm = reactive({ primary_api_url: '', backup_api_url: '', api_key: '', api_secret: '' })
-const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', log_level: 'INFO', enable_logging: true, default_dark_mode: false, api_shared_secret: '', timezone: 'Asia/Shanghai' })
+const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', base_url: '', log_level: 'INFO', enable_logging: true, default_dark_mode: false, api_shared_secret: '', timezone: 'Asia/Shanghai' })
 const accountForm = reactive({ username: '', email: '', current_password: '', new_password: '', confirm_password: '' })
 
 const settingRules: FormRules = {
