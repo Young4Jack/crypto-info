@@ -421,7 +421,9 @@ POST /api/alerts/
   "threshold_value": 70000.0,
   "is_continuous": false,
   "interval_minutes": 5,
-  "max_notifications": 1
+  "max_notifications": 1,
+  "notification_channel": "自建Webhook",
+  "notification_group": "urgent"
 }
 ```
 
@@ -430,12 +432,14 @@ POST /api/alerts/
 | crypto_symbol | string | 是 | 交易对符号 |
 | alert_type | string | 是 | 预警类型 |
 | threshold_price | float | 是 | 阈值价格 |
-| webhook_url | string | 否 | 通知URL |
+| webhook_url | string | 否 | 通知URL（已废弃） |
 | base_price | float | 否 | 基准价格 |
 | threshold_value | float | 否 | 阈值 |
 | is_continuous | bool | 否 | 是否连续触发 |
 | interval_minutes | int | 否 | 触发间隔(分钟) |
 | max_notifications | int | 否 | 最大通知次数 |
+| notification_channel | string | 否 | 通知渠道名称 |
+| notification_group | string | 否 | 通知频道名称 |
 
 ### 3.4 更新预警
 
@@ -900,70 +904,132 @@ WebSocket /api/klines/ws/{symbol}
 
 ---
 
-## 8. 通知设置 (Settings)
+## 8. 通知渠道管理 (Notification Channels)
 
-**前缀：** `/api/settings`
+**前缀：** `/api/settings/notification-channels`
 
 **认证：** 所有接口均**需要** `Authorization: Bearer <token>`
 
-### 8.1 获取通知设置
+### 8.1 获取所有通知渠道
 
 ```
-GET /api/settings/notification
+GET /api/settings/notification-channels/
 ```
 
 **成功响应 (200)：**
 ```json
-{
-  "api_url": "https://push.example.com/push/user",
-  "auth_token": "your_auth_token",
-  "channel": "email"
-}
+[
+  {
+    "name": "自建Webhook",
+    "api_url": "https://push.gosu.cc/push/jacket",
+    "auth_token": "7E4DBBD5A47D61252C6D0FB4BE9770DF",
+    "is_default": true,
+    "default_group": "yes",
+    "groups": ["yes", "urgent", "test"]
+  },
+  {
+    "name": "短信通知",
+    "api_url": "https://sms-api.example.com/send",
+    "auth_token": "",
+    "is_default": false,
+    "default_group": "default",
+    "groups": ["default"]
+  }
+]
 ```
 
-### 8.2 创建/更新通知设置
+### 8.2 获取默认渠道
 
 ```
-POST /api/settings/notification
+GET /api/settings/notification-channels/default
+```
+
+### 8.3 创建通知渠道
+
+```
+POST /api/settings/notification-channels/
 ```
 
 **请求体：**
 ```json
 {
-  "api_url": "https://push.example.com/push/user",
-  "auth_token": "your_auth_token",
-  "channel": "email"
+  "name": "短信通知",
+  "api_url": "https://sms-api.example.com/send",
+  "auth_token": "",
+  "is_default": false,
+  "default_group": "default",
+  "groups": ["default"]
 }
 ```
 
-### 8.3 测试通知
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 渠道名称，唯一 |
+| api_url | string | 是 | Webhook 推送地址 |
+| auth_token | string | 否 | 认证令牌 |
+| is_default | bool | 否 | 是否为默认渠道 |
+| default_group | string | 否 | 默认频道名 |
+| groups | string[] | 否 | 可用频道列表 |
+
+### 8.4 更新通知渠道
 
 ```
-POST /api/settings/notification/test
+PUT /api/settings/notification-channels/{channel_name}
+```
+
+**路径参数：**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| channel_name | string | 是 | 渠道名称（原始名称） |
+
+**请求体（所有字段可选）：**
+```json
+{
+  "name": "新名称",
+  "api_url": "https://new-url.com",
+  "auth_token": "new_token",
+  "is_default": true,
+  "default_group": "urgent",
+  "groups": ["yes", "urgent"]
+}
+```
+
+### 8.5 删除通知渠道
+
+```
+DELETE /api/settings/notification-channels/{channel_name}
+```
+
+**注意：** 不能删除唯一的默认渠道
+
+### 8.6 测试通知渠道
+
+```
+POST /api/settings/notification-channels/{channel_name}/test
 ```
 
 **成功响应 (200)：**
 ```json
 {
   "success": true,
-  "message": "通知API连接测试成功",
-  "status_code": 200,
-  "response_time": 0.5
-}
-```
-
-**失败响应 (200)：**
-```json
-{
-  "success": false,
-  "message": "通知API连接测试失败: 错误信息",
-  "error": "错误详情"
+  "message": "渠道 '自建Webhook' 测试成功",
+  "status_code": 200
 }
 ```
 
 ---
 
-## 9. API设置 (API Settings)
+## 9. 通知设置 (Settings)
+
+**前缀：** `/api/settings`
+
+**认证：** 所有接口均**需要** `Authorization: Bearer <token>`
+
+> **注意：** 旧版通知推送设置已废弃，请使用通知渠道管理 API。
+
+---
+
+## 10. API设置 (API Settings)
 
 **前缀：** `/api/api-settings`
 
