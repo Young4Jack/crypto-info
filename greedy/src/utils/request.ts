@@ -1,3 +1,5 @@
+import { apiBase } from './config'
+
 interface RequestOptions {
   url: string
   data?: Record<string, any>
@@ -10,15 +12,24 @@ interface ApiResponse<T = any> {
   statusCode: number
 }
 
+// 拼接完整 URL：相对路径自动补 apiBase 前缀，绝对路径保持不变
+function resolveUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const base = apiBase.value.replace(/\/$/, '')
+  const path = url.startsWith('/') ? url : `/${url}`
+  return base ? `${base}${path}` : path
+}
+
 function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
   const { url, data, method = 'GET', header = {} } = options
+  const fullUrl = resolveUrl(url)
 
   const token = uni.getStorageSync('token')
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   return new Promise((resolve, reject) => {
     uni.request({
-      url,
+      url: fullUrl,
       data,
       method,
       header: {

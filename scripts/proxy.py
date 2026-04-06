@@ -192,19 +192,26 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         try:
             req = urllib.request.Request(url, data=body, headers=headers, method=self.command)
             with urllib.request.urlopen(req) as response:
-                # 返回响应
                 self.send_response(response.status)
                 for key, val in response.headers.items():
-                    if key.lower() not in ['transfer-encoding']:
+                    # 跳过 FastAPI 的 CORS 头，由 proxy.py 统一处理
+                    if key.lower() not in ['transfer-encoding', 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age']:
                         self.send_header(key, val)
+                # proxy.py 统一添加 CORS 头
                 self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                self.send_header('Access-Control-Max-Age', '86400')
                 self.end_headers()
                 self.wfile.write(response.read())
         except urllib.error.HTTPError as e:
             self.send_response(e.code)
             for key, val in e.headers.items():
-                if key.lower() not in ['transfer-encoding']:
+                if key.lower() not in ['transfer-encoding', 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers']:
                     self.send_header(key, val)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
             self.end_headers()
             self.wfile.write(e.read())
         except urllib.error.URLError as e:

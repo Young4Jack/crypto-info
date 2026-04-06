@@ -4,6 +4,10 @@ export const watchlistApi = {
   getAllWatchlist: () => {
     return get('/api/watchlist/all')
   },
+  // 公开关注列表（无需鉴权，由 request.ts 统一拼接域名前缀）
+  getPublicWatchlist: () => {
+    return get('/api/watchlist/public')
+  },
 }
 
 export const klinesApi = {

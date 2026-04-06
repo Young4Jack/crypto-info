@@ -40,6 +40,7 @@ backend/alembic/__pycache__/
 **/.env.local
 **/.env
 **/unpackage/
+.env.*
 
 # --- 其他 ---
 **/config.json

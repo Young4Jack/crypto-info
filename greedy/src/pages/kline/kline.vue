@@ -58,6 +58,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import * as echarts from 'echarts'
 import { klinesApi } from '@/api'
+import { wsBase } from '@/utils/config'
 
 /** 桌面端 K 线/成交量双 grid 比例（与 ECharts 百分比布局一致） */
 const DESKTOP_CHART_GRID = {
@@ -371,18 +372,19 @@ const changeInterval = async (newInterval: string) => {
 const connectWebSocket = (symbol: string) => {
 	if (socketTask) socketTask.close({});
 
-	let wsHost = '127.0.0.1:8080'
-	let wsProtocol = 'ws:'
-	// #ifdef H5
-	wsHost = window.location.host;
-	wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-	// #endif
-	// #ifndef H5
-	wsHost = 'your-api-domain.com';
-	wsProtocol = 'wss:';
-	// #endif
+	// 从全局配置读取 WebSocket 地址
+	let wsUrl = `${wsBase.value}/api/klines/ws/${symbol}`
 
-	const wsUrl = `${wsProtocol}//${wsHost}/api/klines/ws/${symbol}`;
+	// 兜底：如果 wsBase 为空，使用相对路径（走 Vite 代理）
+	if (!wsBase.value) {
+		// #ifdef H5
+		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+		wsUrl = `${protocol}//${window.location.host}/api/klines/ws/${symbol}`
+		// #endif
+		// #ifndef H5
+		wsUrl = `wss://your-api-domain.com/api/klines/ws/${symbol}`
+		// #endif
+	}
 
 	socketTask = uni.connectSocket({
 		url: wsUrl,
