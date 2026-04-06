@@ -21,22 +21,23 @@
 
 1. [鉴权机制](#鉴权机制)
 2. [通用错误响应](#通用错误响应)
-3. [认证模块 (Auth)](#1-认证模块-auth)
-4. [币种管理 (Cryptocurrencies)](#2-币种管理-cryptocurrencies)
-5. [预警管理 (Alerts)](#3-预警管理-alerts)
-6. [资产管理 (Assets)](#4-资产管理-assets)
-7. [仪表盘 (Dashboard)](#5-仪表盘-dashboard)
-8. [关注列表 (Watchlist)](#6-关注列表-watchlist)
-9. [K线数据 (Klines)](#7-k线数据-klines)
-10. [通知渠道管理 (Notification Channels)](#8-通知渠道管理-notification-channels)
-11. [旧通知设置 (已废弃)](#9-旧通知设置-已废弃)
-12. [API设置 (API Settings)](#10-api设置-api-settings)
-13. [系统设置 (System Settings)](#11-系统设置-system-settings)
-14. [预警历史 (Alert Histories)](#12-预警历史-alert-histories)
-15. [账户管理 (Account)](#13-账户管理-account)
-16. [健康检查与系统](#14-健康检查与系统)
-17. [变更日志](#变更日志)
-18. [快速调用示例](#快速调用示例)
+3. [认证模块 (Auth)](#3-认证模块-auth)
+4. [币种管理 (Cryptocurrencies)](#4-币种管理-cryptocurrencies)
+5. [预警管理 (Alerts)](#5-预警管理-alerts)
+6. [资产管理 (Assets)](#6-资产管理-assets)
+7. [仪表盘 (Dashboard)](#7-仪表盘-dashboard)
+8. [关注列表 (Watchlist)](#8-关注列表-watchlist)
+9. [K线数据 (Klines)](#9-k线数据-klines)
+10. [通知渠道管理 (Notification Channels)](#10-通知渠道管理-notification-channels)
+11. [旧通知设置 (已废弃)](#11-旧通知设置-已废弃)
+12. [API设置 (API Settings)](#12-api设置-api-settings)
+13. [系统设置 (System Settings)](#13-系统设置-system-settings)
+14. [预警历史 (Alert Histories)](#14-预警历史-alert-histories)
+15. [账户管理 (Account)](#15-账户管理-account)
+16. [价格搜索 (Price Search)](#16-价格搜索-price-search)
+17. [健康检查与系统](#17-健康检查与系统)
+18. [变更日志](#变更日志)
+19. [快速调用示例](#快速调用示例)
 
 ---
 
@@ -46,6 +47,7 @@
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2024-04 | 新增价格搜索接口 `GET /api/price-search/`（需鉴权，支持主备 failover） |
 | 2024-04 | 安全加固：通知设置、API设置接口添加认证保护 |
 | 2024-04 | 新增系统设置 `base_url`、`backend_port`、`frontend_port`、`timezone` 公开字段 |
 | 2024-04 | 修复密钥掩码覆盖 bug，GET 返回真实值 |
@@ -118,7 +120,7 @@ Authorization: Bearer <your_access_token>
 | `GET/POST/PUT/DELETE /api/settings/notification` | 通知设置（已废弃，使用渠道管理代替） |
 | `GET/POST/PUT/DELETE /api/settings/notification-channels/` | 通知渠道管理（全部） |
 | `GET/POST/PUT/DELETE /api/api-settings/` | API设置（全部） |
-| 其他所有业务接口 | 币种、预警、资产、仪表盘、关注列表、预警历史 |
+| 其他所有业务接口 | 币种、预警、资产、仪表盘、关注列表、预警历史、价格搜索 |
 
 ---
 
@@ -155,7 +157,7 @@ Authorization: Bearer <your_access_token>
 
 ---
 
-## 1. 认证模块 (Auth)
+## 3. 认证模块 (Auth)
 
 **前缀：** `/api/auth`
 
@@ -292,7 +294,7 @@ PUT /api/auth/account
 
 ---
 
-## 2. 币种管理 (Cryptocurrencies)
+## 4. 币种管理 (Cryptocurrencies)
 
 **前缀：** `/api/cryptocurrencies`
 
@@ -369,7 +371,7 @@ DELETE /api/cryptocurrencies/{crypto_id}
 
 ---
 
-## 3. 预警管理 (Alerts)
+## 5. 预警管理 (Alerts)
 
 **前缀：** `/api/alerts`
 
@@ -517,7 +519,7 @@ DELETE /api/alerts/all
 
 ---
 
-## 4. 资产管理 (Assets)
+## 6. 资产管理 (Assets)
 
 **前缀：** `/api/assets`
 
@@ -612,7 +614,7 @@ DELETE /api/assets/all
 
 ---
 
-## 5. 仪表盘 (Dashboard)
+## 7. 仪表盘 (Dashboard)
 
 **前缀：** `/api/dashboard`
 
@@ -695,7 +697,7 @@ GET /api/dashboard/allocation
 
 ---
 
-## 6. 关注列表 (Watchlist)
+## 8. 关注列表 (Watchlist)
 
 **前缀：** `/api/watchlist`
 
@@ -814,7 +816,7 @@ DELETE /api/watchlist/all
 
 ---
 
-## 7. K线数据 (Klines)
+## 9. K线数据 (Klines)
 
 **前缀：** `/api/klines`
 
@@ -922,7 +924,7 @@ WebSocket /api/klines/ws/{symbol}
 
 ---
 
-## 8. 通知渠道管理 (Notification Channels)
+## 10. 通知渠道管理 (Notification Channels)
 
 **前缀：** `/api/settings/notification-channels`
 
@@ -1037,19 +1039,19 @@ POST /api/settings/notification-channels/{channel_name}/test
 
 ---
 
-## 9. 旧通知设置 (已废弃)
+## 11. 旧通知设置 (已废弃)
 
 **前缀：** `/api/settings`
 
-**状态：** ⚠️ 已废弃，请使用 [通知渠道管理 API](#8-通知渠道管理-notification-channels)
+**状态：** ⚠️ 已废弃，请使用 [通知渠道管理 API](#10-通知渠道管理-notification-channels)
 
-## 10. API设置 (API Settings)
+## 12. API设置 (API Settings)
 
 **前缀：** `/api/api-settings`
 
 **认证：** 所有接口均**需要** `Authorization: Bearer <token>`
 
-### 9.1 获取API设置
+### 12.1 获取API设置
 
 ```
 GET /api/api-settings/
@@ -1065,19 +1067,19 @@ GET /api/api-settings/
 }
 ```
 
-### 9.2 创建/更新API设置
+### 12.2 创建/更新API设置
 
 ```
 POST /api/api-settings/
 ```
 
-### 9.3 测试主API
+### 12.3 测试主API
 
 ```
 POST /api/api-settings/test-primary
 ```
 
-### 9.4 测试备用API
+### 12.4 测试备用API
 
 ```
 POST /api/api-settings/test-backup
@@ -1085,11 +1087,11 @@ POST /api/api-settings/test-backup
 
 ---
 
-## 10. 系统设置 (System Settings)
+## 13. 系统设置 (System Settings)
 
 **前缀：** `/api/system-settings`
 
-### 10.1 获取系统设置（完整，返回真实密钥）
+### 13.1 获取系统设置（完整，返回真实密钥）
 
 ```
 GET /api/system-settings/
@@ -1117,7 +1119,7 @@ GET /api/system-settings/
 
 > **注意：** 此接口返回真实密钥值（非掩码），因为前端编辑表单需要完整值进行保存操作。
 
-### 10.2 获取公开系统设置
+### 13.2 获取公开系统设置
 
 ```
 GET /api/system-settings/public
@@ -1139,7 +1141,7 @@ GET /api/system-settings/public
 }
 ```
 
-### 10.3 创建系统设置
+### 13.3 创建系统设置
 
 ```
 POST /api/system-settings/
@@ -1163,7 +1165,7 @@ POST /api/system-settings/
 }
 ```
 
-### 10.4 更新系统设置
+### 13.4 更新系统设置
 
 ```
 PUT /api/system-settings/
@@ -1194,7 +1196,7 @@ PUT /api/system-settings/
 | api_shared_secret | string | API共享密钥 |
 | timezone | string | 时区 |
 
-### 10.5 删除系统设置
+### 13.5 删除系统设置
 
 ```
 DELETE /api/system-settings/
@@ -1204,13 +1206,13 @@ DELETE /api/system-settings/
 
 ---
 
-## 11. 预警历史 (Alert Histories)
+## 14. 预警历史 (Alert Histories)
 
 **前缀：** `/api/alert-histories`
 
 **认证：** 所有接口均需要 `Authorization: Bearer <token>`
 
-### 11.1 获取预警历史列表
+### 14.1 获取预警历史列表
 
 ```
 GET /api/alert-histories/?skip=0&limit=50&alert_id=1
@@ -1241,19 +1243,19 @@ GET /api/alert-histories/?skip=0&limit=50&alert_id=1
 ]
 ```
 
-### 11.2 获取单条预警历史
+### 14.2 获取单条预警历史
 
 ```
 GET /api/alert-histories/{history_id}
 ```
 
-### 11.3 删除单条预警历史
+### 14.3 删除单条预警历史
 
 ```
 DELETE /api/alert-histories/{history_id}
 ```
 
-### 11.4 批量删除预警历史
+### 14.4 批量删除预警历史
 
 ```
 DELETE /api/alert-histories/?alert_id=1
@@ -1261,13 +1263,13 @@ DELETE /api/alert-histories/?alert_id=1
 
 ---
 
-## 12. 账户管理 (Account)
+## 15. 账户管理 (Account)
 
 **前缀：** `/api/auth`
 
 **认证：** 所有接口均需要 `Authorization: Bearer <token>`
 
-### 12.1 获取账户信息
+### 15.1 获取账户信息
 
 ```
 GET /api/auth/account
@@ -1284,7 +1286,7 @@ GET /api/auth/account
 }
 ```
 
-### 12.2 更新账户信息
+### 15.2 更新账户信息
 
 ```
 PUT /api/auth/account
@@ -1301,9 +1303,71 @@ PUT /api/auth/account
 
 ---
 
-## 13. 健康检查与系统
+## 16. 价格搜索 (Price Search)
 
-### 13.1 根路径
+**前缀：** `/api/price-search`
+
+**认证：** 需要 `Authorization: Bearer <token>`
+
+### 16.1 搜索币种实时价格
+
+```
+GET /api/price-search/?symbol=BTC
+```
+
+**查询参数：**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| symbol | string | 是 | 交易对符号（支持容错：填 `btc` 自动转为 `BTCUSDT`） |
+
+**成功响应 (200)：**
+```json
+{
+  "symbol": "BTCUSDT",
+  "name": "BTC",
+  "display_name": "Bitcoin",
+  "price": 84321.50,
+  "source": "https://www.okx.com"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| symbol | string | 标准化后的交易对符号 |
+| name | string | 币种简称 |
+| display_name | string | 币种全称 |
+| price | float | 实时价格 |
+| source | string | 数据来源 API 地址 |
+
+**Failover 机制：**
+1. 优先使用 `config.json` 中配置的 `primary_api_url`
+2. 主 API 失败时切换到 `backup_api_url`
+3. 主备均失败时使用默认 API（OKX → Binance）
+
+**失败响应 (502)：**
+```json
+{
+  "detail": "无法获取 BTCUSDT 的价格，请检查网络或 API 配置"
+}
+```
+
+**失败响应 (400)：**
+```json
+{
+  "detail": "交易对符号不能为空"
+}
+```
+
+**说明：**
+- 如果币种不在数据库中，会自动创建币种记录
+- 支持的交易对后缀：USDT、USDC、BTC、ETH、FDUSD
+- 输入不区分大小写，自动转大写
+
+---
+
+## 17. 健康检查与系统
+
+### 17.1 根路径
 
 ```
 GET /
@@ -1316,7 +1380,7 @@ GET /
 }
 ```
 
-### 13.2 健康检查
+### 17.2 健康检查
 
 ```
 GET /health
@@ -1331,7 +1395,7 @@ GET /health
 }
 ```
 
-### 13.3 定时任务调度器状态
+### 17.3 定时任务调度器状态
 
 ```
 GET /scheduler/status
@@ -1406,6 +1470,18 @@ curl -X POST http://localhost:8000/api/alerts/ \
   }'
 ```
 
+### 9. 搜索币种实时价格
+
+```bash
+# 搜索 BTC（自动补齐为 BTCUSDT）
+curl "http://localhost:8000/api/price-search/?symbol=btc" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+
+# 搜索完整交易对
+curl "http://localhost:8000/api/price-search/?symbol=ETHUSDT" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+```
+
 ---
 
 ## 注意事项
@@ -1416,7 +1492,8 @@ curl -X POST http://localhost:8000/api/alerts/ \
 4. **数据库**：使用 SQLite，文件位于 `backend/crypto.db`
 5. **CORS**：开发环境允许所有来源，生产环境建议限制
 6. **WebSocket**：支持实时K线数据推送，连接币安WebSocket流
-7. **自动创建币种**：在创建关注项、预警、资产时，如果币种不存在会自动创建
+7. **自动创建币种**：在创建关注项、预警、资产、价格搜索时，如果币种不存在会自动创建
+8. **价格搜索 Failover**：`GET /api/price-search/` 支持主备 API 自动切换，所有 API 地址从 `config.json` 读取
 
 ---
 
@@ -1425,3 +1502,4 @@ curl -X POST http://localhost:8000/api/alerts/ \
 1. **路由冲突**：`PUT /api/auth/account` 在 `auth.py` 和 `account.py` 中都有定义，`account.py` 的版本可能被覆盖无法访问
 2. **安全风险（已修复）**：通知设置和API设置接口现已全部需要认证
 3. **数据库**：使用 SQLite，高并发场景建议切换到 PostgreSQL 或 MySQL
+4. **价格搜索**：每次请求都会实时请求交易所 API，高频率调用可能触发交易所限流

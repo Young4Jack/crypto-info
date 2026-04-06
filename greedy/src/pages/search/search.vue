@@ -6,45 +6,47 @@
 				<input
 					class="search-input"
 					type="text"
-					placeholder="输入币种名称或交易对，如 BTC / ETH"
+					placeholder="输入币种代码，例如 BTCUSDT"
 					v-model="keyword"
 					@confirm="onSearch"
+					@blur="onBlur"
 				/>
 				<view class="search-btn" @tap="onSearch">
 					<text class="btn-text">搜索</text>
 				</view>
 			</view>
 
-			<!-- 搜索结果 -->
-			<view v-if="searchResults.length > 0" class="results-section">
-				<text class="section-title">搜索结果</text>
-				<view
-					v-for="item in searchResults"
-					:key="item.symbol"
-					class="result-card"
-				>
+			<!-- 搜索中 -->
+			<view v-if="searching" class="loading-state">
+				<text class="loading-text">查询中...</text>
+			</view>
+
+			<!-- 结果展示卡片 -->
+			<view v-else-if="searchResult" class="result-section">
+				<view class="result-card">
 					<view class="result-info">
-						<text class="result-name">{{ item.symbol }}</text>
-						<text class="result-sub">{{ item.name }}</text>
+						<text class="result-symbol">{{ searchResult.symbol }}</text>
+						<text class="result-price">${{ formatPrice(searchResult.price) }}</text>
 					</view>
 					<view
-						:class="['add-btn', item.added ? 'added' : '']"
-						@tap="toggleWatchlist(item)"
+						:class="['add-btn', isAdded ? 'added' : '']"
+						@tap="addToWatchlist"
 					>
-						<text class="btn-text">{{ item.added ? '已添加' : '+ 添加' }}</text>
+						<text class="btn-text">{{ isAdded ? '已添加' : '+ 添加' }}</text>
 					</view>
 				</view>
 			</view>
 
-			<!-- 空状态 -->
-			<view v-else-if="hasSearched" class="empty-state">
-				<text class="empty-text">未找到匹配的币种</text>
+			<!-- 未找到或错误提示 -->
+			<view v-else-if="hasSearched && !searchResult" class="empty-state">
+				<text class="empty-text">未找到该币种数据</text>
+				<text class="empty-hint">请检查币种代码是否正确</text>
 			</view>
 
 			<!-- 初始提示 -->
 			<view v-else class="empty-state">
-				<text class="empty-text">输入关键词搜索并添加关注</text>
-				<text class="empty-hint">支持输入币种名称或交易对</text>
+				<text class="empty-text">输入币种代码查询实时价格</text>
+				<text class="empty-hint">支持 BTC / eth / SOLUSDT 等格式</text>
 			</view>
 		</view>
 	</view>
@@ -52,33 +54,19 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { watchlistApi, klinesApi, type WatchlistItem } from '@/api'
+import { klinesApi, watchlistApi } from '@/api'
 
 const keyword = ref('')
-const searchResults = ref<Array<{
-	symbol: string
-	name: string
-	added: boolean
-	loading: boolean
-}>>([])
+const searching = ref(false)
 const hasSearched = ref(false)
-const myWatchlist = ref<Set<string>>(new Set())
+const searchResult = ref<{ symbol: string; price: number } | null>(null)
+const isAdded = ref(false)
 
-onShow(async () => {
-	await loadMyWatchlist()
-})
-
-const loadMyWatchlist = async () => {
-	try {
-		const res = await watchlistApi.getList()
-		const symbols = new Set<string>()
-		;(res.data || []).forEach((item: WatchlistItem) => {
-			symbols.add(item.crypto_symbol.toUpperCase())
-		})
-		myWatchlist.value = symbols
-	} catch (e: any) {
-		console.error('获取关注列表失败', e)
+// 输入框失焦时立即自动补全
+const onBlur = () => {
+	const normalized = normalizeSymbol(keyword.value)
+	if (normalized && normalized !== keyword.value) {
+		keyword.value = normalized
 	}
 }
 
@@ -89,63 +77,77 @@ const normalizeSymbol = (raw: string): string => {
 	return s
 }
 
+const formatPrice = (price: number): string => {
+	if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+	if (price >= 1) return price.toFixed(4)
+	return price.toFixed(6)
+}
+
 const onSearch = async () => {
-	const kw = keyword.value.trim().toUpperCase()
-	if (!kw) {
-		uni.showToast({ title: '请输入搜索关键词', icon: 'none' })
+	const symbol = normalizeSymbol(keyword.value)
+	if (!symbol) {
+		uni.showToast({ title: '请输入币种代码', icon: 'none' })
 		return
 	}
 
+	keyword.value = symbol
+	searching.value = true
 	hasSearched.value = true
-	searchResults.value = []
+	searchResult.value = null
+	isAdded.value = false
 
 	try {
-		const res = await klinesApi.getWatchlistKlines('1d', 2)
+		const res = await klinesApi.getKlines(symbol, '1m', 1)
 		const body = res.data as any
-		const raw = body?.data || body || {}
 
-		const matched: typeof searchResults.value = []
-		for (const symbol of Object.keys(raw)) {
-			const item = raw[symbol]
-			const symUpper = symbol.toUpperCase()
-			const name = item?.name || symbol.replace('USDT', '')
-
-			// 匹配逻辑：交易对完整匹配 或 名称包含关键词
-			if (symUpper.includes(kw) || name.toUpperCase().includes(kw)) {
-				matched.push({
-					symbol,
-					name,
-					added: myWatchlist.value.has(symUpper),
-					loading: false,
-				})
-			}
+		let klines: any[] = []
+		if (body?.data?.klines && Array.isArray(body.data.klines)) {
+			klines = body.data.klines
+		} else if (body?.klines && Array.isArray(body.klines)) {
+			klines = body.klines
+		} else if (body?.data && Array.isArray(body.data)) {
+			klines = body.data
+		} else if (Array.isArray(body)) {
+			klines = body
 		}
 
-		searchResults.value = matched
+		if (klines.length > 0 && klines[0]?.close != null) {
+			const price = parseFloat(klines[0].close)
+			if (price > 0) {
+				searchResult.value = { symbol, price }
+			}
+		}
 	} catch (e: any) {
-		uni.showToast({ title: '搜索失败', icon: 'none' })
+		console.error('价格查询失败', e)
+	} finally {
+		searching.value = false
 	}
 }
 
-const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
-	if (item.added) {
+const addToWatchlist = async () => {
+	if (isAdded.value) {
 		uni.showToast({ title: '已在关注列表中', icon: 'none' })
 		return
 	}
 
-	item.loading = true
+	const token = uni.getStorageSync('token')
+	if (!token) {
+		uni.showToast({ title: '请先登录', icon: 'none' })
+		return
+	}
+
+	if (!searchResult.value) return
+
 	try {
 		await watchlistApi.create({
-			crypto_symbol: item.symbol,
-			is_public: false,
+			crypto_symbol: searchResult.value.symbol,
+			is_public: true,
+			notes: '',
 		})
-		item.added = true
-		myWatchlist.value.add(item.symbol.toUpperCase())
+		isAdded.value = true
 		uni.showToast({ title: '添加成功', icon: 'success' })
 	} catch (e: any) {
 		uni.showToast({ title: e?.message || '添加失败', icon: 'none' })
-	} finally {
-		item.loading = false
 	}
 }
 </script>
@@ -166,7 +168,7 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 .search-bar {
 	display: flex;
 	gap: 16rpx;
-	margin-bottom: 30rpx;
+	margin-bottom: 40rpx;
 }
 
 .search-input {
@@ -181,13 +183,18 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 	box-sizing: border-box;
 }
 
+.search-input:focus {
+	border-color: #409eff;
+}
+
 .search-btn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	background-color: #409eff;
 	border-radius: 12rpx;
-	padding: 0 32rpx;
+	padding: 0 40rpx;
+	min-width: 140rpx;
 }
 
 .search-btn:active {
@@ -200,15 +207,20 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 	font-weight: 500;
 }
 
-.section-title {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #1a1a2e;
-	margin-bottom: 16rpx;
-	display: block;
+.loading-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 150rpx 0;
 }
 
-.results-section {
+.loading-text {
+	font-size: 28rpx;
+	color: #909399;
+}
+
+.result-section {
 	display: flex;
 	flex-direction: column;
 	gap: 16rpx;
@@ -220,25 +232,27 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 	align-items: center;
 	background-color: #ffffff;
 	border-radius: 16rpx;
-	padding: 24rpx;
+	padding: 32rpx;
 	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
 .result-info {
 	display: flex;
 	flex-direction: column;
-	gap: 6rpx;
+	gap: 10rpx;
 }
 
-.result-name {
-	font-size: 30rpx;
-	font-weight: 600;
+.result-symbol {
+	font-size: 36rpx;
+	font-weight: 700;
 	color: #1a1a2e;
 }
 
-.result-sub {
-	font-size: 24rpx;
-	color: #909399;
+.result-price {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #409eff;
+	font-variant-numeric: tabular-nums;
 }
 
 .add-btn {
@@ -247,8 +261,8 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 	justify-content: center;
 	background-color: #409eff;
 	border-radius: 8rpx;
-	padding: 12rpx 24rpx;
-	min-width: 120rpx;
+	padding: 14rpx 28rpx;
+	min-width: 140rpx;
 }
 
 .add-btn.added {
@@ -283,7 +297,7 @@ const toggleWatchlist = async (item: typeof searchResults.value[number]) => {
 }
 
 @media (min-width: 768px) {
-	.results-section {
+	.result-section {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 20rpx;
