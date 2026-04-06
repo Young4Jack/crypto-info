@@ -1043,15 +1043,15 @@ POST /api/settings/notification-channels/{channel_name}/test
 
 **前缀：** `/api/settings`
 
-**状态：** ⚠️ 已废弃，请使用 [通知渠道管理 API](#8-通知渠道管理-notification-channels)
+**状态：** ⚠️ 已废弃，请使用 [通知渠道管理 API](#10-通知渠道管理-notification-channels)
 
-## 10. API设置 (API Settings)
+## 12. API设置 (API Settings)
 
 **前缀：** `/api/api-settings`
 
 **认证：** 所有接口均**需要** `Authorization: Bearer <token>`
 
-### 10.1 获取API设置
+### 12.1 获取API设置
 
 ```
 GET /api/api-settings/
@@ -1067,19 +1067,19 @@ GET /api/api-settings/
 }
 ```
 
-### 10.2 创建/更新API设置
+### 12.2 创建/更新API设置
 
 ```
 POST /api/api-settings/
 ```
 
-### 10.3 测试主API
+### 12.3 测试主API
 
 ```
 POST /api/api-settings/test-primary
 ```
 
-### 10.4 测试备用API
+### 12.4 测试备用API
 
 ```
 POST /api/api-settings/test-backup
@@ -1087,11 +1087,11 @@ POST /api/api-settings/test-backup
 
 ---
 
-## 11. 系统设置 (System Settings)
+## 13. 系统设置 (System Settings)
 
 **前缀：** `/api/system-settings`
 
-### 11.1 获取系统设置（完整，返回真实密钥）
+### 13.1 获取系统设置（完整，返回真实密钥）
 
 ```
 GET /api/system-settings/
@@ -1119,7 +1119,7 @@ GET /api/system-settings/
 
 > **注意：** 此接口返回真实密钥值（非掩码），因为前端编辑表单需要完整值进行保存操作。
 
-### 11.2 获取公开系统设置
+### 13.2 获取公开系统设置
 
 ```
 GET /api/system-settings/public
@@ -1141,7 +1141,7 @@ GET /api/system-settings/public
 }
 ```
 
-### 11.3 创建系统设置
+### 13.3 创建系统设置
 
 ```
 POST /api/system-settings/
@@ -1165,7 +1165,7 @@ POST /api/system-settings/
 }
 ```
 
-### 11.4 更新系统设置
+### 13.4 更新系统设置
 
 ```
 PUT /api/system-settings/
@@ -1196,7 +1196,7 @@ PUT /api/system-settings/
 | api_shared_secret | string | API共享密钥 |
 | timezone | string | 时区 |
 
-### 11.5 删除系统设置
+### 13.5 删除系统设置
 
 ```
 DELETE /api/system-settings/
@@ -1206,13 +1206,13 @@ DELETE /api/system-settings/
 
 ---
 
-## 12. 预警历史 (Alert Histories)
+## 14. 预警历史 (Alert Histories)
 
 **前缀：** `/api/alert-histories`
 
 **认证：** 所有接口均需要 `Authorization: Bearer <token>`
 
-### 12.1 获取预警历史列表
+### 14.1 获取预警历史列表
 
 ```
 GET /api/alert-histories/?skip=0&limit=50&alert_id=1
@@ -1243,19 +1243,19 @@ GET /api/alert-histories/?skip=0&limit=50&alert_id=1
 ]
 ```
 
-### 12.2 获取单条预警历史
+### 14.2 获取单条预警历史
 
 ```
 GET /api/alert-histories/{history_id}
 ```
 
-### 12.3 删除单条预警历史
+### 14.3 删除单条预警历史
 
 ```
 DELETE /api/alert-histories/{history_id}
 ```
 
-### 12.4 批量删除预警历史
+### 14.4 批量删除预警历史
 
 ```
 DELETE /api/alert-histories/?alert_id=1
@@ -1263,13 +1263,13 @@ DELETE /api/alert-histories/?alert_id=1
 
 ---
 
-## 13. 账户管理 (Account)
+## 15. 账户管理 (Account)
 
 **前缀：** `/api/auth`
 
 **认证：** 所有接口均需要 `Authorization: Bearer <token>`
 
-### 13.1 获取账户信息
+### 15.1 获取账户信息
 
 ```
 GET /api/auth/account
@@ -1286,7 +1286,7 @@ GET /api/auth/account
 }
 ```
 
-### 13.2 更新账户信息
+### 15.2 更新账户信息
 
 ```
 PUT /api/auth/account
@@ -1303,13 +1303,13 @@ PUT /api/auth/account
 
 ---
 
-## 14. 价格搜索 (Price Search)
+## 16. 价格搜索 (Price Search)
 
 **前缀：** `/api/price-search`
 
 **认证：** 需要 `Authorization: Bearer <token>`
 
-### 14.1 搜索币种实时价格
+### 16.1 搜索币种实时价格
 
 ```
 GET /api/price-search/?symbol=BTC
@@ -1365,9 +1365,9 @@ GET /api/price-search/?symbol=BTC
 
 ---
 
-## 15. 健康检查与系统
+## 17. 健康检查与系统
 
-### 15.1 根路径
+### 17.1 根路径
 
 ```
 GET /
@@ -1380,7 +1380,7 @@ GET /
 }
 ```
 
-### 15.2 健康检查
+### 17.2 健康检查
 
 ```
 GET /health
@@ -1395,7 +1395,7 @@ GET /health
 }
 ```
 
-### 15.3 定时任务调度器状态
+### 17.3 定时任务调度器状态
 
 ```
 GET /scheduler/status
