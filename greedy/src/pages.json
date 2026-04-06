@@ -42,6 +42,13 @@
 				"enablePullDownRefresh": false,
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/search/search",
+			"style": {
+				"navigationBarTitleText": "搜索添加",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {

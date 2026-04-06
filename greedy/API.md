@@ -28,13 +28,30 @@
 7. [仪表盘 (Dashboard)](#5-仪表盘-dashboard)
 8. [关注列表 (Watchlist)](#6-关注列表-watchlist)
 9. [K线数据 (Klines)](#7-k线数据-klines)
-10. [通知设置 (Settings)](#8-通知设置-settings)
-11. [API设置 (API Settings)](#9-api设置-api-settings)
-12. [系统设置 (System Settings)](#10-系统设置-system-settings)
-13. [预警历史 (Alert Histories)](#11-预警历史-alert-histories)
-14. [账户管理 (Account)](#12-账户管理-account)
-15. [健康检查与系统](#13-健康检查与系统)
-16. [快速调用示例](#快速调用示例)
+10. [通知渠道管理 (Notification Channels)](#8-通知渠道管理-notification-channels)
+11. [旧通知设置 (已废弃)](#9-旧通知设置-已废弃)
+12. [API设置 (API Settings)](#10-api设置-api-settings)
+13. [系统设置 (System Settings)](#11-系统设置-system-settings)
+14. [预警历史 (Alert Histories)](#12-预警历史-alert-histories)
+15. [账户管理 (Account)](#13-账户管理-account)
+16. [健康检查与系统](#14-健康检查与系统)
+17. [变更日志](#变更日志)
+18. [快速调用示例](#快速调用示例)
+
+---
+
+## 变更日志
+
+### 最近重大更新
+
+| 日期 | 变更内容 |
+|------|----------|
+| 2024-04 | 安全加固：通知设置、API设置接口添加认证保护 |
+| 2024-04 | 新增系统设置 `base_url`、`backend_port`、`frontend_port`、`timezone` 公开字段 |
+| 2024-04 | 修复密钥掩码覆盖 bug，GET 返回真实值 |
+| 2024-04 | 预警引擎：修复5个已知问题（AlertHistory写入、死代码删除、方向文字修复、失败重试机制） |
+| 2024-04 | 通知渠道重构：支持多渠道+多频道，预警级别独立选择 |
+| 2024-04 | 旧通知推送设置废弃，统一使用渠道管理 API |
 
 ---
 
@@ -98,7 +115,8 @@ Authorization: Bearer <your_access_token>
 |------|------|
 | `GET /api/system-settings/` | 系统设置（完整，返回真实密钥） |
 | `POST/PUT/DELETE /api/system-settings/` | 系统设置写操作 |
-| `GET/POST/PUT/DELETE /api/settings/notification` | 通知设置（全部） |
+| `GET/POST/PUT/DELETE /api/settings/notification` | 通知设置（已废弃，使用渠道管理代替） |
+| `GET/POST/PUT/DELETE /api/settings/notification-channels/` | 通知渠道管理（全部） |
 | `GET/POST/PUT/DELETE /api/api-settings/` | API设置（全部） |
 | 其他所有业务接口 | 币种、预警、资产、仪表盘、关注列表、预警历史 |
 
@@ -1019,15 +1037,11 @@ POST /api/settings/notification-channels/{channel_name}/test
 
 ---
 
-## 9. 通知设置 (Settings)
+## 9. 旧通知设置 (已废弃)
 
 **前缀：** `/api/settings`
 
-**认证：** 所有接口均**需要** `Authorization: Bearer <token>`
-
-> **注意：** 旧版通知推送设置已废弃，请使用通知渠道管理 API。
-
----
+**状态：** ⚠️ 已废弃，请使用 [通知渠道管理 API](#8-通知渠道管理-notification-channels)
 
 ## 10. API设置 (API Settings)
 
