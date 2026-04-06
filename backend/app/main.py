@@ -12,6 +12,7 @@ from app.api import system_settings
 from app.api import account
 from app.api import watchlist
 from app.api import klines
+from app.api import notification_channels
 from app.tasks.scheduler import start_scheduler, shutdown_scheduler, get_scheduler_status
 from app.utils.logger import setup_logger, get_logger
 from app.config_manager import config_manager
@@ -110,6 +111,7 @@ app.include_router(system_settings.router)
 app.include_router(account.router)
 app.include_router(watchlist.router)
 app.include_router(klines.router)
+app.include_router(notification_channels.router)
 
 # 全局异常处理
 @app.exception_handler(Exception)

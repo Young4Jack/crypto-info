@@ -55,6 +55,35 @@
           
           <el-card class="content-card" shadow="never">
             <template #header>
+              <div class="card-header">
+                <span>📡 通知渠道管理</span>
+                <el-button type="primary" size="small" @click="showAddChannelDialog" style="float: right;">添加渠道</el-button>
+              </div>
+            </template>
+            <el-table :data="channels" stripe style="width: 100%">
+              <el-table-column prop="name" label="渠道名称" width="120" />
+              <el-table-column prop="api_url" label="API 地址" show-overflow-tooltip />
+              <el-table-column label="频道" width="150">
+                <template #default="{ row }">
+                  <el-tag v-for="g in row.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="默认" width="60" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.is_default" type="success" size="small">是</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="140">
+                <template #default="{ row }">
+                  <el-button size="small" @click="showEditChannelDialog(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="handleDeleteChannel(row.name)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+
+          <el-card class="content-card" shadow="never">
+            <template #header>
               <div class="card-header"><span>🔌 价格获取 API 设置</span></div>
             </template>
             <el-form ref="apiSettingFormRef" :model="apiSettingForm" :rules="apiSettingRules" label-position="top">
@@ -200,6 +229,40 @@
         </el-col>
       </el-row>
     </el-main>
+
+    <!-- 通知渠道编辑对话框 -->
+    <el-dialog v-model="channelDialogVisible" :title="isEditingChannel ? '编辑通知渠道' : '添加通知渠道'" width="500px">
+      <el-form ref="channelFormRef" :model="channelForm" label-position="top">
+        <el-form-item label="渠道名称" required>
+          <el-input v-model="channelForm.name" placeholder="如：自建Webhook、短信通知" />
+        </el-form-item>
+        <el-form-item label="API 地址" required>
+          <el-input v-model="channelForm.api_url" placeholder="https://push.example.com/push/user" />
+        </el-form-item>
+        <el-form-item label="Auth Token">
+          <el-input v-model="channelForm.auth_token" placeholder="可选，认证令牌" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="设为默认渠道">
+          <el-switch v-model="channelForm.is_default" />
+        </el-form-item>
+        <el-form-item label="默认频道">
+          <el-input v-model="channelForm.default_group" placeholder="如：yes" />
+        </el-form-item>
+        <el-form-item label="频道列表">
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+            <el-tag v-for="(g, i) in channelForm.groups" :key="g" closable @close="channelForm.groups.splice(i, 1)" style="margin: 2px;">{{ g }}</el-tag>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <el-input v-model="channelForm.newGroup" placeholder="输入新频道名" size="small" @keyup.enter="addGroup" />
+            <el-button size="small" @click="addGroup">添加</el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="channelDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="channelSaveLoading" @click="handleSaveChannel">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -208,7 +271,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { settingsApi, apiSettingsApi, systemSettingsApi, authApi } from '../api'
+import { settingsApi, apiSettingsApi, systemSettingsApi, authApi, notificationChannelsApi } from '../api'
 import { useDarkMode } from '../composables/useDarkMode'
 
 const router = useRouter()
@@ -231,6 +294,12 @@ const testPrimaryLoading = ref(false)
 const testBackupLoading = ref(false)
 const systemSaveLoading = ref(false)
 const accountSaveLoading = ref(false)
+const channelDialogVisible = ref(false)
+const channelFormRef = ref<FormInstance>()
+const isEditingChannel = ref(false)
+const channelSaveLoading = ref(false)
+const channels = ref<{ name: string; api_url: string; auth_token: string; is_default: boolean; default_group: string; groups: string[] }[]>([])
+const channelForm = reactive({ name: '', api_url: '', auth_token: '', is_default: false, default_group: 'yes', groups: ['yes'] as string[], newGroup: '' })
 
 const settingForm = reactive({ api_url: '', auth_token: '', channel: 'email' })
 const apiSettingForm = reactive({ primary_api_url: '', backup_api_url: '', api_key: '', api_secret: '' })
@@ -426,10 +495,88 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+const loadChannels = async () => {
+  try {
+    const response = await notificationChannelsApi.getAll()
+    channels.value = response.data || []
+  } catch (error) {}
+}
+
+const addGroup = () => {
+  if (channelForm.newGroup.trim() && !channelForm.groups.includes(channelForm.newGroup.trim())) {
+    channelForm.groups.push(channelForm.newGroup.trim())
+  }
+  channelForm.newGroup = ''
+}
+
+const showAddChannelDialog = () => {
+  isEditingChannel.value = false
+  Object.assign(channelForm, { name: '', api_url: '', auth_token: '', is_default: false, default_group: 'yes', groups: ['yes'], newGroup: '' })
+  channelDialogVisible.value = true
+}
+
+const showEditChannelDialog = (channel: any) => {
+  isEditingChannel.value = true
+  Object.assign(channelForm, {
+    name: channel.name,
+    api_url: channel.api_url,
+    auth_token: channel.auth_token,
+    is_default: channel.is_default,
+    default_group: channel.default_group,
+    groups: [...channel.groups],
+    newGroup: ''
+  })
+  channelDialogVisible.value = true
+}
+
+const handleSaveChannel = async () => {
+  if (!channelForm.name || !channelForm.api_url) {
+    ElMessage.error('渠道名称和 API 地址为必填项')
+    return
+  }
+  if (channelForm.groups.length === 0) {
+    ElMessage.error('至少需要一个频道')
+    return
+  }
+  channelSaveLoading.value = true
+  try {
+    const data = {
+      name: channelForm.name,
+      api_url: channelForm.api_url,
+      auth_token: channelForm.auth_token,
+      is_default: channelForm.is_default,
+      default_group: channelForm.default_group,
+      groups: channelForm.groups
+    }
+    if (isEditingChannel.value) {
+      const oldName = channels.value.find(c => c.name === channelForm.name)?.name
+      await notificationChannelsApi.update(oldName || channelForm.name, data)
+      ElMessage.success('渠道更新成功')
+    } else {
+      await notificationChannelsApi.create(data)
+      ElMessage.success('渠道创建成功')
+    }
+    channelDialogVisible.value = false
+    await loadChannels()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '操作失败')
+  } finally { channelSaveLoading.value = false }
+}
+
+const handleDeleteChannel = async (name: string) => {
+  try {
+    await ElMessageBox.confirm(`确定删除渠道 "${name}" 吗？`, '确认', { type: 'warning' })
+    await notificationChannelsApi.delete(name)
+    ElMessage.success('渠道已删除')
+    await loadChannels()
+  } catch (error) {}
+}
+
 onMounted(() => {
   loadSetting()
   loadApiSetting()
   loadSystemSetting()
+  loadChannels()
 })
 </script>
 

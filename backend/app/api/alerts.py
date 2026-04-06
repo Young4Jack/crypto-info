@@ -29,6 +29,8 @@ class AlertCreate(BaseModel):
     is_continuous: Optional[bool] = False
     interval_minutes: Optional[int] = 5
     max_notifications: Optional[int] = 1
+    notification_channel: Optional[str] = None
+    notification_group: Optional[str] = None
 
 class AlertUpdate(BaseModel):
     """更新预警规则请求"""
@@ -42,6 +44,8 @@ class AlertUpdate(BaseModel):
     is_continuous: Optional[bool] = None
     interval_minutes: Optional[int] = None
     max_notifications: Optional[int] = None
+    notification_channel: Optional[str] = None
+    notification_group: Optional[str] = None
 
 class AlertResponse(BaseModel):
     """预警规则响应"""
@@ -64,6 +68,8 @@ class AlertResponse(BaseModel):
     max_notifications: int = 1
     notified_count: int = 0
     last_triggered_at: Optional[str] = None
+    notification_channel: Optional[str] = None
+    notification_group: Optional[str] = None
 
 @router.get("/", response_model=List[AlertResponse])
 async def get_alerts(
@@ -109,7 +115,9 @@ async def get_alerts(
             interval_minutes=alert.interval_minutes,
             max_notifications=alert.max_notifications,
             notified_count=alert.notified_count,
-            last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None
+            last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None,
+            notification_channel=alert.notification_channel,
+            notification_group=alert.notification_group
         ))
     
     return result
@@ -168,7 +176,17 @@ async def get_alert(
         webhook_url=alert.webhook_url,
         is_active=alert.is_active,
         triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
-        created_at=alert.created_at.isoformat() if alert.created_at else None
+        created_at=alert.created_at.isoformat() if alert.created_at else None,
+        sort_order=alert.sort_order or 0,
+        base_price=alert.base_price,
+        threshold_value=alert.threshold_value,
+        is_continuous=alert.is_continuous,
+        interval_minutes=alert.interval_minutes,
+        max_notifications=alert.max_notifications,
+        notified_count=alert.notified_count,
+        last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None,
+        notification_channel=alert.notification_channel,
+        notification_group=alert.notification_group
     )
 
 @router.post("/", response_model=AlertResponse)
@@ -241,7 +259,9 @@ async def create_alert_rule(
         is_continuous=alert_data.is_continuous,
         interval_minutes=alert_data.interval_minutes,
         max_notifications=alert_data.max_notifications,
-        sort_order=max_sort + 1
+        sort_order=max_sort + 1,
+        notification_channel=alert_data.notification_channel,
+        notification_group=alert_data.notification_group
     )
     
     return AlertResponse(
@@ -262,7 +282,9 @@ async def create_alert_rule(
         interval_minutes=alert.interval_minutes,
         max_notifications=alert.max_notifications,
         notified_count=alert.notified_count,
-        last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None
+        last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None,
+        notification_channel=alert.notification_channel,
+        notification_group=alert.notification_group
     )
 
 @router.put("/{alert_id}", response_model=AlertResponse)

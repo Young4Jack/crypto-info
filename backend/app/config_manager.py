@@ -24,6 +24,7 @@ class ConfigManager:
                 "auth_token": "",
                 "channel": "email"
             },
+            "notification_channels": [],
             "system_settings": {
                 "refresh_interval": 5,
                 "enable_captcha": False,
@@ -90,6 +91,72 @@ class ConfigManager:
         config = self.load_config()
         config["notification_settings"] = notification_settings
         return self.save_config(config)
+    
+    def _migrate_notification_channels(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """将旧版 notification_settings 迁移到新版 notification_channels 结构"""
+        channels = config.get("notification_channels", [])
+        if channels:
+            return config
+        
+        old = config.get("notification_settings", {})
+        old_api_url = old.get("api_url", "")
+        old_auth_token = old.get("auth_token", "")
+        old_channel = old.get("channel", "yes")
+        
+        if old_api_url:
+            channels.append({
+                "name": "自建Webhook",
+                "api_url": old_api_url,
+                "auth_token": old_auth_token,
+                "is_default": True,
+                "default_group": old_channel if old_channel else "yes",
+                "groups": [old_channel] if old_channel else ["yes"]
+            })
+        else:
+            channels.append({
+                "name": "自建Webhook",
+                "api_url": "",
+                "auth_token": "",
+                "is_default": True,
+                "default_group": "yes",
+                "groups": ["yes"]
+            })
+        
+        config["notification_channels"] = channels
+        return config
+    
+    def get_notification_channels(self) -> list:
+        """获取所有通知渠道"""
+        config = self.load_config()
+        config = self._migrate_notification_channels(config)
+        channels = config.get("notification_channels", [])
+        if not channels:
+            config["notification_channels"] = self.default_config["notification_channels"]
+            self.save_config(config)
+        return config.get("notification_channels", [])
+    
+    def save_notification_channels(self, channels: list) -> bool:
+        """保存通知渠道列表"""
+        config = self.load_config()
+        config = self._migrate_notification_channels(config)
+        config["notification_channels"] = channels
+        return self.save_config(config)
+    
+    def get_channel_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """根据名称获取渠道配置"""
+        channels = self.get_notification_channels()
+        for ch in channels:
+            if ch.get("name") == name:
+                return ch
+        return None
+    
+    def get_default_channel(self) -> Optional[Dict[str, Any]]:
+        """获取默认渠道"""
+        channels = self.get_notification_channels()
+        for ch in channels:
+            if ch.get("is_default"):
+                return ch
+        return channels[0] if channels else None
     
     def get_system_settings(self) -> Dict[str, Any]:
         """获取系统设置 (融合环境变量优先级)"""

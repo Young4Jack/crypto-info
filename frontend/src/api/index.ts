@@ -53,6 +53,8 @@ export const alertsApi = {
     is_continuous?: boolean
     max_notifications?: number
     interval_minutes?: number
+    notification_channel?: string
+    notification_group?: string
   }) => {
     return request.post('/api/alerts/', data)
   },
@@ -66,6 +68,8 @@ export const alertsApi = {
     is_continuous?: boolean
     max_notifications?: number
     interval_minutes?: number
+    notification_channel?: string
+    notification_group?: string
   }) => {
     return request.put(`/api/alerts/${id}`, data)
   },
@@ -220,6 +224,39 @@ export const settingsApi = {
   // 测试通知设置
   testNotificationSetting: () => {
     return request.post('/api/settings/notification/test')
+  }
+}
+
+// 通知渠道管理 API
+export const notificationChannelsApi = {
+  getAll: () => {
+    return request.get('/api/settings/notification-channels/')
+  },
+  getDefault: () => {
+    return request.get('/api/settings/notification-channels/default')
+  },
+  create: (data: {
+    name: string
+    api_url: string
+    auth_token?: string
+    is_default?: boolean
+    default_group?: string
+    groups?: string[]
+  }) => {
+    return request.post('/api/settings/notification-channels/', data)
+  },
+  update: (name: string, data: {
+    name?: string
+    api_url?: string
+    auth_token?: string
+    is_default?: boolean
+    default_group?: string
+    groups?: string[]
+  }) => {
+    return request.put(`/api/settings/notification-channels/${name}`, data)
+  },
+  delete: (name: string) => {
+    return request.delete(`/api/settings/notification-channels/${name}`)
   }
 }
 

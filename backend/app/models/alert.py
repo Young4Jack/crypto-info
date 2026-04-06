@@ -36,6 +36,8 @@ class PriceAlert(Base):
     max_notifications = Column(Integer, default=1, comment="最大通知次数限制")
     notified_count = Column(Integer, default=0, comment="已通知次数")
     last_triggered_at = Column(DateTime(timezone=True), nullable=True, comment="上次触发/通知的时间")
+    notification_channel = Column(String(100), nullable=True, comment="通知渠道名称")
+    notification_group = Column(String(100), nullable=True, comment="通知频道名称")
     
     # 关系
     user = relationship("User", back_populates="alerts")

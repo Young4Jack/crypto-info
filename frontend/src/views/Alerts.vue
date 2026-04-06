@@ -71,6 +71,20 @@
               <el-input-number v-model="inlineForm.threshold_price" :precision="['above', 'below'].includes(inlineForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" :placeholder="['above', 'below'].includes(inlineForm.alert_type) ? '目标触发价' : '填入百分比，如 5'" />
             </el-form-item>
             
+            <el-form-item label="通知渠道" class="flex-item-medium">
+              <el-select v-model="inlineForm.notification_channel" placeholder="默认" clearable style="width: 100%" @change="inlineForm.notification_group = ''">
+                <el-option label="使用默认" value="" />
+                <el-option v-for="ch in channels" :key="ch.name" :label="ch.name" :value="ch.name" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="通知频道" class="flex-item-medium">
+              <el-select v-model="inlineForm.notification_group" :placeholder="inlineForm.notification_channel ? '默认频道' : '使用默认'" clearable style="width: 100%">
+                <el-option label="使用默认" value="" />
+                <el-option v-for="g in (channels.find(c => c.name === inlineForm.notification_channel)?.groups || [])" :key="g" :label="g" :value="g" />
+              </el-select>
+            </el-form-item>
+            
             <el-form-item label="&nbsp;" class="flex-btn">
               <el-button type="primary" :loading="submitLoading" @click="submitInlineForm" style="width: 100%;">
                 快捷添加
@@ -387,6 +401,21 @@
             <el-input-number v-model="editForm.threshold_price" :precision="['above', 'below'].includes(editForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
         </div>
+        
+        <div class="form-row-2">
+          <el-form-item label="通知渠道">
+            <el-select v-model="editForm.notification_channel" placeholder="默认" clearable style="width: 100%" @change="editForm.notification_group = ''">
+              <el-option label="使用默认" value="" />
+              <el-option v-for="ch in channels" :key="ch.name" :label="ch.name" :value="ch.name" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="通知频道">
+            <el-select v-model="editForm.notification_group" :placeholder="editForm.notification_channel ? '默认频道' : '使用默认'" clearable style="width: 100%">
+              <el-option label="使用默认" value="" />
+              <el-option v-for="g in (channels.find(c => c.name === editForm.notification_channel)?.groups || [])" :key="g" :label="g" :value="g" />
+            </el-select>
+          </el-form-item>
+        </div>
       </el-form>
       
       <template #footer>
@@ -406,7 +435,7 @@ import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Sort, Check, Rank, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { alertsApi,  systemSettingsApi } from '../api'
+import { alertsApi, systemSettingsApi, notificationChannelsApi } from '../api'
 import { useDarkMode } from '../composables/useDarkMode'
 import Sortable from 'sortablejs'
 import { formatTimeWithTimezoneSync, getTimezone } from '../utils/timezone'
@@ -423,6 +452,7 @@ const timezone = ref('Asia/Shanghai')
 const sortDialogVisible = ref(false)
 const sortEditItem = ref<any>(null)
 const sortEditValue = ref(0)
+const channels = ref<{ name: string; groups: string[]; default_group: string }[]>([])
 
 const inlineFormRef = ref<FormInstance>()
 const dialogFormRef = ref<FormInstance>()
@@ -436,7 +466,9 @@ const inlineForm = reactive({
   threshold_price: undefined as number|undefined,
   is_continuous: false,
   max_notifications: 1,
-  interval_minutes: 5
+  interval_minutes: 5,
+  notification_channel: '',
+  notification_group: ''
 })
 
 const dialogForm = reactive({ 
@@ -445,7 +477,9 @@ const dialogForm = reactive({
   threshold_price: undefined as number|undefined,
   is_continuous: false,
   max_notifications: 1,
-  interval_minutes: 5
+  interval_minutes: 5,
+  notification_channel: '',
+  notification_group: ''
 })
 
 const editForm = reactive({
@@ -455,7 +489,9 @@ const editForm = reactive({
   threshold_price: 0 as number,
   is_continuous: false,
   max_notifications: 1,
-  interval_minutes: 5
+  interval_minutes: 5,
+  notification_channel: '',
+  notification_group: ''
 })
 
 const dialogVisible = ref(false)
@@ -551,7 +587,9 @@ const submitInlineForm = async () => {
           threshold_price: Number(inlineForm.threshold_price),
           is_continuous: inlineForm.is_continuous,
           max_notifications: Number(inlineForm.max_notifications),
-          interval_minutes: Number(inlineForm.interval_minutes)
+          interval_minutes: Number(inlineForm.interval_minutes),
+          notification_channel: inlineForm.notification_channel || undefined,
+          notification_group: inlineForm.notification_group || undefined
         })
         ElMessage.success(`预警创建成功: ${inlineForm.crypto_symbol}`)
         
@@ -584,7 +622,12 @@ const submitDialogForm = async (keepOpen = false) => {
         await alertsApi.create({
           crypto_symbol: dialogForm.crypto_symbol,
           alert_type: dialogForm.alert_type,
-          threshold_price: Number(dialogForm.threshold_price)
+          threshold_price: Number(dialogForm.threshold_price),
+          is_continuous: dialogForm.is_continuous,
+          max_notifications: Number(dialogForm.max_notifications),
+          interval_minutes: Number(dialogForm.interval_minutes),
+          notification_channel: dialogForm.notification_channel || undefined,
+          notification_group: dialogForm.notification_group || undefined
         })
         ElMessage.success(`预警创建成功: ${dialogForm.crypto_symbol}`)
         
@@ -613,6 +656,8 @@ const openEditDialog = (row: any) => {
   editForm.is_continuous = row.is_continuous
   editForm.max_notifications = row.max_notifications
   editForm.interval_minutes = row.interval_minutes
+  editForm.notification_channel = row.notification_channel || ''
+  editForm.notification_group = row.notification_group || ''
   editDialogVisible.value = true
 }
 
@@ -628,7 +673,9 @@ const submitEditForm = async () => {
           is_continuous: editForm.is_continuous,
           max_notifications: Number(editForm.max_notifications),
           interval_minutes: Number(editForm.interval_minutes),
-          is_active: true 
+          is_active: true,
+          notification_channel: editForm.notification_channel || undefined,
+          notification_group: editForm.notification_group || undefined
         })
         ElMessage.success('预警规则已更新并重新激活')
         editDialogVisible.value = false
@@ -645,6 +692,8 @@ const submitEditForm = async () => {
 const openAddDialog = () => {
   dialogForm.crypto_symbol = ''
   dialogForm.threshold_price = undefined
+  dialogForm.notification_channel = ''
+  dialogForm.notification_group = ''
   setTimeout(() => dialogFormRef.value?.clearValidate(), 0)
   dialogVisible.value = true
 }
@@ -823,6 +872,12 @@ const sortModeRowClass = (_: { row: any; rowIndex: number }) => {
 onMounted(async () => {
   // 先加载时区配置
   timezone.value = await getTimezone()
+  
+  // 加载通知渠道列表
+  try {
+    const resp = await notificationChannelsApi.getAll()
+    channels.value = resp.data || []
+  } catch (error) {}
   
   // 再调用你的基础拉取方法
   loadAlerts(false) 
