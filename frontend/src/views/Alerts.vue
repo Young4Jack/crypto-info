@@ -127,19 +127,16 @@
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="交易对" min-width="110">
+              <el-table-column label="币种" min-width="140">
                 <template #default="{ row }">
-                  <el-tag effect="dark" round size="small" class="symbol-tag">{{ row._symbol }}</el-tag>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <el-tag effect="dark" round size="small" class="symbol-tag">{{ row._symbol }}</el-tag>
+                    <span style="color: #606266; font-weight: 500; font-size: 13px;">{{ row.crypto_name }}</span>
+                  </div>
                 </template>
               </el-table-column>
               
-              <el-table-column label="币种名称" min-width="110">
-                <template #default="{ row }">
-                  <span style="color: #606266; font-weight: 500;">{{ row.crypto_name }}</span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="当前价格" min-width="110" align="right">
+              <el-table-column label="当前价格" min-width="100" align="right">
                 <template #default="{ row }">
                   <span class="price-text">${{ formatNum(row._cp, 4) }}</span>
                 </template>
@@ -154,43 +151,29 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="持续" min-width="70" align="center">
+              <el-table-column label="设置" min-width="130" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="row.is_continuous ? 'success' : 'info'" size="small">{{ row.is_continuous ? '是' : '否' }}</el-tag>
+                  <div class="alert-settings-cell">
+                    <span class="setting-item">持续: {{ row.is_continuous ? '是' : '否' }}</span>
+                    <span class="setting-item">间隔: {{ row.interval_minutes }}m</span>
+                    <span class="setting-item">进度: {{ row.notified_count }}/{{ row.max_notifications }}</span>
+                  </div>
                 </template>
               </el-table-column>
               
-              <el-table-column label="进度" min-width="80" align="center">
-                <template #default="{ row }">
-                  <span>{{ row.notified_count }} / {{ row.max_notifications }}</span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="间隔" min-width="70" align="center">
-                <template #default="{ row }">
-                  <span>{{ row.interval_minutes }}m</span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="通知" min-width="120">
+              <el-table-column label="通知" min-width="100">
                 <template #default="{ row }">
                   <span class="notification-text">{{ row.notification_channel || '默认' }} / {{ row.notification_group || '默认' }}</span>
                 </template>
               </el-table-column>
               
-              <el-table-column label="创建时间" min-width="150">
-                <template #default="{ row }">
-                  <span class="time-text">{{ row.created_at ? formatTime(row.created_at) : '-' }}</span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="最后触发" min-width="150">
+              <el-table-column label="最后触发" min-width="130">
                 <template #default="{ row }">
                   <span class="time-text">{{ row.last_triggered_at ? formatTime(row.last_triggered_at) : '等待触发...' }}</span>
                 </template>
               </el-table-column>
               
-              <el-table-column label="运行状态" min-width="110" align="center" fixed="right">
+              <el-table-column label="运行状态" min-width="100" align="center" fixed="right">
                 <template #default="{ row }">
                   <el-switch
                     v-model="row.is_active"
@@ -958,6 +941,9 @@ onUnmounted(() => {
 .price-text { color: #409eff; font-weight: 600; font-family: 'Monaco', monospace; }
 .condition-group { display: flex; align-items: center; justify-content: flex-end; }
 .time-text { color: #909399; font-size: 13px; }
+.alert-settings-cell { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.setting-item { color: #606266; white-space: nowrap; }
+.notification-text { color: #409eff; font-size: 12px; }
 
 /* 3. 排序模式专有样式 */
 .sort-mode-hint { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #fff7e6; border-bottom: 1px solid #ffe58f; color: #d48806; font-size: 13px; font-weight: 500; }

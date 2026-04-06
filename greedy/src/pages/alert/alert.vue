@@ -5,27 +5,28 @@
 			<view class="page-header">
 				<text class="header-title">预警中心</text>
 				<view v-if="isLoggedIn" class="add-btn pc-only" @tap="toggleAddForm">
-					<text class="btn-text">+ 添加预警</text>
+					<text class="btn-text">{{ editingId ? '编辑预警' : '+ 添加预警' }}</text>
 				</view>
 			</view>
 
 			<!-- 未登录态：提示 + 登录按钮 -->
 			<view v-if="!isLoggedIn" class="guest-state">
-				<text class="guest-title">登录后可设置专属价格预警</text>
+				<text class="guest-title">请登录后使用</text>
 				<view class="guest-login-btn" @tap="goToLogin">
 					<text class="btn-text">立即登录</text>
 				</view>
 			</view>
 
-			<!-- 已登录态：列表 + 添加表单 -->
-			<template v-else>
-				<!-- 添加预警表单 -->
+			<!-- 已登录态 -->
+			<view v-else>
+				<!-- 添加/编辑预警表单 -->
 				<view v-if="showAddForm" class="add-form-card">
 					<view class="form-header">
-						<text class="form-title">新建预警</text>
+						<text class="form-title">{{ editingId ? '编辑预警' : '新建预警' }}</text>
 						<text class="form-close" @tap="toggleAddForm">×</text>
 					</view>
 
+					<!-- 1. 交易对 -->
 					<view class="form-group">
 						<text class="form-label">交易对</text>
 						<input
@@ -36,28 +37,25 @@
 						/>
 					</view>
 
+					<!-- 2. 预警类型（5选1） -->
 					<view class="form-group">
-						<text class="form-label">预警方向</text>
-						<view class="radio-group">
+						<text class="form-label">预警类型</text>
+						<view class="type-group">
 							<view
+								v-for="t in alertTypeOptions"
+								:key="t.value"
 								class="radio-btn"
-								:class="{ active: form.alert_type === 'above' }"
-								@tap="form.alert_type = 'above'"
+								:class="{ active: form.alert_type === t.value }"
+								@tap="onTypeChange(t.value)"
 							>
-								<text>涨破（高于）</text>
-							</view>
-							<view
-								class="radio-btn"
-								:class="{ active: form.alert_type === 'below' }"
-								@tap="form.alert_type = 'below'"
-							>
-								<text>跌破（低于）</text>
+								<text>{{ t.label }}</text>
 							</view>
 						</view>
 					</view>
 
-					<view class="form-group">
-						<text class="form-label">目标价格</text>
+					<!-- 3a. above/below: 显示触发价格 -->
+					<view v-if="isSimpleType" class="form-group">
+						<text class="form-label">触发价格 (USD)</text>
 						<input
 							class="form-input"
 							type="digit"
@@ -66,53 +64,149 @@
 						/>
 					</view>
 
+					<!-- 3b. amplitude/percent_up/percent_down: 显示基准价格和触发比例 -->
+					<view v-if="!isSimpleType" class="form-group">
+						<text class="form-label">基准价格 (USD)</text>
+						<input
+							class="form-input"
+							type="digit"
+							placeholder="如当前价"
+							v-model="form.base_price"
+						/>
+					</view>
+
+					<view v-if="!isSimpleType" class="form-group">
+						<text class="form-label">触发比例 (%)</text>
+						<input
+							class="form-input"
+							type="digit"
+							:placeholder="percentPlaceholder"
+							v-model="form.threshold_value"
+						/>
+					</view>
+
+					<!-- 4. 频率控制 -->
+					<view class="form-group form-row">
+						<text class="form-label">连续触发</text>
+						<switch
+							:checked="form.is_continuous"
+							color="#409EFF"
+							@change="form.is_continuous = $event.detail.value"
+						/>
+					</view>
+
+					<view v-if="form.is_continuous" class="form-row-group">
+						<view class="form-group form-half">
+							<text class="form-label">触发间隔(分钟)</text>
+							<input
+								class="form-input"
+								type="number"
+								placeholder="默认 5"
+								v-model="form.interval_minutes"
+							/>
+						</view>
+						<view class="form-group form-half">
+							<text class="form-label">最大通知次数</text>
+							<input
+								class="form-input"
+								type="number"
+								placeholder="默认 1"
+								v-model="form.max_notifications"
+							/>
+						</view>
+					</view>
+
+					<!-- 5. 通知渠道（下拉选择） -->
+					<view class="form-group">
+						<text class="form-label">通知渠道</text>
+						<picker
+							mode="selector"
+							:range="channelPickerLabels"
+							:value="selectedChannelIndex >= 0 ? selectedChannelIndex : 0"
+							@change="onChannelPickerChange"
+						>
+							<view class="picker-display">
+								<text class="picker-text">{{ selectedChannelDisplay }}</text>
+								<text class="picker-arrow">▼</text>
+							</view>
+						</picker>
+					</view>
+
+					<!-- 通知频道下拉 -->
+					<view v-if="selectedChannelData?.groups?.length" class="form-group">
+						<text class="form-label">通知频道</text>
+						<picker
+							mode="selector"
+							:range="selectedChannelData.groups"
+							:value="groupPickerIndex"
+							@change="onGroupPickerChange"
+						>
+							<view class="picker-display">
+								<text class="picker-text">{{ groupDisplayValue }}</text>
+								<text class="picker-arrow">▼</text>
+							</view>
+						</picker>
+					</view>
+
 					<view class="form-submit-btn" @tap="submitAlert">
-						<text class="btn-text">{{ submitting ? '提交中...' : '确认添加' }}</text>
+						<text class="btn-text">{{ submitting ? '提交中...' : (editingId ? '保存修改' : '确认添加') }}</text>
 					</view>
 				</view>
 
 				<!-- 预警规则列表 -->
-				<scroll-view scroll-y class="alert-scroll">
-					<view class="alert-list">
-						<view
-							v-for="item in alertRules"
-							:key="item.id"
-							class="alert-card"
-						>
-							<view class="rule-info">
-								<view class="rule-header">
-									<text class="rule-symbol">{{ item.crypto_symbol }}</text>
-									<text :class="['rule-status', item.is_active ? 'active' : 'inactive']">
-										{{ item.is_active ? '监控中' : '已暂停' }}
-									</text>
+				<view class="alert-list">
+					<view
+						v-for="item in alertRules"
+						:key="item.id"
+						class="alert-card"
+					>
+						<view class="rule-info" @tap="openEdit(item)">
+							<view class="rule-header">
+								<text class="rule-symbol">{{ item.crypto_symbol }}</text>
+								<view class="badges">
+									<text v-if="item.is_active" class="badge badge-active">监控中</text>
+									<text v-if="item.is_continuous" class="badge badge-continuous">连续触发</text>
 								</view>
-								<text class="rule-condition">{{ formatCondition(item) }}</text>
 							</view>
-							<view class="rule-actions">
-								<text class="delete-btn" @tap="confirmDelete(item)">删除</text>
-							</view>
+							<text class="rule-condition">{{ formatCondition(item) }}</text>
+							<text v-if="item.notified_count > 0" class="rule-meta">
+								已通知 {{ item.notified_count }} / {{ item.max_notifications }} 次
+							</text>
 						</view>
-
-						<view v-if="!loading && alertRules.length === 0" class="empty-state">
-							<text class="empty-text">暂无预警规则</text>
-							<text class="empty-hint">点击添加按钮创建你的第一条预警</text>
+						<view class="rule-actions">
+							<text class="edit-btn" @tap="openEdit(item)">编辑</text>
+							<text class="delete-btn" @tap="confirmDelete(item)">删除</text>
 						</view>
 					</view>
-				</scroll-view>
+
+					<view v-if="!loading && alertRules.length === 0" class="empty-state">
+						<text class="empty-text">暂无预警规则</text>
+						<text class="empty-hint">点击添加按钮创建你的第一条预警</text>
+					</view>
+				</view>
 
 				<!-- 移动端底部添加按钮 -->
 				<view class="add-btn mobile-only" @tap="toggleAddForm">
-					<text class="btn-text">+ 添加预警</text>
+					<text class="btn-text">{{ editingId ? '编辑预警' : '+ 添加预警' }}</text>
 				</view>
-			</template>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { alertsApi, type AlertItem } from '@/api'
+import { alertsApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
+
+// 预警类型选项（5种）
+const alertTypeOptions = [
+	{ value: 'above', label: '涨破' },
+	{ value: 'below', label: '跌破' },
+	{ value: 'percent_up', label: '涨幅' },
+	{ value: 'percent_down', label: '跌幅' },
+	{ value: 'amplitude', label: '振幅' },
+]
 
 // 登录状态
 const isLoggedIn = ref(false)
@@ -124,18 +218,50 @@ const submitting = ref(false)
 // 预警列表
 const alertRules = ref<AlertItem[]>([])
 
-// 添加表单显隐
+// 表单显隐
 const showAddForm = ref(false)
+
+// 编辑中的预警 ID（null = 新建模式）
+const editingId = ref<number | null>(null)
+
+// 通知渠道配置
+const channels = ref<NotificationChannel[]>([])
+const channelLoading = ref(false)
 
 // 表单数据
 const form = ref({
 	crypto_symbol: '',
-	alert_type: 'above' as 'above' | 'below',
+	alert_type: 'above' as string,
 	threshold_price: '',
+	base_price: '',
+	threshold_value: '',
+	is_continuous: false,
+	interval_minutes: '',
+	max_notifications: '',
+	notification_channel: '',
+	notification_group: '',
 })
 
-// 每次页面显示时检查登录态并拉取列表
-onShow(() => {
+// above / below 为简单类型
+const isSimpleType = computed(() => {
+	return form.value.alert_type === 'above' || form.value.alert_type === 'below'
+})
+
+// 百分比 placeholder
+const percentPlaceholder = computed(() => {
+	switch (form.value.alert_type) {
+		case 'percent_up':
+		case 'percent_down':
+			return '如 5 表示 5%'
+		case 'amplitude':
+			return '如 3 表示 3%'
+		default:
+			return ''
+	}
+})
+
+// 每次页面显示
+onShow(async () => {
 	const token = uni.getStorageSync('token')
 	if (!token) {
 		isLoggedIn.value = false
@@ -144,7 +270,41 @@ onShow(() => {
 	}
 	isLoggedIn.value = true
 	fetchAlertList()
+	if (channels.value.length === 0) {
+		await fetchChannels()
+	}
 })
+
+// 获取通知渠道
+const fetchChannels = async () => {
+	channelLoading.value = true
+	try {
+		const res = await notificationChannelsApi.getList()
+		channels.value = res.data || []
+		if (channels.value.length > 0) {
+			const defaultIdx = channels.value.findIndex((c) => c.is_default)
+			selectedChannelIndex.value = defaultIdx >= 0 ? defaultIdx : 0
+			const ch = channels.value[selectedChannelIndex.value]
+			if (ch) {
+				form.value.notification_channel = ch.name
+				const gi = ch.groups.indexOf(ch.default_group)
+				groupPickerIndex.value = gi >= 0 ? gi : 0
+				form.value.notification_group = ch.default_group
+			}
+		}
+	} catch (e: any) {
+		console.error('获取通知渠道失败', e)
+	} finally {
+		channelLoading.value = false
+	}
+}
+
+// 渠道选项（无自定义）
+const channelOptions = computed(() => {
+	return channels.value.map((c, i) => ({ label: c.name, value: c.name, index: i }))
+})
+
+const selectedChannelIndex = ref(-1)
 
 // 获取预警列表
 const fetchAlertList = async () => {
@@ -159,54 +319,227 @@ const fetchAlertList = async () => {
 	}
 }
 
-// 切换添加表单显隐
+// 切换表单显隐
 const toggleAddForm = () => {
 	showAddForm.value = !showAddForm.value
 	if (!showAddForm.value) {
-		// 关闭表单时清空输入
-		form.value = {
-			crypto_symbol: '',
-			alert_type: 'above',
-			threshold_price: '',
+		editingId.value = null
+		resetForm()
+	}
+}
+
+// 打开编辑
+const openEdit = (item: AlertItem) => {
+	editingId.value = item.id
+	showAddForm.value = true
+	form.value.crypto_symbol = item.crypto_symbol
+	form.value.alert_type = item.alert_type
+	form.value.threshold_price = item.threshold_price ? String(item.threshold_price) : ''
+	form.value.base_price = item.base_price ? String(item.base_price) : ''
+	form.value.threshold_value = item.threshold_value ? String(item.threshold_value) : ''
+	form.value.is_continuous = item.is_continuous || false
+	form.value.interval_minutes = item.interval_minutes ? String(item.interval_minutes) : ''
+	form.value.max_notifications = item.max_notifications ? String(item.max_notifications) : ''
+	form.value.notification_channel = ''
+	form.value.notification_group = ''
+
+	// 匹配渠道名称
+	const ci = channels.value.findIndex((c) => c.name === form.value.notification_channel)
+	if (ci >= 0) {
+		selectedChannelIndex.value = ci
+		const gi = channels.value[ci].groups.indexOf(channels.value[ci].default_group)
+		groupPickerIndex.value = gi >= 0 ? gi : 0
+		form.value.notification_group = channels.value[ci].default_group
+	}
+
+	// 滚动到表单顶部
+	uni.pageScrollTo({ scrollTop: 0, duration: 200 })
+}
+
+// 类型切换
+const onTypeChange = (type: string) => {
+	form.value.alert_type = type
+	form.value.threshold_price = ''
+	form.value.base_price = ''
+	form.value.threshold_value = ''
+}
+
+// 重置表单
+const resetForm = () => {
+	form.value = {
+		crypto_symbol: '',
+		alert_type: 'above',
+		threshold_price: '',
+		base_price: '',
+		threshold_value: '',
+		is_continuous: false,
+		interval_minutes: '',
+		max_notifications: '',
+		notification_channel: '',
+		notification_group: '',
+	}
+	selectedChannelIndex.value = -1
+	groupPickerIndex.value = 0
+	if (channels.value.length > 0) {
+		const defaultIdx = channels.value.findIndex((c) => c.is_default)
+		selectedChannelIndex.value = defaultIdx >= 0 ? defaultIdx : 0
+		const ch = channels.value[selectedChannelIndex.value]
+		if (ch) {
+			form.value.notification_channel = ch.name
+			const gi = ch.groups.indexOf(ch.default_group)
+			groupPickerIndex.value = gi >= 0 ? gi : 0
+			form.value.notification_group = ch.default_group
 		}
 	}
 }
 
-// 提交新预警
+// 渠道选择器
+const channelPickerLabels = computed(() => channelOptions.value.map((o) => o.label))
+
+const selectedChannelData = computed(() => {
+	const idx = selectedChannelIndex.value
+	if (idx < 0 || idx >= channels.value.length) return null
+	return channels.value[idx]
+})
+
+const selectedChannelDisplay = computed(() => {
+	const idx = selectedChannelIndex.value
+	if (idx < 0 || idx >= channels.value.length) return '请选择通知渠道'
+	const ch = channels.value[idx]
+	return ch ? ch.name : '请选择通知渠道'
+})
+
+const groupPickerIndex = ref(0)
+
+const groupDisplayValue = computed(() => {
+	const groups = selectedChannelData.value?.groups || []
+	if (groups.length === 0) return ''
+	return groups[groupPickerIndex.value] || groups[0]
+})
+
+const onChannelPickerChange = (e: any) => {
+	const idx = parseInt(e.detail.value, 10)
+	const opt = channelOptions.value[idx]
+	if (opt) {
+		selectedChannelIndex.value = idx
+		const ch = channels.value[opt.index]
+		if (ch) {
+			form.value.notification_channel = ch.name
+			const gi = ch.groups.indexOf(ch.default_group)
+			groupPickerIndex.value = gi >= 0 ? gi : 0
+			form.value.notification_group = ch.default_group
+		}
+	}
+}
+
+const onGroupPickerChange = (e: any) => {
+	groupPickerIndex.value = parseInt(e.detail.value, 10)
+	const groups = selectedChannelData.value?.groups || []
+	form.value.notification_group = groups[groupPickerIndex.value] || ''
+}
+
+// 提交（新增或编辑）
 const submitAlert = async () => {
 	const symbol = form.value.crypto_symbol.trim().toUpperCase()
-	const price = parseFloat(form.value.threshold_price)
-
 	if (!symbol) {
 		uni.showToast({ title: '请输入交易对', icon: 'none' })
 		return
 	}
-	if (!price || price <= 0) {
-		uni.showToast({ title: '请输入有效价格', icon: 'none' })
-		return
+
+	let thresholdPrice = 0
+	let basePrice = 0
+	let thresholdValue = 0
+
+	if (isSimpleType.value) {
+		thresholdPrice = parseFloat(form.value.threshold_price)
+		if (!thresholdPrice || thresholdPrice <= 0) {
+			uni.showToast({ title: '请输入有效触发价格', icon: 'none' })
+			return
+		}
+	} else {
+		basePrice = parseFloat(form.value.base_price)
+		if (!basePrice || basePrice <= 0) {
+			uni.showToast({ title: '请输入有效基准价格', icon: 'none' })
+			return
+		}
+		thresholdValue = parseFloat(form.value.threshold_value)
+		if (!thresholdValue || thresholdValue <= 0) {
+			uni.showToast({ title: '请输入有效触发比例', icon: 'none' })
+			return
+		}
+		if (form.value.alert_type === 'percent_up') {
+			thresholdPrice = basePrice * (1 + thresholdValue / 100)
+		} else if (form.value.alert_type === 'percent_down') {
+			thresholdPrice = basePrice * (1 - thresholdValue / 100)
+		} else if (form.value.alert_type === 'amplitude') {
+			thresholdPrice = basePrice * (1 + thresholdValue / 100)
+		}
 	}
 
 	submitting.value = true
 	try {
-		await alertsApi.create({
+		const payload: any = {
 			crypto_symbol: symbol,
 			alert_type: form.value.alert_type,
-			threshold_price: price,
-		})
-		uni.showToast({ title: '预警添加成功', icon: 'success' })
-		// 关闭表单并刷新列表
-		showAddForm.value = false
-		form.value = {
-			crypto_symbol: '',
-			alert_type: 'above',
-			threshold_price: '',
+			threshold_price: parseFloat(thresholdPrice.toFixed(4)),
 		}
+
+		if (!isSimpleType.value) {
+			payload.base_price = parseFloat(basePrice.toFixed(4))
+			payload.threshold_value = parseFloat(thresholdValue.toFixed(2))
+		}
+
+		if (form.value.is_continuous) {
+			payload.is_continuous = true
+			payload.interval_minutes = parseInt(form.value.interval_minutes, 10) || 5
+			payload.max_notifications = parseInt(form.value.max_notifications, 10) || 1
+		}
+
+		if (form.value.notification_channel.trim()) {
+			payload.notification_channel = form.value.notification_channel.trim()
+		}
+		if (form.value.notification_group.trim()) {
+			payload.notification_group = form.value.notification_group.trim()
+		}
+
+		if (editingId.value) {
+			// 暂时用 PUT 接口，如果后端不支持则删重建
+			await alertsApi.update(editingId.value, payload)
+			uni.showToast({ title: '预警已更新', icon: 'success' })
+		} else {
+			await alertsApi.create(payload)
+			uni.showToast({ title: '预警添加成功', icon: 'success' })
+		}
+		showAddForm.value = false
+		editingId.value = null
+		resetForm()
 		await fetchAlertList()
 	} catch (e: any) {
-		uni.showToast({ title: e?.message || '添加失败', icon: 'none' })
+		if (e.message && e.message.includes('405')) {
+			// PUT 不支持，尝试删重建
+			await handleEditFallback(payload)
+			return
+		}
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
 	} finally {
 		submitting.value = false
 	}
+}
+
+// 编辑接口不支持时的降级策略
+const handleEditFallback = async (payload: any) => {
+	try {
+		await alertsApi.delete(editingId.value!)
+		await alertsApi.create(payload)
+		uni.showToast({ title: '预警已更新', icon: 'success' })
+		showAddForm.value = false
+		editingId.value = null
+		resetForm()
+		await fetchAlertList()
+	} catch (e: any) {
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+	}
+	submitting.value = false
 }
 
 // 确认删除
@@ -222,7 +555,6 @@ const confirmDelete = (item: AlertItem) => {
 	})
 }
 
-// 执行删除
 const deleteAlert = async (id: number) => {
 	try {
 		await alertsApi.delete(id)
@@ -233,13 +565,25 @@ const deleteAlert = async (id: number) => {
 	}
 }
 
-// 格式化预警条件显示
+// 格式化显示
 const formatCondition = (item: AlertItem): string => {
-	const typeText = item.alert_type === 'above' ? '高于' : item.alert_type === 'below' ? '低于' : item.alert_type
-	return `${typeText} $${item.threshold_price.toLocaleString()}`
+	const price = (n: number) => n > 0 ? n.toLocaleString() : '--'
+	switch (item.alert_type) {
+		case 'above':
+			return `高于 $${price(item.threshold_price)}`
+		case 'below':
+			return `低于 $${price(item.threshold_price)}`
+		case 'percent_up':
+			return `基准 $${price(item.base_price)}，涨幅 ${item.threshold_value}%`
+		case 'percent_down':
+			return `基准 $${price(item.base_price)}，跌幅 ${item.threshold_value}%`
+		case 'amplitude':
+			return `基准 $${price(item.base_price)}，振幅 ${item.threshold_value}%`
+		default:
+			return `${item.alert_type} $${price(item.threshold_price)}`
+	}
 }
 
-// 跳转登录页
 const goToLogin = () => {
 	uni.navigateTo({
 		url: '/pages/login/login',
@@ -252,8 +596,6 @@ const goToLogin = () => {
 
 <style scoped>
 .alert-page {
-	display: flex;
-	justify-content: center;
 	min-height: 100vh;
 	background-color: #f5f7fa;
 	padding: 20rpx;
@@ -262,9 +604,7 @@ const goToLogin = () => {
 .alert-container {
 	width: 100%;
 	max-width: 1200px;
-	display: flex;
-	flex-direction: column;
-	height: 100%;
+	margin: 0 auto;
 }
 
 /* 页面头部 */
@@ -281,7 +621,7 @@ const goToLogin = () => {
 	color: #1a1a2e;
 }
 
-/* 添加按钮通用样式 */
+/* 添加按钮 */
 .add-btn {
 	display: flex;
 	align-items: center;
@@ -289,7 +629,6 @@ const goToLogin = () => {
 	background-color: #409eff;
 	border-radius: 12rpx;
 	padding: 16rpx 32rpx;
-	transition: opacity 0.2s;
 }
 
 .add-btn:active {
@@ -302,13 +641,13 @@ const goToLogin = () => {
 	font-weight: 500;
 }
 
-/* 响应式显隐控制 */
 .pc-only {
 	display: none;
 }
 
 .mobile-only {
-	margin-top: 20rpx;
+	display: flex;
+	margin-top: 24rpx;
 }
 
 /* 未登录态 */
@@ -335,7 +674,7 @@ const goToLogin = () => {
 	padding: 20rpx 60rpx;
 }
 
-/* 添加表单卡片 */
+/* 表单卡片 */
 .add-form-card {
 	background-color: #ffffff;
 	border-radius: 16rpx;
@@ -361,7 +700,6 @@ const goToLogin = () => {
 	font-size: 48rpx;
 	color: #909399;
 	line-height: 1;
-	cursor: pointer;
 }
 
 .form-group {
@@ -385,33 +723,45 @@ const goToLogin = () => {
 	border-radius: 8rpx;
 	font-size: 28rpx;
 	color: #303133;
-	background-color: #ffffff;
 	box-sizing: border-box;
 }
 
-/* 单选按钮组 */
-.radio-group {
-	display: flex;
-	gap: 20rpx;
+.type-group {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 12rpx;
 }
 
 .radio-btn {
-	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 72rpx;
+	height: 64rpx;
 	border: 2rpx solid #dcdfe6;
 	border-radius: 8rpx;
-	font-size: 26rpx;
+	font-size: 24rpx;
 	color: #606266;
-	cursor: pointer;
 }
 
 .radio-btn.active {
 	border-color: #409eff;
 	background-color: #ecf5ff;
 	color: #409eff;
+}
+
+.form-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.form-row-group {
+	display: flex;
+	gap: 20rpx;
+}
+
+.form-half {
+	flex: 1;
 }
 
 .form-submit-btn {
@@ -427,12 +777,7 @@ const goToLogin = () => {
 	opacity: 0.85;
 }
 
-/* 滚动列表 */
-.alert-scroll {
-	flex: 1;
-	height: 0;
-}
-
+/* 列表 */
 .alert-list {
 	display: flex;
 	flex-direction: column;
@@ -455,11 +800,13 @@ const goToLogin = () => {
 	flex-direction: column;
 	gap: 10rpx;
 	flex: 1;
+	cursor: pointer;
 }
 
 .rule-header {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 16rpx;
 }
 
@@ -469,20 +816,25 @@ const goToLogin = () => {
 	color: #1a1a2e;
 }
 
-.rule-status {
-	font-size: 22rpx;
-	padding: 4rpx 12rpx;
+.badges {
+	display: flex;
+	gap: 10rpx;
+}
+
+.badge {
+	font-size: 20rpx;
+	padding: 4rpx 10rpx;
 	border-radius: 6rpx;
 }
 
-.rule-status.active {
+.badge-active {
 	background-color: #e6f7ec;
 	color: #00c853;
 }
 
-.rule-status.inactive {
-	background-color: #f0f2f5;
-	color: #909399;
+.badge-continuous {
+	background-color: #ecf5ff;
+	color: #409eff;
 }
 
 .rule-condition {
@@ -490,17 +842,32 @@ const goToLogin = () => {
 	color: #606266;
 }
 
+.rule-meta {
+	font-size: 22rpx;
+	color: #c0c4cc;
+}
+
 .rule-actions {
 	display: flex;
 	align-items: center;
 	gap: 16rpx;
+	flex-shrink: 0;
+}
+
+.edit-btn {
+	font-size: 26rpx;
+	color: #409eff;
+	padding: 8rpx 16rpx;
+}
+
+.edit-btn:active {
+	opacity: 0.6;
 }
 
 .delete-btn {
 	font-size: 26rpx;
 	color: #f56c6c;
 	padding: 8rpx 16rpx;
-	cursor: pointer;
 }
 
 .delete-btn:active {
@@ -527,7 +894,7 @@ const goToLogin = () => {
 	color: #c0c4cc;
 }
 
-/* PC 端响应式 */
+/* PC 端 */
 @media (min-width: 768px) {
 	.pc-only {
 		display: flex;
@@ -542,5 +909,30 @@ const goToLogin = () => {
 		grid-template-columns: repeat(2, 1fr);
 		gap: 20rpx;
 	}
+}
+
+/* 选择器 */
+.picker-display {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	height: 80rpx;
+	padding: 0 20rpx;
+	border: 2rpx solid #dcdfe6;
+	border-radius: 8rpx;
+}
+
+.picker-text {
+	font-size: 28rpx;
+	color: #303133;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.picker-arrow {
+	font-size: 20rpx;
+	color: #909399;
+	margin-left: 16rpx;
 }
 </style>

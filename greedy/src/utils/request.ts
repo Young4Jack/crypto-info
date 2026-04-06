@@ -70,8 +70,6 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
     ...authHeader,
     ...header,
   }
-  // 临时调试：打印实际发出的请求头，确认 Authorization 是否成功注入
-  console.log('[Request]', method, fullUrl, '| Headers:', requestHeaders)
 
   return new Promise((resolve, reject) => {
     uni.request({

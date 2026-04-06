@@ -98,7 +98,6 @@ const holdings: HoldingItem[] = [
 	max-width: 1200px;
 	display: flex;
 	flex-direction: column;
-	height: 100%;
 }
 
 /* 总资产概览卡片 */

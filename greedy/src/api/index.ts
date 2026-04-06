@@ -1,4 +1,4 @@
-import { get, post, del } from '../utils/request'
+import { get, post, del, put } from '../utils/request'
 
 // 认证模块接口
 export const authApi = {
@@ -82,6 +82,10 @@ export const alertsApi = {
   create: (data: AlertCreatePayload) => {
     return post<AlertItem>('/api/alerts/', data)
   },
+  // 更新预警（需要鉴权）
+  update: (alertId: number, data: AlertCreatePayload) => {
+    return put<AlertItem>(`/api/alerts/${alertId}`, data)
+  },
   // 删除预警（需要鉴权）
   delete: (alertId: number) => {
     return del(`/api/alerts/${alertId}`)
@@ -115,4 +119,30 @@ export interface AlertCreatePayload {
   crypto_symbol: string
   alert_type: string
   threshold_price: number
+  webhook_url?: string | null
+  base_price?: number
+  threshold_value?: number
+  is_continuous?: boolean
+  interval_minutes?: number
+  max_notifications?: number
+  notification_channel?: string
+  notification_group?: string
+}
+
+// 通知渠道项
+export interface NotificationChannel {
+  name: string
+  api_url: string
+  auth_token: string
+  is_default: boolean
+  default_group: string
+  groups: string[]
+}
+
+// 通知渠道管理接口
+export const notificationChannelsApi = {
+  // 获取所有通知渠道（需要鉴权）
+  getList: () => {
+    return get<NotificationChannel[]>('/api/settings/notification-channels/')
+  },
 }

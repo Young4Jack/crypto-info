@@ -32,7 +32,7 @@ page {
 html, body {
 	margin: 0;
 	padding: 0;
-	overflow: hidden;
+	overflow-y: auto;
 	height: 100%;
 }
 
