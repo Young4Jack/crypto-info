@@ -33,25 +33,39 @@ const navItems: NavItem[] = [
 const switchTab = (path: string) => {
 	uni.switchTab({ url: path })
 }
+
+// 动态设置高度，确保色块始终填满视口
+const setFullHeight = () => {
+	// #ifdef H5
+	const el = document.querySelector('.left-window') as HTMLElement
+	if (el) {
+		el.style.height = window.innerHeight + 'px'
+		el.style.minHeight = window.innerHeight + 'px'
+	}
+	// #endif
+}
+
+// #ifdef H5
+setFullHeight()
+window.addEventListener('resize', setFullHeight)
+// #endif
 </script>
 
 <style scoped>
 .left-window {
 	display: flex;
 	flex-direction: column;
-	min-height: 100vh;
+	width: 240px !important;
 	height: 100vh;
-	position: sticky;
-	top: 0;
+	min-height: 100vh;
 	background-color: #1a1a2e;
-	padding-top: 40rpx;
 	box-sizing: border-box;
-	overflow: hidden;
 }
 
 .nav-header {
-	padding: 30rpx;
+	padding: 30rpx 30rpx 20rpx;
 	border-bottom: 2rpx solid #2a2a3e;
+	flex-shrink: 0;
 }
 
 .nav-title {
@@ -63,7 +77,8 @@ const switchTab = (path: string) => {
 .nav-list {
 	display: flex;
 	flex-direction: column;
-	padding: 20rpx 0;
+	flex: 1;
+	padding: 10rpx 0;
 }
 
 .nav-item {

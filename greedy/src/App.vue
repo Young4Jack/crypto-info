@@ -36,7 +36,7 @@ html, body {
 	height: 100%;
 }
 
-/* 全局隐藏左侧导航栏滚动条 */
+/* 全局隐藏左侧导航栏滚动条 + 强制色块延伸 */
 .uni-left-window::-webkit-scrollbar {
 	display: none;
 	width: 0;
@@ -46,5 +46,12 @@ html, body {
 .uni-left-window {
 	scrollbar-width: none;
 	-ms-overflow-style: none;
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	bottom: 0 !important;
+	background-color: #1a1a2e !important;
+	margin: 0 !important;
+	padding: 0 !important;
 }
 </style>

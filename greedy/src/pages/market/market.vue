@@ -30,12 +30,12 @@
 						<text class="coin-name">{{ coin.symbol }}</text>
 						<text class="coin-pair">{{ coin.name }}</text>
 					</view>
-					<view class="coin-price">
-						<text class="price-value">${{ coin.price }}</text>
-						<text :class="['price-change', coin.change >= 0 ? 'up' : 'down']">
-							{{ coin.change >= 0 ? '+' : '' }}{{ coin.change }}%
-						</text>
-					</view>
+                    <view class="coin-price">
+                        <text class="price-value">${{ coin.price }}</text>
+                        <text :class="['price-change', coin.change >= 0 ? 'up' : 'down']">
+                            {{ coin.change >= 0 ? '+' : '' }}{{ coin.change }}%
+                        </text>
+                    </view>
 				</view>
 
 				<view v-if="coinList.length === 0" class="empty-state">
@@ -256,11 +256,11 @@ onShow(() => {
 }
 
 .price-change.up {
-	color: #00c853;
+	color: #f56c6c;
 }
 
 .price-change.down {
-	color: #ff1744;
+	color: #00c853;
 }
 
 /* PC 端双列 Grid 布局 */

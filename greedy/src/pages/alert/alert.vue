@@ -374,12 +374,16 @@ const openEdit = (item: AlertItem) => {
 
 // 类型切换
 const onTypeChange = (type: string) => {
-	form.value.alert_type = type
-	form.value.threshold_price = ''
-	form.value.base_price = ''
-	form.value.threshold_value = ''
-	basePriceAutoFetched.value = false
-	autoBasePrice.value = 0
+    form.value.alert_type = type
+    form.value.threshold_price = ''
+    form.value.base_price = ''
+    form.value.threshold_value = ''
+    basePriceAutoFetched.value = false
+    autoBasePrice.value = 0
+    // 如果新类型不是简单类型且交易对已填写，自动触发获取基准价格
+    if (type !== 'above' && type !== 'below' && form.value.crypto_symbol.trim()) {
+        fetchBasePrice()
+    }
 }
 
 // 移动端按钮：表单打开时关闭表单
@@ -401,7 +405,7 @@ const normalizeSymbol = (raw: string): string => {
 	return s
 }
 
-// 输入框失焦时自动补全交易对
+// 输入框失焦时自动补全交易对并获取基准价格
 const onSymbolBlur = () => {
 	if (form.value.crypto_symbol.trim()) {
 		const normalized = normalizeSymbol(form.value.crypto_symbol)
@@ -424,7 +428,9 @@ const onBasePriceFill = () => {
 
 // 从 API 获取基准价格
 const fetchBasePrice = async () => {
-	const symbol = normalizeSymbol(form.value.crypto_symbol)
+    // 防重复请求，避免同一时刻的多笔请求
+    if (basePriceLoading.value) return
+    const symbol = normalizeSymbol(form.value.crypto_symbol)
 	if (!symbol) {
 		uni.showToast({ title: '请先输入交易对', icon: 'none' })
 		return
