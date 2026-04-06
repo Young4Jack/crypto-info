@@ -640,7 +640,7 @@ const handleInlineSymbolChange = async () => {
 
   isFetchingPrice.value = true
   try {
-    const resp = await klinesApi.getKlineData(inlineForm.crypto_symbol, '1m', 1)
+    const resp = await klinesApi.getKlines(inlineForm.crypto_symbol, '1m', 1)
     console.log('价格获取响应:', resp.data)
     if (resp.data.success && resp.data.data.klines.length > 0) {
       const latest = resp.data.data.klines[resp.data.data.klines.length - 1]
