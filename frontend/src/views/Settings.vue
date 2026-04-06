@@ -576,6 +576,7 @@ onMounted(() => {
   .form-actions :deep(.el-button) { width: 100%; margin-left: 0; margin-bottom: 10px; }
 
   .channel-desktop-view { display: none; }
+  .channel-mobile-view { display: block; }
   .channel-mobile-card { margin-bottom: 12px; border-radius: 8px; }
   .channel-card-header { padding: 8px 0; }
   .channel-card-title { display: flex; align-items: center; gap: 8px; }
@@ -585,6 +586,12 @@ onMounted(() => {
   .channel-field-label { color: #909399; font-size: 12px; min-width: 60px; flex-shrink: 0; }
   .channel-field-value { color: #303133; font-size: 12px; word-break: break-all; text-align: right; }
   .channel-card-footer { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #ebeef5; margin-top: 8px; }
+}
+
+/* 桌面端只显示表格 */
+@media (min-width: 769px) {
+  .channel-desktop-view { display: block; }
+  .channel-mobile-view { display: none; }
 }
 
 /* 夜间模式 */
