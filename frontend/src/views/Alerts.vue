@@ -167,9 +167,18 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="最后触发" min-width="130">
+              <el-table-column label="时间信息" min-width="160">
                 <template #default="{ row }">
-                  <span class="time-text">{{ row.last_triggered_at ? formatTime(row.last_triggered_at) : '等待触发...' }}</span>
+                  <div class="alert-times-cell">
+                    <div class="time-row">
+                      <span class="time-label">创建:</span>
+                      <span class="time-value">{{ row.created_at ? formatTime(row.created_at) : '-' }}</span>
+                    </div>
+                    <div class="time-row">
+                      <span class="time-label">触发:</span>
+                      <span class="time-value">{{ row.last_triggered_at ? formatTime(row.last_triggered_at) : '等待触发...' }}</span>
+                    </div>
+                  </div>
                 </template>
               </el-table-column>
               
@@ -944,6 +953,10 @@ onUnmounted(() => {
 .alert-settings-cell { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .setting-item { color: #606266; white-space: nowrap; }
 .notification-text { color: #409eff; font-size: 12px; }
+.alert-times-cell { display: flex; flex-direction: column; gap: 4px; }
+.time-row { display: flex; gap: 6px; font-size: 12px; }
+.time-label { color: #909399; flex-shrink: 0; }
+.time-value { color: #606266; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 3. 排序模式专有样式 */
 .sort-mode-hint { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #fff7e6; border-bottom: 1px solid #ffe58f; color: #d48806; font-size: 13px; font-weight: 500; }
