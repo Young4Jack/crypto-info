@@ -242,14 +242,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { settingsApi, apiSettingsApi, systemSettingsApi, authApi, notificationChannelsApi } from '../api'
+import { apiSettingsApi, systemSettingsApi, authApi, notificationChannelsApi } from '../api'
 import { useDarkMode } from '../composables/useDarkMode'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { isDarkMode, toggleDarkMode } = useDarkMode()
 
-const settingFormRef = ref<FormInstance>()
 const apiSettingFormRef = ref<FormInstance>()
 const systemFormRef = ref<FormInstance>()
 const accountFormRef = ref<FormInstance>()
