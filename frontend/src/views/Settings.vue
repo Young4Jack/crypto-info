@@ -25,36 +25,6 @@
         <el-col :xs="24" :sm="24" :md="16">
           <el-card class="content-card" shadow="never">
             <template #header>
-              <div class="card-header"><span>🔔 通知推送设置</span></div>
-            </template>
-            <el-form ref="settingFormRef" :model="settingForm" :rules="settingRules" label-position="top">
-              <el-row :gutter="20">
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="推送 API 地址" prop="api_url">
-                    <el-input v-model="settingForm.api_url" placeholder="请输入推送 API 地址" clearable />
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="Authorization Token" prop="auth_token">
-                    <el-input v-model="settingForm.auth_token" placeholder="请输入 Token" type="password" show-password clearable />
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-form-item label="推送渠道" prop="channel">
-                <el-input v-model="settingForm.channel" placeholder="请输入推送渠道（可选）" clearable />
-              </el-form-item>
-              <el-form-item class="form-actions">
-                <el-button type="primary" :loading="saveLoading" @click="handleSaveSetting">
-                  {{ isEditing ? '更新设置' : '保存设置' }}
-                </el-button>
-                <el-button v-if="isEditing" type="warning" plain :loading="testLoading" @click="handleTestNotification">测试连接</el-button>
-                <el-button v-if="isEditing" type="danger" plain :loading="deleteLoading" @click="handleDeleteSetting">删除设置</el-button>
-              </el-form-item>
-            </el-form>
-          </el-card>
-          
-          <el-card class="content-card" shadow="never">
-            <template #header>
               <div class="card-header">
                 <span>📡 通知渠道管理</span>
                 <el-button type="primary" size="small" @click="showAddChannelDialog" style="float: right;">添加渠道</el-button>
@@ -73,10 +43,11 @@
                   <el-tag v-if="row.is_default" type="success" size="small">是</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="140">
+              <el-table-column label="操作" width="200">
                 <template #default="{ row }">
                   <el-button size="small" @click="showEditChannelDialog(row)">编辑</el-button>
-                  <el-button size="small" type="danger" @click="handleDeleteChannel(row.name)">删除</el-button>
+                  <el-button size="small" type="warning" plain :loading="testLoading === row.name" @click="handleTestChannel(row)">测试</el-button>
+                  <el-button size="small" type="danger" plain @click="handleDeleteChannel(row.name)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -283,10 +254,6 @@ const apiSettingFormRef = ref<FormInstance>()
 const systemFormRef = ref<FormInstance>()
 const accountFormRef = ref<FormInstance>()
 
-const saveLoading = ref(false)
-const deleteLoading = ref(false)
-const isEditing = ref(false)
-const testLoading = ref(false)
 const apiSaveLoading = ref(false)
 const apiDeleteLoading = ref(false)
 const isApiEditing = ref(false)
@@ -297,21 +264,12 @@ const accountSaveLoading = ref(false)
 const channelDialogVisible = ref(false)
 const isEditingChannel = ref(false)
 const channelSaveLoading = ref(false)
+const testLoading = ref('')
 const channels = ref<{ name: string; api_url: string; auth_token: string; is_default: boolean; default_group: string; groups: string[] }[]>([])
 const channelForm = reactive({ name: '', api_url: '', auth_token: '', is_default: false, default_group: 'yes', groups: ['yes'] as string[], newGroup: '' })
-
-const settingForm = reactive({ api_url: '', auth_token: '', channel: 'email' })
 const apiSettingForm = reactive({ primary_api_url: '', backup_api_url: '', api_key: '', api_secret: '' })
 const systemForm = reactive({ refresh_interval: 5, enable_captcha: false, site_title: 'Crypto-info', site_description: '数字货币价格监控和预警系统', base_url: '', log_level: 'INFO', enable_logging: true, default_dark_mode: false, api_shared_secret: '', timezone: 'Asia/Shanghai' })
 const accountForm = reactive({ username: '', email: '', current_password: '', new_password: '', confirm_password: '' })
-
-const settingRules: FormRules = {
-  api_url: [
-    { required: true, message: '请输入推送 API 地址', trigger: 'blur' },
-    { type: 'url', message: '请输入有效的 URL', trigger: 'blur' }
-  ],
-  auth_token: [{ required: true, message: '请输入 Token', trigger: 'blur' }]
-}
 
 const apiSettingRules: FormRules = {
   primary_api_url: [{ required: true, message: '请输入主 API 地址', trigger: 'blur' }]
@@ -328,57 +286,27 @@ const accountRules: FormRules = {
   current_password: [{ required: true, message: '验证身份需要当前密码', trigger: 'blur' }]
 }
 
-const loadSetting = async () => {
+const handleTestChannel = async (channel: any) => {
+  testLoading.value = channel.name
   try {
-    const response = await settingsApi.getNotificationSetting()
-    if (response.data) {
-      isEditing.value = true
-      settingForm.api_url = response.data.api_url || ''
-      settingForm.auth_token = response.data.auth_token || ''
-      settingForm.channel = response.data.channel || 'email'
+    const headers: Record<string, string> = {}
+    if (channel.auth_token) headers['Authorization'] = channel.auth_token
+    const data = {
+      title: '【测试通知】渠道连通性测试',
+      description: '这是一条测试通知',
+      channel: channel.default_group,
+      content: `渠道 "${channel.name}" 测试成功！当前频道：${channel.default_group}`
     }
-  } catch (error) {}
-}
-
-const handleSaveSetting = async () => {
-  if (!settingFormRef.value) return
-  await settingFormRef.value.validate(async (valid) => {
-    if (valid) {
-      saveLoading.value = true
-      try {
-        if (isEditing.value) {
-          await settingsApi.updateNotificationSetting(settingForm)
-          ElMessage.success('设置更新成功')
-        } else {
-          await settingsApi.createNotificationSetting(settingForm)
-          ElMessage.success('设置保存成功')
-          isEditing.value = true
-        }
-      } catch (error) {
-        ElMessage.error('保存设置失败')
-      } finally { saveLoading.value = false }
-    }
-  })
-}
-
-const handleDeleteSetting = async () => {
-  try {
-    await ElMessageBox.confirm('确定删除吗？将无法接收预警通知。', '确认', { type: 'warning' })
-    deleteLoading.value = true
-    await settingsApi.deleteNotificationSetting()
-    isEditing.value = false
-    settingForm.api_url = ''; settingForm.auth_token = ''; settingForm.channel = 'email'
-    ElMessage.success('设置已删除')
-  } catch (error) {} finally { deleteLoading.value = false }
-}
-
-const handleTestNotification = async () => {
-  testLoading.value = true
-  try {
-    const response = await settingsApi.testNotificationSetting()
-    if (response.data.success) ElMessage.success('通知API连接成功')
-    else ElMessage.error(`失败: ${response.data.message}`)
-  } catch (error) { ElMessage.error('测试失败') } finally { testLoading.value = false }
+    const resp = await fetch(channel.api_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(data)
+    })
+    if (resp.ok) ElMessage.success(`渠道 "${channel.name}" 测试成功`)
+    else ElMessage.error(`渠道 "${channel.name}" 测试失败: HTTP ${resp.status}`)
+  } catch (error: any) {
+    ElMessage.error(`渠道 "${channel.name}" 测试失败: ${error.message}`)
+  } finally { testLoading.value = '' }
 }
 
 const loadApiSetting = async () => {
@@ -572,7 +500,6 @@ const handleDeleteChannel = async (name: string) => {
 }
 
 onMounted(() => {
-  loadSetting()
   loadApiSetting()
   loadSystemSetting()
   loadChannels()
