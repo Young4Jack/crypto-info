@@ -30,6 +30,27 @@
 			<!-- 设置菜单列表 -->
 			<view class="menu-section">
 				<view class="menu-group">
+					<view class="menu-item" @tap="goToSecurity">
+						<view class="menu-left">
+							<text class="menu-icon">👤</text>
+							<text class="menu-label">账户安全</text>
+						</view>
+						<view class="menu-right">
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+					<view class="menu-item" @tap="goToSettings">
+						<view class="menu-left">
+							<text class="menu-icon">⚙️</text>
+							<text class="menu-label">系统设置</text>
+						</view>
+						<view class="menu-right">
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+				</view>
+
+				<view class="menu-group">
 					<view class="menu-item" @tap="handleMenuTap('theme')">
 						<view class="menu-left">
 							<text class="menu-icon">🌙</text>
@@ -186,6 +207,24 @@ const handleLogout = () => {
 // 菜单点击占位
 const handleMenuTap = (type: string) => {
 	uni.showToast({ title: `${type} 功能开发中`, icon: 'none' })
+}
+
+const goToSecurity = () => {
+	uni.navigateTo({
+		url: '/pages/mine/security',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
+}
+
+const goToSettings = () => {
+	uni.navigateTo({
+		url: '/pages/settings/index',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
 }
 </script>
 

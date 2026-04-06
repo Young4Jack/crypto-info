@@ -102,7 +102,7 @@
 						<switch
 							:checked="form.is_continuous"
 							color="#409EFF"
-							@change="form.is_continuous = $any($event).detail.value"
+							@change="onContinuousChange"
 						/>
 					</view>
 
@@ -342,6 +342,11 @@ const toggleAddForm = () => {
 		editingId.value = null
 		resetForm()
 	}
+}
+
+// 持续预警开关
+const onContinuousChange = (event: any) => {
+	form.value.is_continuous = event.detail?.value ?? event.value ?? false
 }
 
 // 打开编辑

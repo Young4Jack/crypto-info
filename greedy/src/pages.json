@@ -49,6 +49,41 @@
 				"navigationBarTitleText": "搜索添加",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/mine/security",
+			"style": {
+				"navigationBarTitleText": "账户安全",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/settings/index",
+			"style": {
+				"navigationBarTitleText": "系统设置",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/settings/notification",
+			"style": {
+				"navigationBarTitleText": "通知渠道管理",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/settings/api",
+			"style": {
+				"navigationBarTitleText": "API 节点设置",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/settings/preference",
+			"style": {
+				"navigationBarTitleText": "系统偏好设置",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {

@@ -14,6 +14,10 @@ export const authApi = {
   getMe: () => {
     return get<UserInfoResponse>('/api/auth/me')
   },
+  // 更新账户信息（需要鉴权）
+  updateAccount: (data: AccountUpdatePayload) => {
+    return put<AccountUpdateResponse>('/api/auth/account', data)
+  },
 }
 
 // 验证码响应结构
@@ -45,6 +49,26 @@ export interface UserInfoResponse {
   email: string
   is_active: boolean
   created_at: string
+}
+
+// 更新账户请求载荷
+export interface AccountUpdatePayload {
+  username: string
+  email?: string
+  current_password?: string
+  new_password?: string
+  confirm_new_password?: string
+}
+
+// 更新账户响应结构
+export interface AccountUpdateResponse {
+  success: boolean
+  message: string
+  user: {
+    id: number
+    username: string
+    email: string
+  }
 }
 
 export interface WatchlistItem {
@@ -96,8 +120,17 @@ export const klinesApi = {
 }
 
 export const systemSettingsApi = {
-  getPublicSystemSetting: () => {
+  getPublic: () => {
     return get('/api/system-settings/public')
+  },
+  getFull: () => {
+    return get<SystemSettings>('/api/system-settings/')
+  },
+  save: (data: SystemSettingsPayload) => {
+    return post<SystemSettings>('/api/system-settings/', data)
+  },
+  update: (data: SystemSettingsPayload) => {
+    return put<SystemSettings>('/api/system-settings/', data)
   },
 }
 
@@ -169,10 +202,30 @@ export interface NotificationChannel {
 }
 
 // 通知渠道管理接口
+export interface NotificationChannelPayload {
+  name: string
+  api_url: string
+  auth_token?: string
+  is_default?: boolean
+  default_group?: string
+  groups?: string[]
+}
+
 export const notificationChannelsApi = {
-  // 获取所有通知渠道（需要鉴权）
   getList: () => {
     return get<NotificationChannel[]>('/api/settings/notification-channels/')
+  },
+  create: (data: NotificationChannelPayload) => {
+    return post<NotificationChannel>('/api/settings/notification-channels/', data)
+  },
+  update: (channelName: string, data: Partial<NotificationChannelPayload>) => {
+    return put<NotificationChannel>(`/api/settings/notification-channels/${channelName}`, data)
+  },
+  delete: (channelName: string) => {
+    return del(`/api/settings/notification-channels/${channelName}`)
+  },
+  test: (channelName: string) => {
+    return post(`/api/settings/notification-channels/${channelName}/test`)
   },
 }
 
@@ -290,4 +343,68 @@ export const assetsApi = {
   delete: (assetId: number) => {
     return del(`/api/assets/${assetId}`)
   },
+}
+
+export interface PriceSearchResult {
+  symbol: string
+  name: string
+  display_name: string
+  price: number
+  source: string
+}
+
+export const priceSearchApi = {
+  search: (symbol: string) => {
+    return get<PriceSearchResult>('/api/price-search/', { symbol })
+  },
+}
+
+export interface ApiSettings {
+  primary_api_url: string
+  backup_api_url: string
+  api_key: string
+  api_secret: string
+}
+
+export const apiSettingsApi = {
+  get: () => {
+    return get<ApiSettings>('/api/api-settings/')
+  },
+  save: (data: ApiSettings) => {
+    return post<ApiSettings>('/api/api-settings/', data)
+  },
+  testPrimary: () => {
+    return post('/api/api-settings/test-primary')
+  },
+  testBackup: () => {
+    return post('/api/api-settings/test-backup')
+  },
+}
+
+export interface SystemSettings {
+  refresh_interval: number
+  enable_captcha: boolean
+  site_title: string
+  site_description: string
+  base_url: string
+  log_level: string
+  enable_logging: boolean
+  default_dark_mode: boolean
+  api_shared_secret: string
+  timezone: string
+  backend_port: number
+  frontend_port: number
+}
+
+export interface SystemSettingsPayload {
+  refresh_interval?: number
+  enable_captcha?: boolean
+  site_title?: string
+  site_description?: string
+  base_url?: string
+  log_level?: string
+  enable_logging?: boolean
+  default_dark_mode?: boolean
+  api_shared_secret?: string
+  timezone?: string
 }

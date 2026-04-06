@@ -26,6 +26,7 @@
 				<view class="result-card">
 					<view class="result-info">
 						<text class="result-symbol">{{ searchResult.symbol }}</text>
+						<text class="result-name">{{ searchResult.display_name }}</text>
 						<text class="result-price">${{ formatPrice(searchResult.price) }}</text>
 					</view>
 					<view
@@ -54,15 +55,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { klinesApi, watchlistApi } from '@/api'
+import { priceSearchApi, watchlistApi, type PriceSearchResult } from '@/api'
 
 const keyword = ref('')
 const searching = ref(false)
 const hasSearched = ref(false)
-const searchResult = ref<{ symbol: string; price: number } | null>(null)
+const searchResult = ref<PriceSearchResult | null>(null)
 const isAdded = ref(false)
 
-// 输入框失焦时立即自动补全
 const onBlur = () => {
 	const normalized = normalizeSymbol(keyword.value)
 	if (normalized && normalized !== keyword.value) {
@@ -97,26 +97,8 @@ const onSearch = async () => {
 	isAdded.value = false
 
 	try {
-		const res = await klinesApi.getKlines(symbol, '1m', 1)
-		const body = res.data as any
-
-		let klines: any[] = []
-		if (body?.data?.klines && Array.isArray(body.data.klines)) {
-			klines = body.data.klines
-		} else if (body?.klines && Array.isArray(body.klines)) {
-			klines = body.klines
-		} else if (body?.data && Array.isArray(body.data)) {
-			klines = body.data
-		} else if (Array.isArray(body)) {
-			klines = body
-		}
-
-		if (klines.length > 0 && klines[0]?.close != null) {
-			const price = parseFloat(klines[0].close)
-			if (price > 0) {
-				searchResult.value = { symbol, price }
-			}
-		}
+		const res = await priceSearchApi.search(symbol)
+		searchResult.value = res.data
 	} catch (e: any) {
 		console.error('价格查询失败', e)
 	} finally {
@@ -246,6 +228,11 @@ const addToWatchlist = async () => {
 	font-size: 36rpx;
 	font-weight: 700;
 	color: #1a1a2e;
+}
+
+.result-name {
+	font-size: 24rpx;
+	color: #909399;
 }
 
 .result-price {
