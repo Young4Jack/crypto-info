@@ -172,6 +172,12 @@
                 </template>
               </el-table-column>
               
+              <el-table-column label="通知" min-width="120">
+                <template #default="{ row }">
+                  <span class="notification-text">{{ row.notification_channel || '默认' }} / {{ row.notification_group || '默认' }}</span>
+                </template>
+              </el-table-column>
+              
               <el-table-column label="创建时间" min-width="150">
                 <template #default="{ row }">
                   <span class="time-text">{{ row.created_at ? formatTime(row.created_at) : '-' }}</span>
@@ -264,6 +270,10 @@
                   <div class="detail-item">
                     <span class="detail-label">推送进度:</span>
                     <span class="detail-value">{{ item.notified_count }} / {{ item.max_notifications }}次</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">通知渠道:</span>
+                    <span class="detail-value">{{ item.notification_channel || '默认' }} / {{ item.notification_group || '默认' }}</span>
                   </div>
                 </div>
                 

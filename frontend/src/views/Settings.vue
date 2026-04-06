@@ -30,27 +30,57 @@
                 <el-button type="primary" size="small" @click="showAddChannelDialog" style="float: right;">添加渠道</el-button>
               </div>
             </template>
-            <el-table :data="channels" stripe style="width: 100%">
-              <el-table-column prop="name" label="渠道名称" width="120" />
-              <el-table-column prop="api_url" label="API 地址" show-overflow-tooltip />
-              <el-table-column label="频道" width="150">
-                <template #default="{ row }">
-                  <el-tag v-for="g in row.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="默认" width="60" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.is_default" type="success" size="small">是</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="200">
-                <template #default="{ row }">
-                  <el-button size="small" @click="showEditChannelDialog(row)">编辑</el-button>
-                  <el-button size="small" type="warning" plain :loading="testLoading === row.name" @click="handleTestChannel(row)">测试</el-button>
-                  <el-button size="small" type="danger" plain @click="handleDeleteChannel(row.name)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+            <div class="channel-desktop-view">
+              <el-table :data="channels" stripe style="width: 100%">
+                <el-table-column prop="name" label="渠道名称" width="120" />
+                <el-table-column prop="api_url" label="API 地址" show-overflow-tooltip />
+                <el-table-column label="频道" width="150">
+                  <template #default="{ row }">
+                    <el-tag v-for="g in row.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="默认" width="60" align="center">
+                  <template #default="{ row }">
+                    <el-tag v-if="row.is_default" type="success" size="small">是</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="200">
+                  <template #default="{ row }">
+                    <el-button size="small" @click="showEditChannelDialog(row)">编辑</el-button>
+                    <el-button size="small" type="warning" plain :loading="testLoading === row.name" @click="handleTestChannel(row)">测试</el-button>
+                    <el-button size="small" type="danger" plain @click="handleDeleteChannel(row.name)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            <div class="channel-mobile-view">
+              <el-card v-for="ch in channels" :key="ch.name" shadow="hover" class="channel-mobile-card">
+                <div class="channel-card-header">
+                  <div class="channel-card-title">
+                    <span class="channel-name">{{ ch.name }}</span>
+                    <el-tag v-if="ch.is_default" type="success" size="small">默认</el-tag>
+                  </div>
+                </div>
+                <div class="channel-card-body">
+                  <div class="channel-field">
+                    <span class="channel-field-label">API 地址</span>
+                    <span class="channel-field-value">{{ ch.api_url }}</span>
+                  </div>
+                  <div class="channel-field">
+                    <span class="channel-field-label">频道</span>
+                    <span class="channel-field-value">
+                      <el-tag v-for="g in ch.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
+                    </span>
+                  </div>
+                </div>
+                <div class="channel-card-footer">
+                  <el-button size="default" @click="showEditChannelDialog(ch)" style="flex:1">编辑</el-button>
+                  <el-button size="default" type="warning" plain :loading="testLoading === ch.name" @click="handleTestChannel(ch)" style="flex:1">测试</el-button>
+                  <el-button size="default" type="danger" plain @click="handleDeleteChannel(ch.name)" style="flex:1">删除</el-button>
+                </div>
+              </el-card>
+              <el-empty v-if="channels.length === 0" description="暂无通知渠道" :image-size="80" />
+            </div>
           </el-card>
 
           <el-card class="content-card" shadow="never">
@@ -202,8 +232,8 @@
     </el-main>
 
     <!-- 通知渠道编辑对话框 -->
-    <el-dialog v-model="channelDialogVisible" :title="isEditingChannel ? '编辑通知渠道' : '添加通知渠道'" width="500px">
-      <el-form ref="channelFormRef" :model="channelForm" label-position="top">
+    <el-dialog v-model="channelDialogVisible" :title="isEditingChannel ? '编辑通知渠道' : '添加通知渠道'" class="responsive-dialog" width="500px">
+      <el-form :model="channelForm" label-position="top">
         <el-form-item label="渠道名称" required>
           <el-input v-model="channelForm.name" placeholder="如：自建Webhook、短信通知" />
         </el-form-item>
@@ -544,6 +574,17 @@ onMounted(() => {
   :deep(.action-buttons .el-button) { width: 100% !important; margin: 0 !important; border-radius: 6px !important; float: none !important; justify-content: center; padding: 8px 0 !important; font-size: 12px !important; height: auto !important; }
   .switch-group { flex-direction: column; gap: 15px; }
   .form-actions :deep(.el-button) { width: 100%; margin-left: 0; margin-bottom: 10px; }
+
+  .channel-desktop-view { display: none; }
+  .channel-mobile-card { margin-bottom: 12px; border-radius: 8px; }
+  .channel-card-header { padding: 8px 0; }
+  .channel-card-title { display: flex; align-items: center; gap: 8px; }
+  .channel-name { font-weight: 600; color: #303133; font-size: 14px; }
+  .channel-card-body { padding: 8px 0; }
+  .channel-field { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .channel-field-label { color: #909399; font-size: 12px; min-width: 60px; flex-shrink: 0; }
+  .channel-field-value { color: #303133; font-size: 12px; word-break: break-all; text-align: right; }
+  .channel-card-footer { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #ebeef5; margin-top: 8px; }
 }
 
 /* 夜间模式 */
@@ -563,4 +604,8 @@ onMounted(() => {
 .page-container.dark-mode .switch-group { background: #16162a; }
 .page-container.dark-mode .info-content p { color: #8080a0; }
 .page-container.dark-mode .info-content strong { color: #d0d0e0; }
+.page-container.dark-mode .channel-name { color: #d0d0e0; }
+.page-container.dark-mode .channel-field-label { color: #8080a0; }
+.page-container.dark-mode .channel-field-value { color: #d0d0e0; }
+.page-container.dark-mode .channel-card-footer { border-top-color: #2a2a3e; }
 </style>
