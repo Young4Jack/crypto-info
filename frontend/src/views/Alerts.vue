@@ -37,7 +37,14 @@
         >
         <div class="form-grid">
           <el-form-item label="交易对 (自动补全)" prop="crypto_symbol">
-            <el-input v-model="inlineForm.crypto_symbol" placeholder="输入监控币种" clearable @change="handleInlineSymbolChange" />
+            <el-input 
+              v-model="inlineForm.crypto_symbol" 
+              placeholder="输入币种 (如 btc)" 
+              clearable 
+              @input="handleSymbolInput" 
+              @keyup.enter="handleInlineSymbolChange"
+              @blur="handleInlineSymbolChange"
+            />
           </el-form-item>
           
           <el-form-item label="触发条件" prop="alert_type">
@@ -565,6 +572,12 @@ const formatNum = (val: any, decimals: number) => {
   return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals)
 }
 
+// 🚀 实时输入格式化 (自动补全后缀，不触发请求)
+const autoFormatSymbol = (val: string) => {
+  const cleaned = formatSymbolInput(val || '');
+  inlineForm.crypto_symbol = cleaned;
+}
+
 // 核心修复 3：升级版智能输入容错清洗引擎 (解决把 btc 误判为后缀的 bug)
 const formatSymbolInput = (rawSymbol: string) => {
   if (!rawSymbol) return ''
@@ -630,29 +643,61 @@ const loadPublicSettings = async (): Promise<number> => {
   return 5
 }
 
-// 实时获取当前价格并填充到基准价输入框
+// 实时处理输入：只做自动补全，不触发请求
+const handleSymbolInput = (val: string | any) => {
+  const text = (typeof val === 'string') ? val : val?.target?.value ?? inlineForm.crypto_symbol;
+  
+  if (!text) {
+    // 如果用户清空了输入框
+    if (inlineForm.crypto_symbol !== '') inlineForm.crypto_symbol = '';
+    return;
+  }
+  
+  const cleaned = formatSymbolInput(text);
+  // 只在格式化结果与当前值不同时更新，避免无限循环
+  if (cleaned !== inlineForm.crypto_symbol) {
+    inlineForm.crypto_symbol = cleaned;
+  }
+}
+
+// 获取并填充基准价格
 const handleInlineSymbolChange = async () => {
-  inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)
+  // 安全防御：确保 crypto_symbol 是字符串
+  if (typeof inlineForm.crypto_symbol !== 'string') return;
+  
+  const val = inlineForm.crypto_symbol.trim();
+  if (!val) {
+    inlineForm.base_price = undefined;
+    return;
+  }
+  
+  // 执行格式转换（自动转大写和补全后缀）
+  const symbol = formatSymbolInput(val);
+  inlineForm.crypto_symbol = symbol;
   
   // 仅自动填充振幅/涨跌类型的基准价
-  const needsBasePrice = !['above', 'below'].includes(inlineForm.alert_type)
-  if (!needsBasePrice) return
+  const needsBasePrice = !['above', 'below'].includes(inlineForm.alert_type);
+  if (!needsBasePrice) return;
 
-  isFetchingPrice.value = true
+  isFetchingPrice.value = true;
   try {
-    const resp = await klinesApi.getKlines(inlineForm.crypto_symbol, '1m', 1)
-    console.log('价格获取响应:', resp.data)
-    if (resp.data.success && resp.data.data.klines.length > 0) {
-      const latest = resp.data.data.klines[resp.data.data.klines.length - 1]
-      inlineForm.base_price = latest.close
-      console.log('自动填充基准价:', inlineForm.base_price)
+    const resp = await klinesApi.getKlines(symbol, '1m', 1);
+    console.log('价格 API 响应:', resp.data); // 调试日志
+    
+    if (resp.data?.success && resp.data?.data?.klines?.length > 0) {
+      // 直接提取最新 K 线的收盘价
+      const latestClose = resp.data.data.klines[0].close;
+      if (typeof latestClose === 'number') {
+        inlineForm.base_price = latestClose;
+        console.log('✅ 自动填充基准价成功:', inlineForm.base_price);
+      }
     } else {
-      console.log('K线获取失败或数据为空:', resp.data)
+      console.warn('⚠️ 未获取到 K 线数据，响应:', resp.data);
     }
-  } catch (e) {
-    console.error('获取基准价失败:', e)
+  } catch (e: any) {
+    console.error('❌ 网络请求失败:', e);
   } finally {
-    isFetchingPrice.value = false
+    isFetchingPrice.value = false;
   }
 }
 
