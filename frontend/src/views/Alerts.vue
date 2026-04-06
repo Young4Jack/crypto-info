@@ -36,17 +36,12 @@
           @submit.prevent="submitInlineForm"
         >
         <div class="form-grid">
-          <el-form-item label="交易对 (自动补全)" prop="crypto_symbol" class="grid-wide">
-            <el-input 
-              v-model="inlineForm.crypto_symbol" 
-              placeholder="输入监控币种" 
-              clearable 
-              @change="handleInlineSymbolChange"
-            />
+          <el-form-item label="交易对 (自动补全)" prop="crypto_symbol">
+            <el-input v-model="inlineForm.crypto_symbol" placeholder="输入监控币种" clearable @change="handleInlineSymbolChange" />
           </el-form-item>
           
           <el-form-item label="触发条件" prop="alert_type">
-            <el-select v-model="inlineForm.alert_type" placeholder="选择条件" style="width: 100%">
+            <el-select v-model="inlineForm.alert_type" placeholder="选择条件" style="width:100%">
               <el-option label="价格高于 ↑" value="above" />
               <el-option label="价格低于 ↓" value="below" />
               <el-option label="振幅预警 ↕" value="amplitude" />
@@ -56,43 +51,41 @@
           </el-form-item>
           
           <el-form-item :label="['above', 'below'].includes(inlineForm.alert_type) ? '目标价格 ($)' : '触发阈值 (%)'" prop="threshold_price">
-            <el-input-number v-model="inlineForm.threshold_price" :precision="['above', 'below'].includes(inlineForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" :placeholder="['above', 'below'].includes(inlineForm.alert_type) ? '目标触发价' : '填入百分比，如 5'" />
+            <el-input-number v-model="inlineForm.threshold_price" :precision="['above', 'below'].includes(inlineForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width:100%" :placeholder="['above', 'below'].includes(inlineForm.alert_type) ? '目标触发价' : '百分比'" />
           </el-form-item>
           
-          <el-form-item label="基准价格 ($)" class="grid-amplitude" v-if="!['above', 'below'].includes(inlineForm.alert_type)">
-            <el-input-number v-model="inlineForm.base_price" :precision="2" :min="0" :controls="false" style="width: 100%" placeholder="自动获取或手动输入" />
-          </el-form-item>
-          
-          <el-form-item label="持续预警" class="grid-small">
+          <el-form-item label="持续预警">
             <el-switch v-model="inlineForm.is_continuous" active-text="是" inactive-text="否" />
           </el-form-item>
           
-          <el-form-item label="通知次数" class="grid-small">
-            <el-input-number v-model="inlineForm.max_notifications" :min="1" :max="100" style="width: 100%" />
+          <el-form-item label="&nbsp;" class="grid-btn">
+            <el-button type="primary" :loading="submitLoading" @click="submitInlineForm" style="width:100%">快捷添加</el-button>
           </el-form-item>
           
-          <el-form-item label="间隔(分钟)" class="grid-small">
-            <el-input-number v-model="inlineForm.interval_minutes" :min="1" :max="1440" style="width: 100%" />
+          <el-form-item label="基准价格 ($)" v-if="!['above', 'below'].includes(inlineForm.alert_type)">
+            <el-input-number v-model="inlineForm.base_price" :precision="2" :min="0" :controls="false" :loading="isFetchingPrice" style="width:100%" placeholder="自动或手动" />
           </el-form-item>
           
-          <el-form-item label="通知渠道" class="grid-channel">
-            <el-select v-model="inlineForm.notification_channel" placeholder="默认" clearable style="width: 100%" @change="inlineForm.notification_group = ''">
+          <el-form-item label="通知次数">
+            <el-input-number v-model="inlineForm.max_notifications" :min="1" :max="100" style="width:100%" />
+          </el-form-item>
+          
+          <el-form-item label="间隔(分钟)">
+            <el-input-number v-model="inlineForm.interval_minutes" :min="1" :max="1440" style="width:100%" />
+          </el-form-item>
+          
+          <el-form-item label="通知渠道">
+            <el-select v-model="inlineForm.notification_channel" placeholder="默认" clearable style="width:100%" @change="inlineForm.notification_group = ''">
               <el-option label="使用默认" value="" />
               <el-option v-for="ch in channels" :key="ch.name" :label="ch.name" :value="ch.name" />
             </el-select>
           </el-form-item>
           
-          <el-form-item label="通知频道" class="grid-channel">
-            <el-select v-model="inlineForm.notification_group" :placeholder="inlineForm.notification_channel ? '默认频道' : '使用默认'" clearable style="width: 100%">
+          <el-form-item label="通知频道">
+            <el-select v-model="inlineForm.notification_group" :placeholder="inlineForm.notification_channel ? '频道' : '默认'" clearable style="width:100%">
               <el-option label="使用默认" value="" />
               <el-option v-for="g in (channels.find(c => c.name === inlineForm.notification_channel)?.groups || [])" :key="g" :label="g" :value="g" />
             </el-select>
-          </el-form-item>
-          
-          <el-form-item label="&nbsp;" class="grid-btn">
-            <el-button type="primary" :loading="submitLoading" @click="submitInlineForm" style="width: 100%;" size="default">
-              快捷添加
-            </el-button>
           </el-form-item>
         </div>
         </el-form>
@@ -648,12 +641,16 @@ const handleInlineSymbolChange = async () => {
   isFetchingPrice.value = true
   try {
     const resp = await klinesApi.getKlineData(inlineForm.crypto_symbol, '1m', 1)
+    console.log('价格获取响应:', resp.data)
     if (resp.data.success && resp.data.data.klines.length > 0) {
       const latest = resp.data.data.klines[resp.data.data.klines.length - 1]
       inlineForm.base_price = latest.close
+      console.log('自动填充基准价:', inlineForm.base_price)
+    } else {
+      console.log('K线获取失败或数据为空:', resp.data)
     }
-  } catch {
-    // 获取失败不阻塞，用户可手动输入
+  } catch (e) {
+    console.error('获取基准价失败:', e)
   } finally {
     isFetchingPrice.value = false
   }
@@ -1032,18 +1029,24 @@ onUnmounted(() => {
   .mobile-view { display: none !important; }
   :deep(.el-table th.el-table__cell) { background-color: #fafafa; color: #606266; font-weight: 600; height: 50px; }
   
-  /* Inline Form Grid */
+  /* Inline Form Grid - 5列2排布局 */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px 20px;
+    align-items: end;
+  }
+  
+  /* Inline Form Grid - 5列2排 */
   .form-grid { 
     display: grid; 
-    grid-template-columns: repeat(4, 1fr); 
-    gap: 16px 24px; 
+    grid-template-columns: repeat(5, 1fr); 
+    gap: 12px 16px; 
     align-items: end; 
   }
-  .grid-wide { grid-column: span 2; }
-  .grid-amplitude { grid-column: span 1; }
-  .grid-small { grid-column: span 1; }
-  .grid-channel { grid-column: span 1; }
-  .grid-btn { grid-column: span 1; display: flex; align-items: end; }
+  .grid-wide { grid-column: span 1; }
+  .grid-switch { grid-column: span 1; }
+  .grid-btn { grid-column: span 1; }
   
   .price-hint { color: #409eff; font-size: 12px; position: absolute; margin-top: 4px; }
   .form-row-2 { display: flex; gap: 20px; }
