@@ -55,6 +55,7 @@ export const alertsApi = {
     interval_minutes?: number
     notification_channel?: string
     notification_group?: string
+    base_price?: number
   }) => {
     return request.post('/api/alerts/', data)
   },
@@ -70,6 +71,7 @@ export const alertsApi = {
     interval_minutes?: number
     notification_channel?: string
     notification_group?: string
+    base_price?: number
   }) => {
     return request.put(`/api/alerts/${id}`, data)
   },

@@ -85,6 +85,10 @@
               </el-select>
             </el-form-item>
             
+            <el-form-item label="基准价格 ($)" class="flex-item-medium" v-if="!['above', 'below'].includes(inlineForm.alert_type)">
+              <el-input-number v-model="inlineForm.base_price" :precision="2" :min="0" :controls="false" style="width: 100%" placeholder="空则自动获取当前价" />
+            </el-form-item>
+            
             <el-form-item label="&nbsp;" class="flex-btn">
               <el-button type="primary" :loading="submitLoading" @click="submitInlineForm" style="width: 100%;">
                 快捷添加
@@ -164,6 +168,12 @@
               <el-table-column label="通知" min-width="100">
                 <template #default="{ row }">
                   <span class="notification-text">{{ row.notification_channel || '默认' }} / {{ row.notification_group || '默认' }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="基准价" min-width="90" align="right">
+                <template #default="{ row }">
+                  <span class="baseprice-text">{{ row.base_price ? '$' + formatNum(row.base_price, 2) : '-' }}</span>
                 </template>
               </el-table-column>
               
@@ -267,6 +277,10 @@
                     <span class="detail-label">通知渠道:</span>
                     <span class="detail-value">{{ item.notification_channel || '默认' }} / {{ item.notification_group || '默认' }}</span>
                   </div>
+                  <div class="detail-item">
+                    <span class="detail-label">基准价格:</span>
+                    <span class="detail-value">{{ item.base_price ? '$' + formatNum(item.base_price, 2) : '-' }}</span>
+                  </div>
                 </div>
                 
                 <div class="trigger-info">
@@ -355,6 +369,13 @@
           </el-form-item>
         </div>
 
+        <div class="form-row-2" v-if="!['above', 'below'].includes(dialogForm.alert_type)">
+          <el-form-item label="基准价格 ($)" prop="base_price">
+            <el-input-number v-model="dialogForm.base_price" :precision="2" :min="0" :controls="false" style="width: 100%" placeholder="空则自动获取当前价" />
+            <div style="color: #909399; font-size: 12px; margin-top: 4px;">不填则自动获取当前市场价作为基准价</div>
+          </el-form-item>
+        </div>
+
         <div class="form-row-2">
           <el-form-item label="持续预警">
             <el-switch v-model="dialogForm.is_continuous" active-text="是" inactive-text="否" />
@@ -435,6 +456,13 @@
           </el-form-item>
         </div>
         
+        <div class="form-row-2" v-if="!['above', 'below'].includes(editForm.alert_type)">
+          <el-form-item label="基准价格 ($)" prop="base_price">
+            <el-input-number v-model="editForm.base_price" :precision="2" :min="0" :controls="false" style="width: 100%" placeholder="空则自动获取当前价" />
+            <div style="color: #909399; font-size: 12px; margin-top: 4px;">不填则自动获取当前市场价作为基准价</div>
+          </el-form-item>
+        </div>
+        
         <div class="form-row-2">
           <el-form-item label="通知渠道">
             <el-select v-model="editForm.notification_channel" placeholder="默认" clearable style="width: 100%" @change="editForm.notification_group = ''">
@@ -501,7 +529,8 @@ const inlineForm = reactive({
   max_notifications: 1,
   interval_minutes: 5,
   notification_channel: '',
-  notification_group: ''
+  notification_group: '',
+  base_price: undefined as number|undefined
 })
 
 const dialogForm = reactive({ 
@@ -512,7 +541,8 @@ const dialogForm = reactive({
   max_notifications: 1,
   interval_minutes: 5,
   notification_channel: '',
-  notification_group: ''
+  notification_group: '',
+  base_price: undefined as number|undefined
 })
 
 const editForm = reactive({
@@ -524,7 +554,8 @@ const editForm = reactive({
   max_notifications: 1,
   interval_minutes: 5,
   notification_channel: '',
-  notification_group: ''
+  notification_group: '',
+  base_price: undefined as number|undefined
 })
 
 const dialogVisible = ref(false)
@@ -622,7 +653,8 @@ const submitInlineForm = async () => {
           max_notifications: Number(inlineForm.max_notifications),
           interval_minutes: Number(inlineForm.interval_minutes),
           notification_channel: inlineForm.notification_channel || undefined,
-          notification_group: inlineForm.notification_group || undefined
+          notification_group: inlineForm.notification_group || undefined,
+          base_price: inlineForm.base_price
         })
         ElMessage.success(`预警创建成功: ${inlineForm.crypto_symbol}`)
         
@@ -631,6 +663,7 @@ const submitInlineForm = async () => {
         inlineForm.is_continuous = false
         inlineForm.max_notifications = 1
         inlineForm.interval_minutes = 5
+        inlineForm.base_price = undefined
         inlineFormRef.value?.resetFields()
         
         loadAlerts(true)
@@ -660,7 +693,8 @@ const submitDialogForm = async (keepOpen = false) => {
           max_notifications: Number(dialogForm.max_notifications),
           interval_minutes: Number(dialogForm.interval_minutes),
           notification_channel: dialogForm.notification_channel || undefined,
-          notification_group: dialogForm.notification_group || undefined
+          notification_group: dialogForm.notification_group || undefined,
+          base_price: dialogForm.base_price
         })
         ElMessage.success(`预警创建成功: ${dialogForm.crypto_symbol}`)
         
@@ -708,7 +742,8 @@ const submitEditForm = async () => {
           interval_minutes: Number(editForm.interval_minutes),
           is_active: true,
           notification_channel: editForm.notification_channel || undefined,
-          notification_group: editForm.notification_group || undefined
+          notification_group: editForm.notification_group || undefined,
+          base_price: editForm.base_price
         })
         ElMessage.success('预警规则已更新并重新激活')
         editDialogVisible.value = false
@@ -953,6 +988,7 @@ onUnmounted(() => {
 .alert-settings-cell { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .setting-item { color: #606266; white-space: nowrap; }
 .notification-text { color: #409eff; font-size: 12px; }
+.baseprice-text { color: #e6a23c; font-weight: 600; font-family: 'Monaco', monospace; font-size: 12px; }
 .alert-times-cell { display: flex; flex-direction: column; gap: 4px; }
 .time-row { display: flex; gap: 6px; font-size: 12px; }
 .time-label { color: #909399; flex-shrink: 0; }
