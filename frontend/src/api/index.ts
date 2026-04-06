@@ -257,6 +257,9 @@ export const notificationChannelsApi = {
   },
   delete: (name: string) => {
     return request.delete(`/api/settings/notification-channels/${name}`)
+  },
+  test: (name: string) => {
+    return request.post(`/api/settings/notification-channels/${name}/test`)
   }
 }
 

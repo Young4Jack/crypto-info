@@ -1,16 +1,29 @@
 <template>
 	<view class="mine-page">
 		<view class="mine-container">
-			<!-- 用户信息区 -->
-			<view class="user-profile">
+			<!-- 用户信息区：未登录态 -->
+			<view v-if="!isLoggedIn" class="user-profile guest-profile" @tap="goToLogin">
 				<view class="avatar-wrapper">
-					<view class="avatar">
-						<text class="avatar-text">J</text>
+					<view class="avatar avatar-guest">
+						<text class="avatar-text">?</text>
 					</view>
 				</view>
 				<view class="user-info">
-					<text class="nickname">Jack</text>
-					<text class="uid">UID: 88392017</text>
+					<text class="nickname nickname-guest">点击登录/注册</text>
+					<text class="uid">登录后享受更多服务</text>
+				</view>
+			</view>
+
+			<!-- 用户信息区：已登录态 -->
+			<view v-else class="user-profile">
+				<view class="avatar-wrapper">
+					<view class="avatar">
+						<text class="avatar-text">{{ userInfo.nickname.charAt(0) }}</text>
+					</view>
+				</view>
+				<view class="user-info">
+					<text class="nickname">{{ userInfo.nickname }}</text>
+					<text class="uid">{{ userInfo.uid }}</text>
 				</view>
 			</view>
 
@@ -60,13 +73,117 @@
 						</view>
 					</view>
 				</view>
+
+				<!-- 退出登录按钮：仅已登录态显示 -->
+				<view v-if="isLoggedIn" class="menu-group logout-group">
+					<view class="menu-item menu-item-logout" @tap="handleLogout">
+						<view class="menu-left">
+							<text class="menu-icon">🚪</text>
+							<text class="menu-label menu-label-logout">退出登录</text>
+						</view>
+						<view class="menu-right">
+							<text class="menu-arrow menu-arrow-logout">›</text>
+						</view>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-// @update: 实现个人中心页面，含用户信息区与设置菜单列表
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { authApi } from '@/api'
+
+// 登录状态
+const isLoggedIn = ref(false)
+
+// 加载状态
+const loading = ref(false)
+
+// 用户信息
+interface UserInfo {
+	nickname: string
+	uid: string
+	avatar: string
+}
+
+const userInfo = ref<UserInfo>({
+	nickname: '',
+	uid: '',
+	avatar: '',
+})
+
+// 重置用户信息为空
+const resetUserInfo = () => {
+	userInfo.value = {
+		nickname: '',
+		uid: '',
+		avatar: '',
+	}
+}
+
+// 每次页面显示时读取本地 token 并拉取真实用户数据
+onShow(async () => {
+	const token = uni.getStorageSync('token')
+	if (!token) {
+		isLoggedIn.value = false
+		resetUserInfo()
+		return
+	}
+
+	loading.value = true
+	try {
+		const res = await authApi.getMe()
+		const user = res.data
+		isLoggedIn.value = true
+		userInfo.value = {
+			nickname: user.username,
+			uid: user.email,
+			avatar: '',
+		}
+	} catch {
+		// Token 过期或请求失败，清除本地状态
+		isLoggedIn.value = false
+		uni.removeStorageSync('token')
+		resetUserInfo()
+	} finally {
+		loading.value = false
+	}
+})
+
+// 跳转登录页
+const goToLogin = () => {
+	uni.navigateTo({
+		url: '/pages/login/login',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
+}
+
+// 退出登录
+const handleLogout = () => {
+	uni.showModal({
+		title: '提示',
+		content: '确定要退出登录吗？',
+		success: (res) => {
+			if (res.confirm) {
+				uni.removeStorageSync('token')
+				isLoggedIn.value = false
+				userInfo.value = {
+					nickname: '',
+					uid: '',
+					avatar: '',
+				}
+				uni.showToast({ title: '已退出登录', icon: 'success' })
+			}
+		},
+	})
+}
+
+// 菜单点击占位
 const handleMenuTap = (type: string) => {
 	uni.showToast({ title: `${type} 功能开发中`, icon: 'none' })
 }
@@ -98,6 +215,16 @@ const handleMenuTap = (type: string) => {
 	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
+/* 未登录态：可点击 */
+.guest-profile {
+	cursor: pointer;
+	transition: opacity 0.2s;
+}
+
+.guest-profile:active {
+	opacity: 0.7;
+}
+
 .avatar-wrapper {
 	flex-shrink: 0;
 }
@@ -110,6 +237,11 @@ const handleMenuTap = (type: string) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+/* 未登录灰色头像 */
+.avatar-guest {
+	background: linear-gradient(135deg, #c0c4cc 0%, #909399 100%);
 }
 
 .avatar-text {
@@ -128,6 +260,11 @@ const handleMenuTap = (type: string) => {
 	font-size: 36rpx;
 	font-weight: 600;
 	color: #1a1a2e;
+}
+
+/* 未登录态昵称 */
+.nickname-guest {
+	color: #909399;
 }
 
 .uid {
@@ -190,6 +327,28 @@ const handleMenuTap = (type: string) => {
 .menu-arrow {
 	font-size: 36rpx;
 	color: #c0c4cc;
+}
+
+/* 退出登录按钮样式 */
+.logout-group {
+	margin-top: 20rpx;
+}
+
+.menu-item-logout {
+	cursor: pointer;
+}
+
+.menu-item-logout:active {
+	background-color: #fef0f0;
+}
+
+.menu-label-logout {
+	color: #f56c6c;
+	font-weight: 500;
+}
+
+.menu-arrow-logout {
+	color: #f56c6c;
 }
 
 /* PC 端响应式 */

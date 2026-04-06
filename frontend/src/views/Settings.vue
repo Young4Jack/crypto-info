@@ -288,23 +288,11 @@ const accountRules: FormRules = {
 const handleTestChannel = async (channel: any) => {
   testLoading.value = channel.name
   try {
-    const headers: Record<string, string> = {}
-    if (channel.auth_token) headers['Authorization'] = channel.auth_token
-    const data = {
-      title: '【测试通知】渠道连通性测试',
-      description: '这是一条测试通知',
-      channel: channel.default_group,
-      content: `渠道 "${channel.name}" 测试成功！当前频道：${channel.default_group}`
-    }
-    const resp = await fetch(channel.api_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(data)
-    })
-    if (resp.ok) ElMessage.success(`渠道 "${channel.name}" 测试成功`)
-    else ElMessage.error(`渠道 "${channel.name}" 测试失败: HTTP ${resp.status}`)
+    const response = await notificationChannelsApi.test(channel.name)
+    if (response.data.success) ElMessage.success(response.data.message)
+    else ElMessage.error(`渠道 "${channel.name}" 测试失败: ${response.data.detail}`)
   } catch (error: any) {
-    ElMessage.error(`渠道 "${channel.name}" 测试失败: ${error.message}`)
+    ElMessage.error(`渠道 "${channel.name}" 测试失败: ${error.response?.data?.detail || error.message}`)
   } finally { testLoading.value = '' }
 }
 
@@ -450,7 +438,8 @@ const showEditChannelDialog = (channel: any) => {
     is_default: channel.is_default,
     default_group: channel.default_group,
     groups: [...channel.groups],
-    newGroup: ''
+    newGroup: '',
+    _oldName: channel.name
   })
   channelDialogVisible.value = true
 }
@@ -475,8 +464,8 @@ const handleSaveChannel = async () => {
       groups: channelForm.groups
     }
     if (isEditingChannel.value) {
-      const oldName = channels.value.find(c => c.name === channelForm.name)?.name
-      await notificationChannelsApi.update(oldName || channelForm.name, data)
+      const oldName = (channelForm as any)._oldName || channelForm.name
+      await notificationChannelsApi.update(oldName, data)
       ElMessage.success('渠道更新成功')
     } else {
       await notificationChannelsApi.create(data)

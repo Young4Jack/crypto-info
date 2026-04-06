@@ -2,6 +2,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+import httpx
 from app.config_manager import config_manager
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -160,3 +161,44 @@ async def get_default_channel(
         default_group=channel.get("default_group", "yes"),
         groups=channel.get("groups", ["yes"])
     )
+
+@router.post("/{channel_name}/test")
+async def test_channel(
+    channel_name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """测试通知渠道连通性（需要认证）"""
+    channels = config_manager.get_notification_channels()
+    target = None
+    for ch in channels:
+        if ch["name"] == channel_name:
+            target = ch
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"渠道 '{channel_name}' 不存在")
+
+    api_url = target.get("api_url", "")
+    if not api_url:
+        raise HTTPException(status_code=400, detail="该渠道未配置 API 地址")
+
+    headers = {}
+    auth_token = target.get("auth_token", "")
+    if auth_token:
+        headers["Authorization"] = auth_token
+
+    data = {
+        "title": "【测试通知】渠道连通性测试",
+        "description": "这是一条测试通知",
+        "channel": target.get("default_group", "yes"),
+        "content": f"渠道 \"{target['name']}\" 测试成功！当前频道：{target.get('default_group', 'yes')}"
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(api_url, headers=headers, json=data, timeout=10.0)
+            response.raise_for_status()
+        return {"success": True, "message": f"渠道 '{channel_name}' 测试成功", "status_code": response.status_code}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"渠道返回 HTTP {e.response.status_code}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"测试失败: {str(e)}")

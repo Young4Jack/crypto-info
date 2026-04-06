@@ -52,6 +52,7 @@ docker-compose.yml
 .clinerules
 .cursor/
 AGENTS.md
+.opencode/
 
 # --- PID 文件和运行时文件 ---
 *.pid

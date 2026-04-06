@@ -1,5 +1,31 @@
 import { apiBase } from './config'
 
+// 白名单：无需携带 Token 的公开接口路径（前缀匹配）
+const WHITE_LIST = [
+  '/api/auth/login',
+  '/api/auth/captcha',
+  '/api/auth/verify-captcha',
+  '/api/watchlist/public',
+  '/api/watchlist/all',
+  '/api/klines',
+  '/api/system-settings/public',
+  '/health',
+]
+
+// 判断请求路径是否命中白名单（支持精确匹配或严格前缀匹配，避免 '/' 误伤所有路径）
+function isInWhiteList(url: string): boolean {
+  const cleanUrl = url.split('?')[0]
+  return WHITE_LIST.some((path) => cleanUrl === path || cleanUrl.startsWith(path + '/'))
+}
+
+// 未登录态拦截：清除缓存并跳转登录页
+function redirectToLogin() {
+  uni.removeStorageSync('token')
+  uni.removeStorageSync('user')
+  uni.reLaunch({ url: '/pages/login/login' })
+  uni.showToast({ title: '请先登录', icon: 'none' })
+}
+
 interface RequestOptions {
   url: string
   data?: Record<string, any>
@@ -24,26 +50,42 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
   const { url, data, method = 'GET', header = {} } = options
   const fullUrl = resolveUrl(url)
 
-  const token = uni.getStorageSync('token')
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  // 白名单接口不携带 Token，非白名单接口必须携带有效 Token
+  let authHeader: Record<string, string> = {}
+  if (!isInWhiteList(url)) {
+    const rawToken = uni.getStorageSync('token')
+    // 清理空白字符后校验：排除 null、undefined、空字符串、"undefined"、"null" 等无效值
+    const token = typeof rawToken === 'string' ? rawToken.trim() : ''
+    const isValidToken = token && token !== 'undefined' && token !== 'null'
+
+    if (!isValidToken) {
+      redirectToLogin()
+      return Promise.reject(new Error('Unauthorized: no valid token'))
+    }
+    authHeader = { Authorization: `Bearer ${token}` }
+  }
+
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    ...authHeader,
+    ...header,
+  }
+  // 临时调试：打印实际发出的请求头，确认 Authorization 是否成功注入
+  console.log('[Request]', method, fullUrl, '| Headers:', requestHeaders)
 
   return new Promise((resolve, reject) => {
     uni.request({
       url: fullUrl,
       data,
       method,
-      header: {
-        'Content-Type': 'application/json',
-        ...authHeader,
-        ...header,
-      },
+      header: requestHeaders,
       timeout: 10000,
       success: (res) => {
         if (res.statusCode === 401) {
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('user')
-          uni.reLaunch({ url: '/pages/login/login' })
-          uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+          // 非白名单接口返回 401 说明 Token 已失效，清除并跳转
+          if (!isInWhiteList(url)) {
+            redirectToLogin()
+          }
           reject(new Error('Unauthorized'))
           return
         }

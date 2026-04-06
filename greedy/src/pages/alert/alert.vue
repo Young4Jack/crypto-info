@@ -4,80 +4,249 @@
 			<!-- 页面头部 -->
 			<view class="page-header">
 				<text class="header-title">预警中心</text>
-				<!-- PC 端显示的添加按钮 -->
-				<view class="add-btn pc-only" @tap="handleAdd">
+				<view v-if="isLoggedIn" class="add-btn pc-only" @tap="toggleAddForm">
 					<text class="btn-text">+ 添加预警</text>
 				</view>
 			</view>
 
-			<!-- 预警规则列表 -->
-			<scroll-view scroll-y class="alert-scroll">
-				<view class="alert-list">
-					<view
-						v-for="item in alertRules"
-						:key="item.id"
-						class="alert-card"
-					>
-						<view class="rule-info">
-							<view class="rule-header">
-								<text class="rule-symbol">{{ item.symbol }}</text>
-								<text :class="['rule-status', item.enabled ? 'active' : 'inactive']">
-									{{ item.enabled ? '监控中' : '已暂停' }}
-								</text>
+			<!-- 未登录态：提示 + 登录按钮 -->
+			<view v-if="!isLoggedIn" class="guest-state">
+				<text class="guest-title">登录后可设置专属价格预警</text>
+				<view class="guest-login-btn" @tap="goToLogin">
+					<text class="btn-text">立即登录</text>
+				</view>
+			</view>
+
+			<!-- 已登录态：列表 + 添加表单 -->
+			<template v-else>
+				<!-- 添加预警表单 -->
+				<view v-if="showAddForm" class="add-form-card">
+					<view class="form-header">
+						<text class="form-title">新建预警</text>
+						<text class="form-close" @tap="toggleAddForm">×</text>
+					</view>
+
+					<view class="form-group">
+						<text class="form-label">交易对</text>
+						<input
+							class="form-input"
+							type="text"
+							placeholder="如 BTCUSDT"
+							v-model="form.crypto_symbol"
+						/>
+					</view>
+
+					<view class="form-group">
+						<text class="form-label">预警方向</text>
+						<view class="radio-group">
+							<view
+								class="radio-btn"
+								:class="{ active: form.alert_type === 'above' }"
+								@tap="form.alert_type = 'above'"
+							>
+								<text>涨破（高于）</text>
 							</view>
-							<text class="rule-condition">{{ item.condition }}</text>
-							<text class="rule-time">创建于 {{ item.createdAt }}</text>
-						</view>
-						<view class="rule-action">
-							<switch
-								:checked="item.enabled"
-								color="#409EFF"
-								@change="toggleRule(item)"
-							/>
+							<view
+								class="radio-btn"
+								:class="{ active: form.alert_type === 'below' }"
+								@tap="form.alert_type = 'below'"
+							>
+								<text>跌破（低于）</text>
+							</view>
 						</view>
 					</view>
 
-					<view v-if="alertRules.length === 0" class="empty-state">
-						<text class="empty-text">暂无预警规则</text>
-						<text class="empty-hint">点击添加按钮创建你的第一条预警</text>
+					<view class="form-group">
+						<text class="form-label">目标价格</text>
+						<input
+							class="form-input"
+							type="digit"
+							placeholder="输入触发价格"
+							v-model="form.threshold_price"
+						/>
+					</view>
+
+					<view class="form-submit-btn" @tap="submitAlert">
+						<text class="btn-text">{{ submitting ? '提交中...' : '确认添加' }}</text>
 					</view>
 				</view>
-			</scroll-view>
 
-			<!-- 移动端底部添加按钮 -->
-			<view class="add-btn mobile-only" @tap="handleAdd">
-				<text class="btn-text">+ 添加预警</text>
-			</view>
+				<!-- 预警规则列表 -->
+				<scroll-view scroll-y class="alert-scroll">
+					<view class="alert-list">
+						<view
+							v-for="item in alertRules"
+							:key="item.id"
+							class="alert-card"
+						>
+							<view class="rule-info">
+								<view class="rule-header">
+									<text class="rule-symbol">{{ item.crypto_symbol }}</text>
+									<text :class="['rule-status', item.is_active ? 'active' : 'inactive']">
+										{{ item.is_active ? '监控中' : '已暂停' }}
+									</text>
+								</view>
+								<text class="rule-condition">{{ formatCondition(item) }}</text>
+							</view>
+							<view class="rule-actions">
+								<text class="delete-btn" @tap="confirmDelete(item)">删除</text>
+							</view>
+						</view>
+
+						<view v-if="!loading && alertRules.length === 0" class="empty-state">
+							<text class="empty-text">暂无预警规则</text>
+							<text class="empty-hint">点击添加按钮创建你的第一条预警</text>
+						</view>
+					</view>
+				</scroll-view>
+
+				<!-- 移动端底部添加按钮 -->
+				<view class="add-btn mobile-only" @tap="toggleAddForm">
+					<text class="btn-text">+ 添加预警</text>
+				</view>
+			</template>
 		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-// @update: 实现预警中心页面，含规则列表、开关控制与响应式添加按钮
-interface AlertRule {
-	id: number
-	symbol: string
-	condition: string
-	enabled: boolean
-	createdAt: string
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { alertsApi, type AlertItem } from '@/api'
+
+// 登录状态
+const isLoggedIn = ref(false)
+
+// 加载状态
+const loading = ref(false)
+const submitting = ref(false)
+
+// 预警列表
+const alertRules = ref<AlertItem[]>([])
+
+// 添加表单显隐
+const showAddForm = ref(false)
+
+// 表单数据
+const form = ref({
+	crypto_symbol: '',
+	alert_type: 'above' as 'above' | 'below',
+	threshold_price: '',
+})
+
+// 每次页面显示时检查登录态并拉取列表
+onShow(() => {
+	const token = uni.getStorageSync('token')
+	if (!token) {
+		isLoggedIn.value = false
+		alertRules.value = []
+		return
+	}
+	isLoggedIn.value = true
+	fetchAlertList()
+})
+
+// 获取预警列表
+const fetchAlertList = async () => {
+	loading.value = true
+	try {
+		const res = await alertsApi.getList()
+		alertRules.value = res.data
+	} catch (e: any) {
+		console.error('获取预警列表失败', e)
+	} finally {
+		loading.value = false
+	}
 }
 
-const alertRules = ref<AlertRule[]>([
-	{ id: 1, symbol: 'BTC', condition: '价格上涨超过 $70,000', enabled: true, createdAt: '2024-03-15' },
-	{ id: 2, symbol: 'ETH', condition: '价格下跌低于 $3,200', enabled: true, createdAt: '2024-03-14' },
-	{ id: 3, symbol: 'SOL', condition: '24h 涨幅超过 10%', enabled: false, createdAt: '2024-03-10' },
-])
+// 切换添加表单显隐
+const toggleAddForm = () => {
+	showAddForm.value = !showAddForm.value
+	if (!showAddForm.value) {
+		// 关闭表单时清空输入
+		form.value = {
+			crypto_symbol: '',
+			alert_type: 'above',
+			threshold_price: '',
+		}
+	}
+}
 
-const toggleRule = (item: AlertRule) => {
-	item.enabled = !item.enabled
-	uni.showToast({
-		title: item.enabled ? '已开启监控' : '已暂停监控',
-		icon: 'none',
+// 提交新预警
+const submitAlert = async () => {
+	const symbol = form.value.crypto_symbol.trim().toUpperCase()
+	const price = parseFloat(form.value.threshold_price)
+
+	if (!symbol) {
+		uni.showToast({ title: '请输入交易对', icon: 'none' })
+		return
+	}
+	if (!price || price <= 0) {
+		uni.showToast({ title: '请输入有效价格', icon: 'none' })
+		return
+	}
+
+	submitting.value = true
+	try {
+		await alertsApi.create({
+			crypto_symbol: symbol,
+			alert_type: form.value.alert_type,
+			threshold_price: price,
+		})
+		uni.showToast({ title: '预警添加成功', icon: 'success' })
+		// 关闭表单并刷新列表
+		showAddForm.value = false
+		form.value = {
+			crypto_symbol: '',
+			alert_type: 'above',
+			threshold_price: '',
+		}
+		await fetchAlertList()
+	} catch (e: any) {
+		uni.showToast({ title: e?.message || '添加失败', icon: 'none' })
+	} finally {
+		submitting.value = false
+	}
+}
+
+// 确认删除
+const confirmDelete = (item: AlertItem) => {
+	uni.showModal({
+		title: '确认删除',
+		content: `确定删除 ${item.crypto_symbol} 的预警规则吗？`,
+		success: async (res) => {
+			if (res.confirm) {
+				await deleteAlert(item.id)
+			}
+		},
 	})
 }
 
-const handleAdd = () => {
-	uni.showToast({ title: '添加预警功能开发中', icon: 'none' })
+// 执行删除
+const deleteAlert = async (id: number) => {
+	try {
+		await alertsApi.delete(id)
+		uni.showToast({ title: '已删除', icon: 'success' })
+		await fetchAlertList()
+	} catch (e: any) {
+		uni.showToast({ title: e?.message || '删除失败', icon: 'none' })
+	}
+}
+
+// 格式化预警条件显示
+const formatCondition = (item: AlertItem): string => {
+	const typeText = item.alert_type === 'above' ? '高于' : item.alert_type === 'below' ? '低于' : item.alert_type
+	return `${typeText} $${item.threshold_price.toLocaleString()}`
+}
+
+// 跳转登录页
+const goToLogin = () => {
+	uni.navigateTo({
+		url: '/pages/login/login',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
 }
 </script>
 
@@ -140,6 +309,122 @@ const handleAdd = () => {
 
 .mobile-only {
 	margin-top: 20rpx;
+}
+
+/* 未登录态 */
+.guest-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 200rpx 0;
+	gap: 40rpx;
+}
+
+.guest-title {
+	font-size: 32rpx;
+	color: #909399;
+}
+
+.guest-login-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #409eff;
+	border-radius: 12rpx;
+	padding: 20rpx 60rpx;
+}
+
+/* 添加表单卡片 */
+.add-form-card {
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	padding: 30rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.form-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24rpx;
+}
+
+.form-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1a1a2e;
+}
+
+.form-close {
+	font-size: 48rpx;
+	color: #909399;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	margin-bottom: 24rpx;
+}
+
+.form-label {
+	font-size: 26rpx;
+	font-weight: 500;
+	color: #303133;
+}
+
+.form-input {
+	width: 100%;
+	height: 80rpx;
+	padding: 0 20rpx;
+	border: 2rpx solid #dcdfe6;
+	border-radius: 8rpx;
+	font-size: 28rpx;
+	color: #303133;
+	background-color: #ffffff;
+	box-sizing: border-box;
+}
+
+/* 单选按钮组 */
+.radio-group {
+	display: flex;
+	gap: 20rpx;
+}
+
+.radio-btn {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 72rpx;
+	border: 2rpx solid #dcdfe6;
+	border-radius: 8rpx;
+	font-size: 26rpx;
+	color: #606266;
+	cursor: pointer;
+}
+
+.radio-btn.active {
+	border-color: #409eff;
+	background-color: #ecf5ff;
+	color: #409eff;
+}
+
+.form-submit-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #409eff;
+	border-radius: 8rpx;
+	height: 80rpx;
+}
+
+.form-submit-btn:active {
+	opacity: 0.85;
 }
 
 /* 滚动列表 */
@@ -205,13 +490,21 @@ const handleAdd = () => {
 	color: #606266;
 }
 
-.rule-time {
-	font-size: 22rpx;
-	color: #c0c4cc;
+.rule-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
 }
 
-.rule-action {
-	margin-left: 20rpx;
+.delete-btn {
+	font-size: 26rpx;
+	color: #f56c6c;
+	padding: 8rpx 16rpx;
+	cursor: pointer;
+}
+
+.delete-btn:active {
+	opacity: 0.6;
 }
 
 /* 空状态 */
@@ -242,6 +535,12 @@ const handleAdd = () => {
 
 	.mobile-only {
 		display: none;
+	}
+
+	.alert-list {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 20rpx;
 	}
 }
 </style>
