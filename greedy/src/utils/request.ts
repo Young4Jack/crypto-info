@@ -99,7 +99,8 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
           }
           resolve({ data: parsedData, statusCode: res.statusCode })
         } else {
-          const errorMsg = (res.data as any)?.detail || '请求失败'
+          const raw = (res.data as any)?.detail
+          const errorMsg = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((e: any) => e?.msg).filter(Boolean).join('; ') : '请求失败'
           uni.showToast({ title: errorMsg, icon: 'none' })
           reject(new Error(errorMsg))
         }

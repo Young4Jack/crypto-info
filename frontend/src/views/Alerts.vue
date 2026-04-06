@@ -37,18 +37,11 @@
         >
         <div class="form-grid">
           <el-form-item label="交易对 (自动补全)" prop="crypto_symbol">
-            <el-input 
-              v-model="inlineForm.crypto_symbol" 
-              placeholder="输入币种 (自动转大写)" 
-              clearable 
-              @input="handleSymbolInput" 
-              @keyup.enter="handleInlineSymbolChange"
-              @blur="handleInlineSymbolChange"
-            />
+            <el-input v-model="inlineForm.crypto_symbol" placeholder="输入监控币种" clearable @change="handleInlineSymbolChange" />
           </el-form-item>
           
           <el-form-item label="触发条件" prop="alert_type">
-            <el-select v-model="inlineForm.alert_type" placeholder="选择条件" style="width:100%">
+            <el-select v-model="inlineForm.alert_type" placeholder="选择条件" style="width:100%" @change="handleAlertTypeChange">
               <el-option label="价格高于 ↑" value="above" />
               <el-option label="价格低于 ↓" value="below" />
               <el-option label="振幅预警 ↕" value="amplitude" />
@@ -70,11 +63,7 @@
           </el-form-item>
           
           <el-form-item label="基准价格 ($)" v-if="!['above', 'below'].includes(inlineForm.alert_type)">
-            <el-input-number v-model="inlineForm.base_price" :precision="2" :min="0" style="width:100%" placeholder="自动或手动" />
-            <div class="price-status" style="margin-top: 4px;">
-              <span v-if="isFetchingPrice" style="color: #409eff; font-size: 12px;">正在获取价格...</span>
-              <span v-else-if="inlineForm.base_price" style="color: #67c23a; font-size: 12px;">✅ 已获取: ${{ inlineForm.base_price }}</span>
-            </div>
+            <el-input-number v-model="inlineForm.base_price" :precision="2" :min="0" :controls="false" :loading="isFetchingPrice" style="width:100%" placeholder="自动或手动" />
           </el-form-item>
           
           <el-form-item label="通知次数">
@@ -354,13 +343,13 @@
             v-model="dialogForm.crypto_symbol" 
             placeholder="输入要监控的交易对" 
             clearable 
-            @change="dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)"
+            @change="handleDialogSymbolChange"
           />
         </el-form-item>
         
         <div class="form-row-2">
           <el-form-item label="触发条件" prop="alert_type">
-            <el-select v-model="dialogForm.alert_type" style="width: 100%">
+            <el-select v-model="dialogForm.alert_type" style="width: 100%" @change="handleDialogTypeChange">
               <el-option label="价格高于 ↑" value="above" />
               <el-option label="价格低于 ↓" value="below" />
               <el-option label="振幅预警 ↕" value="amplitude" />
@@ -375,7 +364,7 @@
 
         <div class="form-row-2" v-if="!['above', 'below'].includes(dialogForm.alert_type)">
           <el-form-item label="基准价格 ($)" prop="base_price">
-            <el-input-number v-model="dialogForm.base_price" :precision="2" :min="0" :controls="false" style="width: 100%" placeholder="空则自动获取当前价" />
+            <el-input-number v-model="dialogForm.base_price" :precision="2" :min="0" :controls="false" :loading="isFetchingPrice" style="width: 100%" placeholder="自动获取或手动输入" />
             <div style="color: #909399; font-size: 12px; margin-top: 4px;">不填则自动获取当前市场价作为基准价</div>
           </el-form-item>
         </div>
@@ -576,54 +565,25 @@ const formatNum = (val: any, decimals: number) => {
   return isNaN(num) ? (0).toFixed(decimals) : num.toFixed(decimals)
 }
 
-// 1. 输入时：仅转大写，防止用户输入混乱
-const handleSymbolInput = (val: string | Event | any) => {
-  let text = (typeof val === 'string') ? val : val?.target?.value ?? '';
-  if (!text) return;
-  const cleaned = text.trim().toUpperCase();
-  if (cleaned !== inlineForm.crypto_symbol) {
-    inlineForm.crypto_symbol = cleaned;
+// 核心修复 3：升级版智能输入容错清洗引擎 (解决把 btc 误判为后缀的 bug)
+const formatSymbolInput = (rawSymbol: string) => {
+  if (!rawSymbol) return ''
+  let formatted = rawSymbol.trim().toUpperCase()
+  if (!formatted) return ''
+  
+  // 计价货币白名单
+  const quoteCurrencies = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD']
+  
+  // 必须同时满足：1.以后缀结尾 2.字符串总长度大于后缀的长度 (防止输入 "BTC" 触发条件)
+  const hasQuote = quoteCurrencies.some(quote => {
+    return formatted.endsWith(quote) && formatted.length > quote.length
+  })
+
+  // 若不包含任何标准计价后缀，则补齐 USDT
+  if (!hasQuote) {
+    formatted += 'USDT'
   }
-}
-
-// 2. 提交/失去焦点时：自动补全后缀 + 获取价格
-const handleInlineSymbolChange = async () => {
-  let original = (typeof inlineForm.crypto_symbol === 'string') ? inlineForm.crypto_symbol.trim() : '';
-  if (!original) {
-    inlineForm.base_price = undefined;
-    return;
-  }
-
-  let symbol = original.toUpperCase();
-  const hasSuffix = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD'].some(s => symbol.endsWith(s) && symbol.length > s.length);
-  if (!hasSuffix) symbol += 'USDT';
-  inlineForm.crypto_symbol = symbol;
-
-  const isPercent = ['amplitude', 'percent_up', 'percent_down'].includes(inlineForm.alert_type);
-  if (!isPercent) return;
-
-  isFetchingPrice.value = true;
-  try {
-    const resp = await klinesApi.getKlines(symbol, '1m', 1);
-    const klines = resp.data?.data?.klines;
-    if (klines && klines.length > 0) {
-      inlineForm.base_price = Number(klines[klines.length - 1].close);
-    }
-  } catch (e) {
-    console.error('获取价格失败:', e);
-  } finally {
-    isFetchingPrice.value = false;
-  }
-}
-
-// 通用格式化函数 (用于提交和弹窗)
-const formatSymbolInput = (rawSymbol: any) => {
-  if (!rawSymbol || typeof rawSymbol !== 'string') return '';
-  let s = rawSymbol.trim().toUpperCase();
-  if (!s) return '';
-  const hasSuffix = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD'].some(q => s.endsWith(q) && s.length > q.length);
-  if (!hasSuffix) s += 'USDT';
-  return s;
+  return formatted
 }
 
 const getConditionText = (row: any) => {
@@ -668,6 +628,81 @@ const loadPublicSettings = async (): Promise<number> => {
     console.error('获取系统刷新频率失败，启用默认值', error)
   }
   return 5
+}
+
+// 实时获取当前价格并填充到基准价输入框
+const fetchBasePrice = async () => {
+  if (!inlineForm.crypto_symbol) return
+  
+  // 仅自动填充振幅/涨跌类型的基准价
+  const needsBasePrice = !['above', 'below'].includes(inlineForm.alert_type)
+  if (!needsBasePrice) return
+
+  isFetchingPrice.value = true
+  try {
+    const resp = await klinesApi.getKlines(inlineForm.crypto_symbol, '1m', 1)
+    console.log('价格获取响应:', resp.data)
+    if (resp.data.success && resp.data.data.klines.length > 0) {
+      const latest = resp.data.data.klines[resp.data.data.klines.length - 1]
+      inlineForm.base_price = latest.close
+      console.log('自动填充基准价:', inlineForm.base_price)
+    } else {
+      console.log('K线获取失败或数据为空:', resp.data)
+    }
+  } catch (e) {
+    console.error('获取基准价失败:', e)
+  } finally {
+    isFetchingPrice.value = false
+  }
+}
+
+// 交易对输入变化
+const handleInlineSymbolChange = async () => {
+  inlineForm.crypto_symbol = formatSymbolInput(inlineForm.crypto_symbol)
+  await fetchBasePrice()
+}
+
+// 触发条件变化
+const handleAlertTypeChange = async () => {
+  // 切换到 above/below 时清空基准价
+  if (['above', 'below'].includes(inlineForm.alert_type)) {
+    inlineForm.base_price = undefined
+  }
+  await fetchBasePrice()
+}
+
+// 弹窗: 交易对变化
+const handleDialogSymbolChange = async () => {
+  dialogForm.crypto_symbol = formatSymbolInput(dialogForm.crypto_symbol)
+  await fetchDialogBasePrice()
+}
+
+// 弹窗: 触发条件变化
+const handleDialogTypeChange = async () => {
+  if (['above', 'below'].includes(dialogForm.alert_type)) {
+    dialogForm.base_price = undefined
+  }
+  await fetchDialogBasePrice()
+}
+
+// 弹窗: 获取基准价
+const fetchDialogBasePrice = async () => {
+  if (!dialogForm.crypto_symbol) return
+  const needsBasePrice = !['above', 'below'].includes(dialogForm.alert_type)
+  if (!needsBasePrice) return
+
+  isFetchingPrice.value = true
+  try {
+    const resp = await klinesApi.getKlines(dialogForm.crypto_symbol, '1m', 1)
+    if (resp.data.success && resp.data.data.klines.length > 0) {
+      const latest = resp.data.data.klines[resp.data.data.klines.length - 1]
+      dialogForm.base_price = latest.close
+    }
+  } catch {
+    // 静默失败
+  } finally {
+    isFetchingPrice.value = false
+  }
 }
 
 const submitInlineForm = async () => {

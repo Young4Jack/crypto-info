@@ -49,9 +49,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { watchlistApi } from '@/api'
+import { klinesApi } from '@/api'
 
-// @update: 接入真实后端 API，替换静态模拟数据
+// @update: 使用 /api/klines/watchlist/all 获取实时价格+涨跌幅
 interface CoinItem {
 	symbol: string
 	name: string
@@ -63,37 +63,52 @@ const coinList = ref<CoinItem[]>([])
 const loading = ref(false)
 const error = ref('')
 
-// 将接口返回数据映射为页面所需结构
-const mapWatchlistData = (rawData: any[]): CoinItem[] => {
-	return rawData.map((item: any) => {
-		const price = item.current_price ?? item.price ?? 0
-		const change = item.change_24h ?? item.change_percent ?? item.change ?? 0
-		return {
-			symbol: item.crypto_symbol ?? item.symbol ?? 'UNKNOWN',
-			name: item.crypto_name ?? item.name ?? item.symbol ?? '',
-			price: typeof price === 'number' ? price.toFixed(4) : String(price),
-			change: typeof change === 'number' ? parseFloat(change.toFixed(2)) : 0,
-		}
-	})
+// 用 1d K 线的开盘价计算日涨跌幅
+// 1d 的 open = 北京时间 8:00（UTC 0:00）的开盘价
+// close = 当前最新价
+const calcChange = (klines: any[]): number => {
+	if (klines.length === 0) return 0
+	const today = klines[klines.length - 1]
+	const open = parseFloat(today?.open ?? 0)
+	const close = parseFloat(today?.close ?? 0)
+	if (!open) return 0
+	return parseFloat((((close - open) / open) * 100).toFixed(2))
 }
 
-// 请求关注列表接口
+// 格式化价格显示
+const formatPrice = (price: number): string => {
+	if (price >= 1000) return price.toFixed(2)
+	if (price >= 1) return price.toFixed(4)
+	return price.toFixed(6)
+}
+
+// 请求 K 线关注列表（含价格和涨跌幅）
 const fetchWatchlist = async () => {
 	loading.value = true
 	error.value = ''
 	try {
-		const res = await watchlistApi.getPublicWatchlist()
-		const raw = res.data
-		// 兼容不同返回结构：数组 / { data: [...] } / { success: true, data: { data: [...] } }
-		let list: any[] = []
-		if (Array.isArray(raw)) {
-			list = raw
-		} else if (raw?.data && Array.isArray(raw.data)) {
-			list = raw.data
-		} else if (raw?.data?.data && Array.isArray(raw.data.data)) {
-			list = raw.data.data
+		const res = await klinesApi.getWatchlistKlines('1d', 2)
+		const body = res.data as any
+		// 返回结构: { BTCUSDT: { name, klines: [...] }, ... }
+		const raw = body?.data || body || {}
+		const list: CoinItem[] = []
+
+		for (const symbol of Object.keys(raw)) {
+			const item = raw[symbol]
+			const klines = item?.klines || []
+			if (klines.length === 0) continue
+
+			const price = parseFloat(klines[klines.length - 1]?.close ?? 0)
+			const change = calcChange(klines)
+
+			list.push({
+				symbol,
+				name: item?.name || symbol.replace('USDT', ''),
+				price: formatPrice(price),
+				change,
+			})
 		}
-		coinList.value = mapWatchlistData(list)
+		coinList.value = list
 	} catch (e: any) {
 		error.value = e?.message || '加载失败，请检查网络'
 	} finally {

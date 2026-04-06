@@ -27,13 +27,14 @@
 					</view>
 
 					<!-- 1. 交易对 -->
-					<view class="form-group">
+						<view class="form-group">
 						<text class="form-label">交易对</text>
 						<input
 							class="form-input"
 							type="text"
-							placeholder="如 BTCUSDT"
+							placeholder="如 btc / BTC / BTCUSDT 均可，自动补全 USDT"
 							v-model="form.crypto_symbol"
+							@blur="onSymbolBlur"
 						/>
 					</view>
 
@@ -53,7 +54,7 @@
 						</view>
 					</view>
 
-					<!-- 3a. above/below: 显示触发价格 -->
+					<!-- 3. 触发值输入 -->
 					<view v-if="isSimpleType" class="form-group">
 						<text class="form-label">触发价格 (USD)</text>
 						<input
@@ -64,15 +65,25 @@
 						/>
 					</view>
 
-					<!-- 3b. amplitude/percent_up/percent_down: 显示基准价格和触发比例 -->
 					<view v-if="!isSimpleType" class="form-group">
 						<text class="form-label">基准价格 (USD)</text>
-						<input
-							class="form-input"
-							type="digit"
-							placeholder="如当前价"
-							v-model="form.base_price"
-						/>
+						<view class="base-price-row">
+							<input
+								class="form-input base-price-input"
+								type="digit"
+								placeholder="如当前价"
+								v-model="form.base_price"
+							/>
+							<view v-if="basePriceLoading" class="base-price-hint-wrap">
+								<text class="base-price-hint">获取中...</text>
+							</view>
+							<view v-else-if="basePriceAutoFetched" class="base-price-hint-wrap" @tap="onBasePriceFill">
+								<text class="base-price-hint">已自动获取: ${{ autoBasePrice }}</text>
+							</view>
+							<view v-else class="base-price-hint-wrap" @tap="fetchBasePrice">
+								<text class="base-price-hint fetch-btn">手动获取</text>
+							</view>
+						</view>
 					</view>
 
 					<view v-if="!isSimpleType" class="form-group">
@@ -87,21 +98,21 @@
 
 					<!-- 4. 频率控制 -->
 					<view class="form-group form-row">
-						<text class="form-label">连续触发</text>
+						<text class="form-label">持续预警</text>
 						<switch
 							:checked="form.is_continuous"
 							color="#409EFF"
-							@change="form.is_continuous = $event.detail.value"
+							@change="form.is_continuous = $any($event).detail.value"
 						/>
 					</view>
 
-					<view v-if="form.is_continuous" class="form-row-group">
+					<view class="form-row-group">
 						<view class="form-group form-half">
 							<text class="form-label">触发间隔(分钟)</text>
 							<input
 								class="form-input"
 								type="number"
-								placeholder="默认 5"
+								placeholder="最小 5"
 								v-model="form.interval_minutes"
 							/>
 						</view>
@@ -110,7 +121,7 @@
 							<input
 								class="form-input"
 								type="number"
-								placeholder="默认 1"
+								placeholder="最小 1"
 								v-model="form.max_notifications"
 							/>
 						</view>
@@ -165,7 +176,7 @@
 								<text class="rule-symbol">{{ item.crypto_symbol }}</text>
 								<view class="badges">
 									<text v-if="item.is_active" class="badge badge-active">监控中</text>
-									<text v-if="item.is_continuous" class="badge badge-continuous">连续触发</text>
+									<text v-if="item.is_continuous" class="badge badge-continuous">持续预警</text>
 								</view>
 							</view>
 							<text class="rule-condition">{{ formatCondition(item) }}</text>
@@ -185,9 +196,9 @@
 					</view>
 				</view>
 
-				<!-- 移动端底部添加按钮 -->
-				<view class="add-btn mobile-only" @tap="toggleAddForm">
-					<text class="btn-text">{{ editingId ? '编辑预警' : '+ 添加预警' }}</text>
+				<!-- 移动端底部按钮 -->
+				<view class="add-btn mobile-only" @tap="onMobileBtnTap">
+					<text class="btn-text">{{ showAddForm ? '返回' : '+ 添加预警' }}</text>
 				</view>
 			</view>
 		</view>
@@ -197,7 +208,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { alertsApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
+import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
 
 // 预警类型选项（5种）
 const alertTypeOptions = [
@@ -241,6 +252,11 @@ const form = ref({
 	notification_channel: '',
 	notification_group: '',
 })
+
+// 基准价格自动获取相关
+const basePriceLoading = ref(false)
+const autoBasePrice = ref(0)
+const basePriceAutoFetched = ref(false)
 
 // above / below 为简单类型
 const isSimpleType = computed(() => {
@@ -362,6 +378,90 @@ const onTypeChange = (type: string) => {
 	form.value.threshold_price = ''
 	form.value.base_price = ''
 	form.value.threshold_value = ''
+	basePriceAutoFetched.value = false
+	autoBasePrice.value = 0
+}
+
+// 移动端按钮：表单打开时关闭表单
+const onMobileBtnTap = () => {
+	if (showAddForm.value) {
+		editingId.value = null
+		showAddForm.value = false
+		resetForm()
+	} else {
+		toggleAddForm()
+	}
+}
+
+// 交易对自动补全
+const normalizeSymbol = (raw: string): string => {
+	const s = raw.trim().toUpperCase()
+	if (!s) return ''
+	if (!s.endsWith('USDT')) return `${s}USDT`
+	return s
+}
+
+// 输入框失焦时自动补全交易对
+const onSymbolBlur = () => {
+	if (form.value.crypto_symbol.trim()) {
+		const normalized = normalizeSymbol(form.value.crypto_symbol)
+		if (normalized && normalized !== form.value.crypto_symbol) {
+			form.value.crypto_symbol = normalized
+		}
+		// 非简单类型时自动获取基准价格
+		if (!isSimpleType.value) {
+			fetchBasePrice()
+		}
+	}
+}
+
+// 自动获取的基准价格填入输入框
+const onBasePriceFill = () => {
+	if (autoBasePrice.value > 0) {
+		form.value.base_price = String(autoBasePrice.value)
+	}
+}
+
+// 从 API 获取基准价格
+const fetchBasePrice = async () => {
+	const symbol = normalizeSymbol(form.value.crypto_symbol)
+	if (!symbol) {
+		uni.showToast({ title: '请先输入交易对', icon: 'none' })
+		return
+	}
+	basePriceLoading.value = true
+	console.log('[fetchBasePrice] 开始请求, symbol:', symbol)
+	try {
+		const res = await klinesApi.getKlines(symbol, '1m', 1)
+		console.log('[fetchBasePrice] 请求返回, res:', JSON.stringify(res))
+		const body = res.data as any
+		console.log('[fetchBasePrice] body:', JSON.stringify(body))
+		const klines = body?.data?.klines || body?.klines || []
+		console.log('[fetchBasePrice] klines:', JSON.stringify(klines))
+		if (Array.isArray(klines) && klines.length > 0) {
+			const close = klines[0].close
+			if (close != null) {
+				const price = parseFloat(close)
+				if (price > 0) {
+					autoBasePrice.value = price
+					basePriceAutoFetched.value = true
+					form.value.base_price = String(price)
+					console.log('[fetchBasePrice] 成功, 价格:', price)
+				} else {
+					uni.showToast({ title: '获取到的价格无效', icon: 'none' })
+				}
+			}
+		} else if (body?.success === false) {
+			uni.showToast({ title: body.error || '获取价格失败', icon: 'none' })
+		} else {
+			uni.showToast({ title: '未获取到价格数据', icon: 'none' })
+		}
+	} catch (e: any) {
+		console.error('[fetchBasePrice] 异常:', e)
+		uni.showToast({ title: '获取价格失败: ' + (e?.message || '未知'), icon: 'none' })
+	} finally {
+		basePriceLoading.value = false
+	}
 }
 
 // 重置表单
@@ -380,6 +480,8 @@ const resetForm = () => {
 	}
 	selectedChannelIndex.value = -1
 	groupPickerIndex.value = 0
+	basePriceAutoFetched.value = false
+	autoBasePrice.value = 0
 	if (channels.value.length > 0) {
 		const defaultIdx = channels.value.findIndex((c) => c.is_default)
 		selectedChannelIndex.value = defaultIdx >= 0 ? defaultIdx : 0
@@ -440,14 +542,13 @@ const onGroupPickerChange = (e: any) => {
 
 // 提交（新增或编辑）
 const submitAlert = async () => {
-	const symbol = form.value.crypto_symbol.trim().toUpperCase()
+	const symbol = normalizeSymbol(form.value.crypto_symbol)
 	if (!symbol) {
 		uni.showToast({ title: '请输入交易对', icon: 'none' })
 		return
 	}
 
 	let thresholdPrice = 0
-	let basePrice = 0
 	let thresholdValue = 0
 
 	if (isSimpleType.value) {
@@ -457,51 +558,44 @@ const submitAlert = async () => {
 			return
 		}
 	} else {
-		basePrice = parseFloat(form.value.base_price)
-		if (!basePrice || basePrice <= 0) {
-			uni.showToast({ title: '请输入有效基准价格', icon: 'none' })
-			return
-		}
 		thresholdValue = parseFloat(form.value.threshold_value)
 		if (!thresholdValue || thresholdValue <= 0) {
 			uni.showToast({ title: '请输入有效触发比例', icon: 'none' })
 			return
 		}
-		if (form.value.alert_type === 'percent_up') {
-			thresholdPrice = basePrice * (1 + thresholdValue / 100)
-		} else if (form.value.alert_type === 'percent_down') {
-			thresholdPrice = basePrice * (1 - thresholdValue / 100)
-		} else if (form.value.alert_type === 'amplitude') {
-			thresholdPrice = basePrice * (1 + thresholdValue / 100)
-		}
 	}
 
 	submitting.value = true
+	const payload: any = {
+		crypto_symbol: symbol,
+		alert_type: form.value.alert_type,
+	}
+
+	if (isSimpleType.value) {
+		payload.threshold_price = parseFloat(thresholdPrice.toFixed(4))
+	} else {
+		payload.threshold_price = 0
+		payload.threshold_value = parseFloat(thresholdValue.toFixed(2))
+		const baseInput = parseFloat(form.value.base_price)
+		if (baseInput && baseInput > 0) {
+			payload.base_price = parseFloat(baseInput.toFixed(4))
+		}
+	}
+
+	if (form.value.is_continuous) {
+		payload.is_continuous = true
+	}
+	payload.interval_minutes = parseInt(form.value.interval_minutes, 10) || 5
+	payload.max_notifications = parseInt(form.value.max_notifications, 10) || 1
+
+	if (form.value.notification_channel.trim()) {
+		payload.notification_channel = form.value.notification_channel.trim()
+	}
+	if (form.value.notification_group.trim()) {
+		payload.notification_group = form.value.notification_group.trim()
+	}
+
 	try {
-		const payload: any = {
-			crypto_symbol: symbol,
-			alert_type: form.value.alert_type,
-			threshold_price: parseFloat(thresholdPrice.toFixed(4)),
-		}
-
-		if (!isSimpleType.value) {
-			payload.base_price = parseFloat(basePrice.toFixed(4))
-			payload.threshold_value = parseFloat(thresholdValue.toFixed(2))
-		}
-
-		if (form.value.is_continuous) {
-			payload.is_continuous = true
-			payload.interval_minutes = parseInt(form.value.interval_minutes, 10) || 5
-			payload.max_notifications = parseInt(form.value.max_notifications, 10) || 1
-		}
-
-		if (form.value.notification_channel.trim()) {
-			payload.notification_channel = form.value.notification_channel.trim()
-		}
-		if (form.value.notification_group.trim()) {
-			payload.notification_group = form.value.notification_group.trim()
-		}
-
 		if (editingId.value) {
 			// 暂时用 PUT 接口，如果后端不支持则删重建
 			await alertsApi.update(editingId.value, payload)
@@ -574,11 +668,11 @@ const formatCondition = (item: AlertItem): string => {
 		case 'below':
 			return `低于 $${price(item.threshold_price)}`
 		case 'percent_up':
-			return `基准 $${price(item.base_price)}，涨幅 ${item.threshold_value}%`
+			return `涨幅 ${item.threshold_value}%`
 		case 'percent_down':
-			return `基准 $${price(item.base_price)}，跌幅 ${item.threshold_value}%`
+			return `跌幅 ${item.threshold_value}%`
 		case 'amplitude':
-			return `基准 $${price(item.base_price)}，振幅 ${item.threshold_value}%`
+			return `振幅 ${item.threshold_value}%`
 		default:
 			return `${item.alert_type} $${price(item.threshold_price)}`
 	}
@@ -724,6 +818,33 @@ const goToLogin = () => {
 	font-size: 28rpx;
 	color: #303133;
 	box-sizing: border-box;
+}
+
+.base-price-row {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.base-price-input {
+	flex: 1;
+}
+
+.base-price-hint-wrap {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+}
+
+.base-price-hint {
+	font-size: 24rpx;
+	color: #909399;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.base-price-hint.fetch-btn {
+	color: #409eff;
 }
 
 .type-group {
