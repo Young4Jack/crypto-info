@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.api import auth, cryptocurrencies, alerts, assets, dashboard
+from app.api import auth, cryptocurrencies, alerts, assets, dashboard, price_search
 from app.api import settings as settings_router
 from app.api import api_settings
 from app.api import alert_histories
@@ -112,6 +112,7 @@ app.include_router(account.router)
 app.include_router(watchlist.router)
 app.include_router(klines.router)
 app.include_router(notification_channels.router)
+app.include_router(price_search.router)
 
 # 全局异常处理
 @app.exception_handler(Exception)
