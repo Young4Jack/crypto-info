@@ -343,12 +343,43 @@
             <el-select v-model="dialogForm.alert_type" style="width: 100%">
               <el-option label="价格高于 ↑" value="above" />
               <el-option label="价格低于 ↓" value="below" />
+              <el-option label="振幅预警 ↕" value="amplitude" />
+              <el-option label="涨幅百分比 ↗" value="percent_up" />
+              <el-option label="跌幅百分比 ↘" value="percent_down" />
             </el-select>
           </el-form-item>
-          <el-form-item label="目标价格 ($)" prop="threshold_price">
-            <el-input-number v-model="dialogForm.threshold_price" :min="0" :precision="4" :step="1" style="width: 100%" />
+          <el-form-item :label="['above', 'below'].includes(dialogForm.alert_type) ? '目标价格 ($)' : '触发阈值 (%)'" prop="threshold_price">
+            <el-input-number v-model="dialogForm.threshold_price" :precision="['above', 'below'].includes(dialogForm.alert_type) ? 4 : 2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
         </div>
+
+        <div class="form-row-2">
+          <el-form-item label="持续预警">
+            <el-switch v-model="dialogForm.is_continuous" active-text="是" inactive-text="否" />
+          </el-form-item>
+          <el-form-item label="通知次数">
+            <el-input-number v-model="dialogForm.max_notifications" :min="1" :max="100" style="width: 100%" />
+          </el-form-item>
+        </div>
+
+        <div class="form-row-2">
+          <el-form-item label="间隔(分钟)">
+            <el-input-number v-model="dialogForm.interval_minutes" :min="1" :max="1440" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="通知渠道">
+            <el-select v-model="dialogForm.notification_channel" placeholder="默认" clearable style="width: 100%" @change="dialogForm.notification_group = ''">
+              <el-option label="使用默认" value="" />
+              <el-option v-for="ch in channels" :key="ch.name" :label="ch.name" :value="ch.name" />
+            </el-select>
+          </el-form-item>
+        </div>
+
+        <el-form-item label="通知频道">
+          <el-select v-model="dialogForm.notification_group" :placeholder="dialogForm.notification_channel ? '默认频道' : '使用默认'" clearable style="width: 100%">
+            <el-option label="使用默认" value="" />
+            <el-option v-for="g in (channels.find(c => c.name === dialogForm.notification_channel)?.groups || [])" :key="g" :label="g" :value="g" />
+          </el-select>
+        </el-form-item>
       </el-form>
       
       <template #footer>
