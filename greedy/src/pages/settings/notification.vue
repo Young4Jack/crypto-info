@@ -289,7 +289,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 <style scoped>
 .notification-page {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -314,7 +314,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 .loading-text,
 .error-text {
 	font-size: 28rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .error-text {
@@ -333,13 +333,13 @@ const deleteChannel = async (ch: NotificationChannel) => {
 }
 
 .empty-text {
-	font-size: 30rpx;
-	color: #909399;
+    font-size: 30rpx;
+    color: var(--text-tertiary);
 }
 
 .empty-hint {
 	font-size: 24rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 .channels-scroll {
@@ -354,7 +354,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 }
 
 .channel-card {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 28rpx;
 	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
@@ -370,7 +370,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 .channel-name {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .badge-default {
@@ -392,14 +392,14 @@ const deleteChannel = async (ch: NotificationChannel) => {
 }
 
 .channel-url {
-	font-size: 22rpx;
-	color: #909399;
-	word-break: break-all;
+    font-size: 22rpx;
+    color: var(--text-secondary);
+    word-break: break-all;
 }
 
 .channel-groups {
-	font-size: 22rpx;
-	color: #c0c4cc;
+    font-size: 22rpx;
+    color: var(--text-tertiary);
 }
 
 .card-actions {
@@ -466,7 +466,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 .form-card {
 	width: 90%;
 	max-width: 600rpx;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 20rpx;
 	padding: 30rpx;
 	max-height: 85vh;
@@ -483,12 +483,12 @@ const deleteChannel = async (ch: NotificationChannel) => {
 .form-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .form-close {
 	font-size: 48rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	line-height: 1;
 }
 
@@ -505,7 +505,7 @@ const deleteChannel = async (ch: NotificationChannel) => {
 .form-label {
 	font-size: 26rpx;
 	font-weight: 500;
-	color: #303133;
+	color: var(--text-primary);
 	margin-bottom: 12rpx;
 	display: block;
 }
@@ -518,17 +518,17 @@ const deleteChannel = async (ch: NotificationChannel) => {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
-	background-color: #ffffff;
+	background-color: var(--input-bg);
 }
 
 .form-input:disabled {
-	background-color: #f5f7fa;
-	color: #c0c4cc;
+	background-color: var(--page-bg);
+	color: var(--text-tertiary);
 }
 
 .form-submit {

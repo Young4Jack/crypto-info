@@ -24,11 +24,14 @@
 				</view>
 			</view>
 
-			<!-- 加载/错误状态 -->
-			<view v-if="loading && coinList.length === 0" class="loading-state">
-				<text class="loading-text">加载中...</text>
+			<!-- 首次加载骨架屏 -->
+			<view v-if="loading && coinList.length === 0" class="skeleton-state">
+				<view class="skeleton-card"></view>
+				<view class="skeleton-card"></view>
+				<view class="skeleton-card"></view>
 			</view>
 
+			<!-- 错误状态 -->
 			<view v-else-if="error" class="error-state">
 				<text class="error-text">{{ error }}</text>
 				<view class="retry-btn" @tap="fetchData">
@@ -42,6 +45,7 @@
 					v-for="coin in coinList"
 					:key="coin.id"
 					class="coin-card"
+					:class="{ 'price-flash-up': coin.priceFlash === 'up', 'price-flash-down': coin.priceFlash === 'down' }"
 					@tap="isManageMode ? null : handleCoinClick(coin.symbol)"
 				>
 					<view class="coin-main">
@@ -114,9 +118,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, onUnmounted } from 'vue'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 interface CoinItem {
 	id: number
@@ -126,12 +131,16 @@ interface CoinItem {
 	change: number
 	is_public: boolean
 	notes: string
+	priceFlash?: 'up' | 'down' | null
 }
 
 const coinList = ref<CoinItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const isLoggedIn = ref(false)
+
+const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
+
 const isManageMode = ref(false)
 
 const showEditModal = ref(false)
@@ -184,48 +193,65 @@ const fetchData = async () => {
 			return
 		}
 
-		// 已登录：以 watchlist 为主数据源（确保有 id），用 klines 补充价格
-		const [klinesRes, watchlistRes] = await Promise.all([
-			klinesApi.getWatchlistKlines('1d', 2),
-			watchlistApi.getList(),
-		])
-
-		// 构建 klines 映射（补充价格和涨跌幅）
-		const klinesMap = new Map<string, { price: string; change: number }>()
-		const body = klinesRes.data as any
-		const raw = body?.data || body || {}
-		for (const symbol of Object.keys(raw)) {
-			const item = raw[symbol]
-			const klines = item?.klines || []
-			if (klines.length === 0) continue
-			const price = parseFloat(klines[klines.length - 1]?.close ?? 0)
-			const change = calcChange(klines)
-			klinesMap.set(symbol.toUpperCase(), {
-				price: formatPrice(price),
-				change,
-			})
-		}
-
-		// 以 watchlist 为主遍历
-		const list: CoinItem[] = []
-		for (const wl of (watchlistRes.data || [])) {
-			const symUpper = wl.crypto_symbol.toUpperCase()
-			const kline = klinesMap.get(symUpper)
-			list.push({
-				id: wl.id,
-				symbol: wl.crypto_symbol,
-				name: wl.crypto_name || wl.crypto_symbol.replace('USDT', ''),
-				price: kline?.price || '--',
-				change: kline?.change ?? 0,
-				is_public: wl.is_public,
-				notes: wl.notes || '',
-			})
-		}
+		// 已登录：先快速加载 watchlist（DB 数据，秒回）
+		const watchlistRes = await watchlistApi.getList()
+		const list: CoinItem[] = (watchlistRes.data || []).map((wl) => ({
+			id: wl.id,
+			symbol: wl.crypto_symbol,
+			name: wl.crypto_name || wl.crypto_symbol.replace('USDT', ''),
+			price: '--',
+			change: 0,
+			is_public: wl.is_public,
+			notes: wl.notes || '',
+		}))
 		coinList.value = list
+		loading.value = false
+
+		// 后台异步获取价格数据，不阻塞页面渲染
+		try {
+			const klinesRes = await klinesApi.getWatchlistKlines('1d', 2)
+			const klinesMap = new Map<string, { price: string; change: number }>()
+			const body = klinesRes.data as any
+			const raw = body?.data || body || {}
+			for (const symbol of Object.keys(raw)) {
+				const item = raw[symbol]
+				const klines = item?.klines || []
+				if (klines.length === 0) continue
+				const price = parseFloat(klines[klines.length - 1]?.close ?? 0)
+				const change = calcChange(klines)
+				klinesMap.set(symbol.toUpperCase(), {
+					price: formatPrice(price),
+					change,
+				})
+			}
+
+		// 合并价格数据到已有列表
+		for (const coin of coinList.value) {
+			const kline = klinesMap.get(coin.symbol.toUpperCase())
+			if (kline) {
+				// 价格变化闪动检测
+				if (coin.price !== '--' && coin.price !== kline.price) {
+					const oldPrice = parseFloat(coin.price)
+					const newPrice = parseFloat(kline.price)
+					coin.priceFlash = newPrice > oldPrice ? 'up' : 'down'
+					setTimeout(() => {
+						coin.priceFlash = null
+					}, 500)
+				}
+				coin.price = kline.price
+				coin.change = kline.change
+			}
+		}
+		coinList.value = [...coinList.value]
+		} catch {
+			// 价格获取失败不影响列表展示
+		}
 	} catch (e: any) {
 		error.value = e?.message || '加载失败，请检查网络'
 	} finally {
-		loading.value = false
+		if (loading.value) {
+			loading.value = false
+		}
 	}
 }
 
@@ -332,21 +358,35 @@ onShow(async () => {
 	const token = uni.getStorageSync('token')
 	isLoggedIn.value = !!token
 	await fetchData()
+	// 启动自动刷新
+	startAutoRefresh(fetchData)
+})
+
+onUnmounted(() => {
+	stopAutoRefresh()
+})
+
+onPullDownRefresh(async () => {
+	await fetchData()
+	uni.stopPullDownRefresh()
 })
 </script>
 
 <style scoped>
 .market-page {
-	display: flex;
-	justify-content: center;
-	min-height: 100vh;
-	background-color: #f5f7fa;
-	padding: 20rpx;
+ 	display: flex;
+ 	justify-content: center;
+ 	min-height: 100vh;
+ 	background-color: var(--page-bg);
+ 	padding: 20rpx;
+ 	box-sizing: border-box;
+ 	overflow-x: hidden;
 }
 
 .market-container {
-	width: 100%;
-	max-width: 1200px;
+ 	width: 100%;
+ 	max-width: 1200px;
+ 	box-sizing: border-box;
 }
 
 /* 页面头部 */
@@ -360,7 +400,7 @@ onShow(async () => {
 .header-title {
 	font-size: 44rpx;
 	font-weight: 700;
-	color: #1a1a2e;
+	color: var(--text-primary);
 	letter-spacing: 2rpx;
 }
 
@@ -387,12 +427,12 @@ onShow(async () => {
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 50%;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .action-icon-wrap:active {
-	background-color: #e8eaed;
+	background-color: var(--text-placeholder);
 }
 
 .action-icon-primary {
@@ -407,7 +447,7 @@ onShow(async () => {
 .action-icon {
 	font-size: 40rpx;
 	font-weight: 300;
-	color: #606266;
+	color: var(--text-secondary);
 	line-height: 1;
 }
 
@@ -431,7 +471,7 @@ onShow(async () => {
 	justify-content: center;
 	padding: 10rpx 28rpx;
 	border-radius: 32rpx;
-	background-color: #1a1a2e;
+	background-color: var(--text-primary);
 	box-shadow: 0 2rpx 8rpx rgba(26, 26, 46, 0.2);
 }
 
@@ -442,13 +482,12 @@ onShow(async () => {
 
 .manage-text {
 	font-size: 24rpx;
-	color: #ffffff;
+	color: var(--page-bg);
 	font-weight: 600;
 	letter-spacing: 2rpx;
 }
 
 /* 状态区 */
-.loading-state,
 .error-state,
 .empty-state {
 	display: flex;
@@ -459,13 +498,29 @@ onShow(async () => {
 	gap: 20rpx;
 }
 
-.loading-text,
-.error-text {
-	font-size: 28rpx;
-	color: #909399;
+/* 骨架屏 */
+.skeleton-state {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+	padding: 20rpx 0;
+}
+
+.skeleton-card {
+	height: 120rpx;
+	background: linear-gradient(90deg, var(--border-color) 25%, var(--text-placeholder) 50%, var(--border-color) 75%);
+	background-size: 200% 100%;
+	animation: skeleton-loading 1.5s ease-in-out infinite;
+	border-radius: 12rpx;
+}
+
+@keyframes skeleton-loading {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
 }
 
 .error-text {
+	font-size: 28rpx;
 	color: #f56c6c;
 }
 
@@ -481,13 +536,13 @@ onShow(async () => {
 }
 
 .empty-text {
-	font-size: 30rpx;
-	color: #909399;
+    font-size: 30rpx;
+    color: var(--text-tertiary);
 }
 
 .empty-hint {
 	font-size: 24rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 /* 卡片列表 */
@@ -500,10 +555,10 @@ onShow(async () => {
 .coin-card {
 	display: flex;
 	flex-direction: column;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 12rpx;
 	padding: 28rpx 24rpx;
-	box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .coin-card:active {
@@ -527,12 +582,12 @@ onShow(async () => {
 .coin-name {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .coin-pair {
 	font-size: 22rpx;
-	color: #999999;
+	color: var(--text-tertiary);
 }
 
 .coin-right {
@@ -546,7 +601,7 @@ onShow(async () => {
 .price-value {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -564,11 +619,31 @@ onShow(async () => {
 	color: #00c853;
 }
 
+@keyframes flashUp {
+	0% { background-color: transparent; }
+	50% { background-color: rgba(0, 200, 83, 0.2); }
+	100% { background-color: transparent; }
+}
+
+@keyframes flashDown {
+	0% { background-color: transparent; }
+	50% { background-color: rgba(245, 108, 108, 0.2); }
+	100% { background-color: transparent; }
+}
+
+.price-flash-up {
+	animation: flashUp 0.5s ease;
+}
+
+.price-flash-down {
+	animation: flashDown 0.5s ease;
+}
+
 /* 管理模式操作面板 */
 .manage-panel {
 	margin-top: 16rpx;
 	padding-top: 16rpx;
-	border-top: 2rpx solid #f0f2f5;
+	border-top: 2rpx solid var(--border-color);
 }
 
 .manage-row {
@@ -636,7 +711,7 @@ onShow(async () => {
 
 .modal-content {
 	width: 600rpx;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 20rpx;
 	overflow: hidden;
 }
@@ -646,18 +721,18 @@ onShow(async () => {
 	justify-content: space-between;
 	align-items: center;
 	padding: 30rpx;
-	border-bottom: 2rpx solid #f0f2f5;
+	border-bottom: 2rpx solid var(--border-color);
 }
 
 .modal-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .modal-close {
 	font-size: 48rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	line-height: 1;
 }
 
@@ -677,10 +752,10 @@ onShow(async () => {
 	width: 100%;
 	height: 160rpx;
 	padding: 16rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 26rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
 }
 
@@ -704,7 +779,7 @@ onShow(async () => {
 }
 
 .modal-btn-cancel {
-	background-color: #f0f2f5;
+	background-color: var(--border-color);
 }
 
 .modal-btn-cancel .btn-text {

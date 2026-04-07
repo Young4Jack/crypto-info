@@ -137,7 +137,7 @@ const addToWatchlist = async () => {
 <style scoped>
 .search-page {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -157,11 +157,11 @@ const addToWatchlist = async () => {
 	flex: 1;
 	height: 80rpx;
 	padding: 0 24rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 12rpx;
 	font-size: 28rpx;
-	color: #303133;
-	background-color: #ffffff;
+	color: var(--text-primary);
+	background-color: var(--input-bg);
 	box-sizing: border-box;
 }
 
@@ -199,7 +199,7 @@ const addToWatchlist = async () => {
 
 .loading-text {
 	font-size: 28rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .result-section {
@@ -212,10 +212,10 @@ const addToWatchlist = async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 32rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .result-info {
@@ -227,12 +227,12 @@ const addToWatchlist = async () => {
 .result-symbol {
 	font-size: 36rpx;
 	font-weight: 700;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .result-name {
 	font-size: 24rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .result-price {
@@ -275,12 +275,12 @@ const addToWatchlist = async () => {
 
 .empty-text {
 	font-size: 30rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .empty-hint {
 	font-size: 24rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 @media (min-width: 768px) {

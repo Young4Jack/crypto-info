@@ -19,6 +19,15 @@
 
 			<!-- 已登录态 -->
 			<view v-else>
+				<!-- 首次加载骨架屏 -->
+				<view v-if="loading && alertRules.length === 0" class="skeleton-state">
+					<view class="skeleton-card skeleton-wide"></view>
+					<view class="skeleton-card skeleton-wide"></view>
+					<view class="skeleton-card"></view>
+				</view>
+
+				<!-- 已加载完成：显示表单和列表 -->
+				<view v-else>
 				<!-- 添加/编辑预警表单 -->
 				<view v-if="showAddForm" class="add-form-card">
 					<view class="form-header">
@@ -165,7 +174,7 @@
 				</view>
 
 				<!-- 预警规则列表 -->
-				<view class="alert-list">
+				<view v-else class="alert-list">
 					<view
 						v-for="item in alertRules"
 						:key="item.id"
@@ -196,6 +205,8 @@
 					</view>
 				</view>
 
+				</view>
+
 				<!-- 移动端底部按钮 -->
 				<view class="add-btn mobile-only" @tap="onMobileBtnTap">
 					<text class="btn-text">{{ showAddForm ? '返回' : '+ 添加预警' }}</text>
@@ -206,9 +217,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 // 预警类型选项（5种）
 const alertTypeOptions = [
@@ -225,6 +237,8 @@ const isLoggedIn = ref(false)
 // 加载状态
 const loading = ref(false)
 const submitting = ref(false)
+
+const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
 // 预警列表
 const alertRules = ref<AlertItem[]>([])
@@ -285,10 +299,17 @@ onShow(async () => {
 		return
 	}
 	isLoggedIn.value = true
-	fetchAlertList()
+	// 并行加载预警列表和通知渠道
+	await fetchAlertList()
 	if (channels.value.length === 0) {
-		await fetchChannels()
+		fetchChannels()
 	}
+	// 启动自动刷新
+	startAutoRefresh(fetchAlertList)
+})
+
+onUnmounted(() => {
+	stopAutoRefresh()
 })
 
 // 获取通知渠道
@@ -701,9 +722,9 @@ const goToLogin = () => {
 
 <style scoped>
 .alert-page {
-	min-height: 100vh;
-	background-color: #f5f7fa;
-	padding: 20rpx;
+    min-height: 100vh;
+    background-color: var(--page-bg);
+    padding: 20rpx;
 }
 
 .alert-container {
@@ -721,9 +742,9 @@ const goToLogin = () => {
 }
 
 .header-title {
-	font-size: 36rpx;
-	font-weight: bold;
-	color: #1a1a2e;
+    font-size: 36rpx;
+    font-weight: bold;
+    color: var(--text-primary);
 }
 
 /* 添加按钮 */
@@ -767,7 +788,7 @@ const goToLogin = () => {
 
 .guest-title {
 	font-size: 32rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .guest-login-btn {
@@ -781,11 +802,11 @@ const goToLogin = () => {
 
 /* 表单卡片 */
 .add-form-card {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 30rpx;
 	margin-bottom: 24rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .form-header {
@@ -798,12 +819,12 @@ const goToLogin = () => {
 .form-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .form-close {
 	font-size: 48rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	line-height: 1;
 }
 
@@ -817,17 +838,17 @@ const goToLogin = () => {
 .form-label {
 	font-size: 26rpx;
 	font-weight: 500;
-	color: #303133;
+	color: var(--text-primary);
 }
 
 .form-input {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
 }
 
@@ -849,7 +870,7 @@ const goToLogin = () => {
 
 .base-price-hint {
 	font-size: 24rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	white-space: nowrap;
 	cursor: pointer;
 }
@@ -869,10 +890,10 @@ const goToLogin = () => {
 	align-items: center;
 	justify-content: center;
 	height: 64rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 24rpx;
-	color: #606266;
+	color: var(--text-secondary);
 }
 
 .radio-btn.active {
@@ -921,10 +942,10 @@ const goToLogin = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 28rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .rule-info {
@@ -945,7 +966,7 @@ const goToLogin = () => {
 .rule-symbol {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .badges {
@@ -971,12 +992,12 @@ const goToLogin = () => {
 
 .rule-condition {
 	font-size: 26rpx;
-	color: #606266;
+	color: var(--text-secondary);
 }
 
 .rule-meta {
 	font-size: 22rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 .rule-actions {
@@ -1015,15 +1036,40 @@ const goToLogin = () => {
 	padding: 100rpx 0;
 }
 
+/* 骨架屏 */
+.skeleton-state {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	padding: 20rpx 0;
+}
+
+.skeleton-card {
+	height: 160rpx;
+	background: linear-gradient(90deg, var(--border-color) 25%, var(--text-placeholder) 50%, var(--border-color) 75%);
+	background-size: 200% 100%;
+	animation: skeleton-loading 1.5s ease-in-out infinite;
+	border-radius: 16rpx;
+}
+
+.skeleton-card.skeleton-wide {
+	height: 180rpx;
+}
+
+@keyframes skeleton-loading {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
 .empty-text {
 	font-size: 30rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	margin-bottom: 12rpx;
 }
 
 .empty-hint {
 	font-size: 24rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 /* PC 端 */
@@ -1050,13 +1096,13 @@ const goToLogin = () => {
 	align-items: center;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 }
 
 .picker-text {
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1064,7 +1110,7 @@ const goToLogin = () => {
 
 .picker-arrow {
 	font-size: 20rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	margin-left: 16rpx;
 }
 </style>

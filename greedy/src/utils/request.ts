@@ -18,11 +18,20 @@ function isInWhiteList(url: string): boolean {
   return WHITE_LIST.some((path) => cleanUrl === path || cleanUrl.startsWith(path + '/'))
 }
 
-// 未登录态拦截：清除缓存并跳转登录页
+// 未登录态拦截：清除缓存并跳转登录页，携带 redirect 参数
 function redirectToLogin() {
   uni.removeStorageSync('token')
   uni.removeStorageSync('user')
-  uni.reLaunch({ url: '/pages/login/login' })
+  // 获取当前页面路径，登录后返回
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const route = currentPage?.route ? `/${currentPage.route}` : ''
+  const redirectUrl = route ? encodeURIComponent(route) : ''
+  // 使用 navigateTo 保留页面栈，登录后 navigateBack 可返回
+  uni.navigateTo({
+    url: `/pages/login/login${redirectUrl ? `?redirect=${redirectUrl}` : ''}`,
+    fail: () => { uni.reLaunch({ url: '/pages/login/login' }) }
+  })
   uni.showToast({ title: '请先登录', icon: 'none' })
 }
 
@@ -113,8 +122,16 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
   })
 }
 
+// App/小程序环境无 URLSearchParams，手动序列化查询参数
+function serializeQuery(params: Record<string, any>): string {
+  return Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&')
+}
+
 export function get<T = any>(url: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-  const query = params ? '?' + new URLSearchParams(params).toString() : ''
+  const query = params && Object.keys(params).length ? `?${serializeQuery(params)}` : ''
   return request<T>({ url: url + query, method: 'GET' })
 }
 

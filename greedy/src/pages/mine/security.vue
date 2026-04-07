@@ -157,7 +157,7 @@ const onSubmit = async () => {
 <style scoped>
 .security-page {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -168,10 +168,10 @@ const onSubmit = async () => {
 }
 
 .form-card {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 40rpx 30rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .form-group {
@@ -181,7 +181,7 @@ const onSubmit = async () => {
 .form-label {
 	font-size: 26rpx;
 	font-weight: 500;
-	color: #303133;
+	color: var(--text-primary);
 	margin-bottom: 12rpx;
 	display: block;
 }
@@ -190,12 +190,12 @@ const onSubmit = async () => {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
-	background-color: #ffffff;
+	background-color: var(--input-bg);
 }
 
 .form-input:focus {
@@ -204,7 +204,7 @@ const onSubmit = async () => {
 
 .divider-label {
 	font-size: 22rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 	text-align: center;
 	margin: 20rpx 0 24rpx;
 	position: relative;
@@ -217,7 +217,7 @@ const onSubmit = async () => {
 	top: 50%;
 	width: 30%;
 	height: 2rpx;
-	background-color: #ebeef5;
+	background-color: var(--border-color);
 }
 
 .divider-label::before {

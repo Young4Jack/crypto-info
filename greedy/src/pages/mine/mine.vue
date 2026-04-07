@@ -51,13 +51,13 @@
 				</view>
 
 				<view class="menu-group">
-					<view class="menu-item" @tap="handleMenuTap('theme')">
+					<view class="menu-item" @tap="showThemePicker = true">
 						<view class="menu-left">
 							<text class="menu-icon">🌙</text>
 							<text class="menu-label">主题切换</text>
 						</view>
 						<view class="menu-right">
-							<text class="menu-value">浅色</text>
+							<text class="menu-value">{{ currentThemeLabel }}</text>
 							<text class="menu-arrow">›</text>
 						</view>
 					</view>
@@ -108,14 +108,54 @@
 					</view>
 				</view>
 			</view>
+
+			<!-- 主题选择弹窗 -->
+			<view v-if="showThemePicker" class="modal-overlay" @tap="showThemePicker = false">
+				<view class="modal-content" @tap.stop>
+					<view class="modal-header">
+						<text class="modal-title">选择主题</text>
+						<text class="modal-close" @tap="showThemePicker = false">×</text>
+					</view>
+					<view class="theme-options">
+						<view
+							v-for="opt in themeOptions"
+							:key="opt.value"
+							class="theme-option"
+							:class="{ active: themeMode === opt.value }"
+							@tap="selectTheme(opt.value)"
+						>
+							<text class="theme-label">{{ opt.label }}</text>
+							<text v-if="themeMode === opt.value" class="theme-check">✓</text>
+						</view>
+					</view>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { authApi } from '@/api'
+import { useTheme, type ThemeMode } from '@/composables/useDarkMode'
+
+const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
+
+const showThemePicker = ref(false)
+
+const currentThemeLabel = computed(() => getThemeLabel(themeMode.value))
+
+const themeOptions = [
+  { value: 'light' as ThemeMode, label: '浅色' },
+  { value: 'dark' as ThemeMode, label: '深色' },
+  { value: 'system' as ThemeMode, label: '跟随系统' },
+]
+
+const selectTheme = (mode: ThemeMode) => {
+  setTheme(mode)
+  showThemePicker.value = false
+}
 
 // 登录状态
 const isLoggedIn = ref(false)
@@ -233,7 +273,7 @@ const goToSettings = () => {
 	display: flex;
 	justify-content: center;
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -247,11 +287,11 @@ const goToSettings = () => {
 	display: flex;
 	align-items: center;
 	gap: 30rpx;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 24rpx;
 	padding: 40rpx;
 	margin-bottom: 30rpx;
-	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 /* 未登录态：可点击 */
@@ -272,7 +312,7 @@ const goToSettings = () => {
 	width: 100rpx;
 	height: 100rpx;
 	border-radius: 50%;
-	background: linear-gradient(135deg, #409eff 0%, #2c7be5 100%);
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -280,7 +320,7 @@ const goToSettings = () => {
 
 /* 未登录灰色头像 */
 .avatar-guest {
-	background: linear-gradient(135deg, #c0c4cc 0%, #909399 100%);
+	background: linear-gradient(135deg, #909399 0%, #606266 100%);
 }
 
 .avatar-text {
@@ -298,17 +338,17 @@ const goToSettings = () => {
 .nickname {
 	font-size: 36rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 /* 未登录态昵称 */
 .nickname-guest {
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .uid {
 	font-size: 24rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 /* 设置菜单列表 */
@@ -319,10 +359,10 @@ const goToSettings = () => {
 }
 
 .menu-group {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	overflow: hidden;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .menu-item {
@@ -330,7 +370,7 @@ const goToSettings = () => {
 	justify-content: space-between;
 	align-items: center;
 	padding: 28rpx 30rpx;
-	border-bottom: 2rpx solid #f0f2f5;
+	border-bottom: 2rpx solid var(--border-color);
 }
 
 .menu-item:last-child {
@@ -348,8 +388,8 @@ const goToSettings = () => {
 }
 
 .menu-label {
-	font-size: 30rpx;
-	color: #1a1a2e;
+    font-size: 30rpx;
+    color: var(--text-primary);
 }
 
 .menu-right {
@@ -359,13 +399,13 @@ const goToSettings = () => {
 }
 
 .menu-value {
-	font-size: 26rpx;
-	color: #909399;
+    font-size: 26rpx;
+    color: var(--text-tertiary);
 }
 
 .menu-arrow {
-	font-size: 36rpx;
-	color: #c0c4cc;
+    font-size: 36rpx;
+    color: var(--text-tertiary);
 }
 
 /* 退出登录按钮样式 */
@@ -395,5 +435,75 @@ const goToSettings = () => {
 	.mine-container {
 		max-width: 800px;
 	}
+}
+
+/* 主题选择弹窗 */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 999;
+}
+
+.modal-content {
+	width: 600rpx;
+	background-color: var(--card-bg);
+	border-radius: 20rpx;
+	overflow: hidden;
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 30rpx;
+	border-bottom: 2rpx solid var(--border-color);
+}
+
+.modal-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+	font-size: 48rpx;
+	color: var(--text-tertiary);
+	line-height: 1;
+}
+
+.theme-options {
+	padding: 20rpx 0;
+}
+
+.theme-option {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 28rpx 30rpx;
+}
+
+.theme-option:active {
+	background-color: var(--page-bg);
+}
+
+.theme-option.active {
+	background-color: var(--border-color);
+}
+
+.theme-label {
+    font-size: 30rpx;
+    color: var(--text-primary);
+}
+
+.theme-check {
+	font-size: 32rpx;
+	color: var(--text-primary);
 }
 </style>

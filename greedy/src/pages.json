@@ -1,16 +1,16 @@
 {
 	"pages": [
 		{
-			"path": "pages/login/login",
-			"style": {
-				"navigationBarTitleText": "登录",
-				"enablePullDownRefresh": false
-			}
-		},
-		{
 			"path": "pages/market/market",
 			"style": {
 				"navigationBarTitleText": "关注列表",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
 				"enablePullDownRefresh": false
 			}
 		},
@@ -101,26 +101,26 @@
 			{
 				"pagePath": "pages/market/market",
 				"text": "关注",
-				"iconPath": "static/tab-market.png",
-				"selectedIconPath": "static/tab-market-active.png"
+				"iconPath": "/static/tab-market.svg",
+				"selectedIconPath": "/static/tab-market.svg"
 			},
 			{
 				"pagePath": "pages/alert/alert",
 				"text": "预警",
-				"iconPath": "static/tab-alert.png",
-				"selectedIconPath": "static/tab-alert-active.png"
+				"iconPath": "/static/tab-alert.svg",
+				"selectedIconPath": "/static/tab-alert.svg"
 			},
 			{
 				"pagePath": "pages/assets/assets",
 				"text": "资产",
-				"iconPath": "static/tab-assets.png",
-				"selectedIconPath": "static/tab-assets-active.png"
+				"iconPath": "/static/tab-assets.svg",
+				"selectedIconPath": "/static/tab-assets.svg"
 			},
 			{
 				"pagePath": "pages/mine/mine",
 				"text": "我的",
-				"iconPath": "static/tab-mine.png",
-				"selectedIconPath": "static/tab-mine-active.png"
+				"iconPath": "/static/tab-mine.svg",
+				"selectedIconPath": "/static/tab-mine.svg"
 			}
 		]
 	},

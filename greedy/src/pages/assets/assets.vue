@@ -11,144 +11,149 @@
 
 			<!-- 已登录态 -->
 			<view v-else>
-				<!-- 仪表盘概览卡片 -->
-				<view v-if="dashboardLoaded" class="overview-card">
-					<text class="overview-label">总估值 (USD)</text>
-					<text class="overview-value">${{ formatNumber(dashboard.total_value) }}</text>
-					<view class="pnl-row">
-						<view class="pnl-item">
-							<text class="pnl-label">累计盈亏</text>
-							<text :class="['pnl-value', dashboard.total_profit_loss >= 0 ? 'profit' : 'loss']">
-								{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}${{ formatNumber(dashboard.total_profit_loss) }}
-							</text>
-						</view>
-						<view class="pnl-divider"></view>
-						<view class="pnl-item">
-							<text class="pnl-label">盈亏比例</text>
-							<text :class="['pnl-value', dashboard.total_profit_loss_percentage >= 0 ? 'profit' : 'loss']">
-								{{ dashboard.total_profit_loss_percentage >= 0 ? '+' : '' }}{{ dashboard.total_profit_loss_percentage.toFixed(2) }}%
-							</text>
-						</view>
-					</view>
+				<!-- 首次加载骨架屏 -->
+				<view v-if="loading && assets.length === 0" class="skeleton-state">
+					<view class="skeleton-card skeleton-dashboard"></view>
+					<view class="skeleton-card skeleton-list-item"></view>
+					<view class="skeleton-card skeleton-list-item"></view>
 				</view>
 
-				<!-- 加载骨架：仪表盘未就绪 -->
-				<view v-else class="overview-card overview-loading">
-					<text class="overview-label">加载中...</text>
-				</view>
-
-				<!-- 添加资产按钮 -->
-				<view class="holdings-header">
-					<text class="header-title">持有资产</text>
-					<view class="header-actions">
-						<text class="header-count">共 {{ assets.length }} 个</text>
-						<view class="add-btn pc-only" @tap="toggleForm">
-							<text class="btn-text">+ 添加资产</text>
-						</view>
-					</view>
-				</view>
-
-				<!-- 添加/编辑资产表单 -->
-				<view v-if="showForm" class="add-form-card">
-					<view class="form-header">
-						<text class="form-title">{{ editingId ? '编辑资产' : '添加资产' }}</text>
-						<text class="form-close" @tap="toggleForm">×</text>
-					</view>
-
-					<view class="form-group">
-						<text class="form-label">交易对</text>
-						<input
-							class="form-input"
-							type="text"
-							placeholder="如 btc / BTC / BTCUSDT 均可，自动补全 USDT"
-							v-model="form.crypto_symbol"
-							@blur="onSymbolBlur"
-						/>
-					</view>
-
-					<view class="form-row-group">
-						<view class="form-group form-half">
-							<text class="form-label">买入价格 (USD)</text>
-							<input
-								class="form-input"
-								type="digit"
-								placeholder="如 65000"
-								v-model="form.buy_price"
-							/>
-						</view>
-						<view class="form-group form-half">
-							<text class="form-label">持有数量</text>
-							<input
-								class="form-input"
-								type="digit"
-								placeholder="如 0.5"
-								v-model="form.quantity"
-							/>
-						</view>
-					</view>
-
-					<view class="form-group">
-						<text class="form-label">备注（可选）</text>
-						<input
-							class="form-input"
-							type="text"
-							placeholder="如 长期持有"
-							v-model="form.notes"
-						/>
-					</view>
-
-					<view class="form-submit-btn" @tap="submitAsset">
-						<text class="btn-text">{{ submitting ? '提交中...' : (editingId ? '保存修改' : '确认添加') }}</text>
-					</view>
-				</view>
-
-				<!-- 资产列表 -->
-				<scroll-view scroll-y class="holdings-scroll">
-					<view class="holdings-list">
-						<view
-							v-for="item in assets"
-							:key="item.id"
-							class="holding-card"
-						>
-							<view class="holding-left">
-								<view class="coin-icon" :style="{ backgroundColor: getCoinColor(item.crypto_symbol) }">
-									<text class="coin-abbreviation">{{ getShortSymbol(item.crypto_symbol) }}</text>
-								</view>
-								<view class="coin-detail">
-									<text class="coin-name">{{ item.crypto_name }}</text>
-									<text class="coin-amount">{{ item.quantity }} {{ getShortSymbol(item.crypto_symbol) }}</text>
-									<text class="coin-buy-price">成本 ${{ formatNumber(item.buy_price) }}</text>
-								</view>
+				<!-- 已加载完成 -->
+				<view v-else>
+					<!-- 仪表盘概览卡片 -->
+					<view v-if="dashboardLoaded" class="overview-card">
+						<text class="overview-label">总估值 (USD)</text>
+						<text class="overview-value">${{ formatNumber(dashboard.total_value) }}</text>
+						<view class="pnl-row">
+							<view class="pnl-item">
+								<text class="pnl-label">累计盈亏</text>
+								<text :class="['pnl-value', dashboard.total_profit_loss >= 0 ? 'profit' : 'loss']">
+									{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}${{ formatNumber(dashboard.total_profit_loss) }}
+								</text>
 							</view>
-							<view class="holding-right">
-								<text class="coin-total-value">${{ formatNumber(item.total_value) }}</text>
-								<view class="price-pnl-row">
-									<text class="coin-current-price">现 ${{ formatNumber(item.current_price) }}</text>
-									<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
-										{{ getItemPnl(item) >= 0 ? '+' : '' }}${{ formatNumber(getItemPnl(item)) }}
-									</text>
-								</view>
-								<view class="action-btns">
-									<view class="edit-btn-wrap" @tap.stop="openEdit(item)">
-										<text class="edit-btn-text">编辑</text>
-									</view>
-									<view class="delete-btn-wrap" @tap.stop="confirmDelete(item)">
-										<text class="delete-btn-text">删除</text>
-									</view>
-								</view>
+							<view class="pnl-divider"></view>
+							<view class="pnl-item">
+								<text class="pnl-label">盈亏比例</text>
+								<text :class="['pnl-value', dashboard.total_profit_loss_percentage >= 0 ? 'profit' : 'loss']">
+									{{ dashboard.total_profit_loss_percentage >= 0 ? '+' : '' }}{{ dashboard.total_profit_loss_percentage.toFixed(2) }}%
+								</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 添加资产按钮 -->
+					<view class="holdings-header">
+						<text class="header-title">持有资产</text>
+						<view class="header-actions">
+							<text class="header-count">共 {{ assets.length }} 个</text>
+							<view class="add-btn pc-only" @tap="toggleForm">
+								<text class="btn-text">+ 添加资产</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 添加/编辑资产表单 -->
+					<view v-if="showForm" class="add-form-card">
+						<view class="form-header">
+							<text class="form-title">{{ editingId ? '编辑资产' : '添加资产' }}</text>
+							<text class="form-close" @tap="toggleForm">×</text>
+						</view>
+
+						<view class="form-group">
+							<text class="form-label">交易对</text>
+							<input
+								class="form-input"
+								type="text"
+								placeholder="如 btc / BTC / BTCUSDT 均可，自动补全 USDT"
+								v-model="form.crypto_symbol"
+								@blur="onSymbolBlur"
+							/>
+						</view>
+
+						<view class="form-row-group">
+							<view class="form-group form-half">
+								<text class="form-label">买入价格 (USD)</text>
+								<input
+									class="form-input"
+									type="digit"
+									placeholder="如 65000"
+									v-model="form.buy_price"
+								/>
+							</view>
+							<view class="form-group form-half">
+								<text class="form-label">持有数量</text>
+								<input
+									class="form-input"
+									type="digit"
+									placeholder="如 0.5"
+									v-model="form.quantity"
+								/>
 							</view>
 						</view>
 
-						<view v-if="!loading && assets.length === 0" class="empty-state">
-							<text class="empty-text">暂无持仓记录</text>
-							<text class="empty-hint">点击上方按钮添加你的第一个资产</text>
+						<view class="form-group">
+							<text class="form-label">备注（可选）</text>
+							<input
+								class="form-input"
+								type="text"
+								placeholder="如 长期持有"
+								v-model="form.notes"
+							/>
+						</view>
+
+						<view class="form-submit-btn" @tap="submitAsset">
+							<text class="btn-text">{{ submitting ? '提交中...' : (editingId ? '保存修改' : '确认添加') }}</text>
 						</view>
 					</view>
-				</scroll-view>
 
-				<!-- 移动端底部按钮 -->
-				<view class="add-btn mobile-only" @tap="onMobileBtnTap">
-					<text class="btn-text">{{ showForm ? '返回' : '+ 添加资产' }}</text>
+					<!-- 资产列表 -->
+					<scroll-view scroll-y class="holdings-scroll">
+						<view class="holdings-list">
+							<view
+								v-for="item in assets"
+								:key="item.id"
+								class="holding-card"
+							>
+								<view class="holding-left">
+									<view class="coin-icon" :style="{ backgroundColor: getCoinColor(item.crypto_symbol) }">
+										<text class="coin-abbreviation">{{ getShortSymbol(item.crypto_symbol) }}</text>
+									</view>
+									<view class="coin-detail">
+										<text class="coin-name">{{ item.crypto_name }}</text>
+										<text class="coin-amount">{{ item.quantity }} {{ getShortSymbol(item.crypto_symbol) }}</text>
+										<text class="coin-buy-price">成本 ${{ formatNumber(item.buy_price) }}</text>
+									</view>
+								</view>
+								<view class="holding-right">
+									<text class="coin-total-value">${{ formatNumber(item.total_value) }}</text>
+									<view class="price-pnl-row">
+										<text class="coin-current-price">现 ${{ formatNumber(item.current_price) }}</text>
+										<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
+											{{ getItemPnl(item) >= 0 ? '+' : '' }}${{ formatNumber(getItemPnl(item)) }}
+										</text>
+									</view>
+									<view class="action-btns">
+										<view class="edit-btn-wrap" @tap.stop="openEdit(item)">
+											<text class="edit-btn-text">编辑</text>
+										</view>
+										<view class="delete-btn-wrap" @tap.stop="confirmDelete(item)">
+											<text class="delete-btn-text">删除</text>
+										</view>
+									</view>
+								</view>
+							</view>
+
+							<view v-if="assets.length === 0" class="empty-state">
+								<text class="empty-text">暂无持仓记录</text>
+								<text class="empty-hint">点击上方按钮添加你的第一个资产</text>
+							</view>
+						</view>
+					</scroll-view>
+
+					<!-- 移动端底部按钮 -->
+					<view class="add-btn mobile-only" @tap="onMobileBtnTap">
+						<text class="btn-text">{{ showForm ? '返回' : '+ 添加资产' }}</text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -156,9 +161,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { dashboardApi, assetsApi, type AssetItem } from '@/api'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const isLoggedIn = ref(false)
 const loading = ref(false)
@@ -166,6 +172,8 @@ const submitting = ref(false)
 const dashboardLoaded = ref(false)
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
+
+const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
 const dashboard = ref({
 	total_value: 0,
@@ -191,7 +199,15 @@ onShow(async () => {
 		return
 	}
 	isLoggedIn.value = true
-	await Promise.all([fetchDashboard(), fetchAssets()])
+	// 资产列表优先加载，仪表盘数据异步后台加载不阻塞页面
+	await fetchAssets()
+	fetchDashboard()
+	// 启动自动刷新
+	startAutoRefresh(fetchAssets)
+})
+
+onUnmounted(() => {
+	stopAutoRefresh()
 })
 
 const fetchDashboard = async () => {
@@ -228,7 +244,6 @@ const normalizeSymbol = (raw: string): string => {
 	return s
 }
 
-// 交易对失焦时自动补全 USDT 后缀并回显到输入框
 const onSymbolBlur = () => {
 	if (form.value.crypto_symbol.trim()) {
 		const normalized = normalizeSymbol(form.value.crypto_symbol)
@@ -265,7 +280,6 @@ const resetForm = () => {
 	}
 }
 
-// 打开编辑：回填表单数据并滚动到表单顶部
 const openEdit = (item: AssetItem) => {
 	editingId.value = item.id
 	showForm.value = true
@@ -385,7 +399,7 @@ const goToLogin = () => {
 <style scoped>
 .assets-page {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -397,7 +411,6 @@ const goToLogin = () => {
 	flex-direction: column;
 }
 
-/* 未登录态 */
 .guest-state {
 	display: flex;
 	flex-direction: column;
@@ -409,7 +422,7 @@ const goToLogin = () => {
 
 .guest-title {
 	font-size: 32rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .guest-login-btn {
@@ -427,22 +440,17 @@ const goToLogin = () => {
 	font-weight: 500;
 }
 
-/* 仪表盘概览卡片 */
 .overview-card {
-	background: linear-gradient(135deg, #409eff 0%, #2c7be5 100%);
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	border-radius: 24rpx;
 	padding: 40rpx;
 	margin-bottom: 30rpx;
-	box-shadow: 0 8rpx 24rpx rgba(64, 158, 255, 0.25);
-}
-
-.overview-loading {
-	opacity: 0.7;
+	box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
 }
 
 .overview-label {
 	font-size: 26rpx;
-	color: rgba(255, 255, 255, 0.8);
+	color: rgba(255, 255, 255, 0.85);
 	margin-bottom: 12rpx;
 }
 
@@ -470,13 +478,13 @@ const goToLogin = () => {
 
 .pnl-label {
 	font-size: 22rpx;
-	color: rgba(255, 255, 255, 0.7);
+	color: var(--text-placeholder);
 }
 
 .pnl-value {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #ffffff;
+	color: var(--card-bg);
 	font-family: 'Monaco', monospace;
 }
 
@@ -491,10 +499,9 @@ const goToLogin = () => {
 .pnl-divider {
 	width: 2rpx;
 	height: 50rpx;
-	background-color: rgba(255, 255, 255, 0.2);
+	background-color: rgba(255, 255, 255, 0.25);
 }
 
-/* 持有资产列表头部 */
 .holdings-header {
 	display: flex;
 	justify-content: space-between;
@@ -505,7 +512,7 @@ const goToLogin = () => {
 .header-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .header-actions {
@@ -516,10 +523,9 @@ const goToLogin = () => {
 
 .header-count {
 	font-size: 24rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
-/* 添加按钮 */
 .add-btn {
 	display: flex;
 	align-items: center;
@@ -542,9 +548,8 @@ const goToLogin = () => {
 	margin-top: 24rpx;
 }
 
-/* 表单卡片 */
 .add-form-card {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 30rpx;
 	margin-bottom: 24rpx;
@@ -561,12 +566,12 @@ const goToLogin = () => {
 .form-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .form-close {
 	font-size: 48rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	line-height: 1;
 }
 
@@ -580,17 +585,17 @@ const goToLogin = () => {
 .form-label {
 	font-size: 26rpx;
 	font-weight: 500;
-	color: #303133;
+	color: var(--text-primary);
 }
 
 .form-input {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
 }
 
@@ -616,7 +621,6 @@ const goToLogin = () => {
 	opacity: 0.85;
 }
 
-/* 滚动容器 */
 .holdings-scroll {
 	flex: 1;
 }
@@ -632,10 +636,10 @@ const goToLogin = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 24rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--card-shadow);
 }
 
 .holding-left {
@@ -672,17 +676,17 @@ const goToLogin = () => {
 .coin-name {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 }
 
 .coin-amount {
 	font-size: 22rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .coin-buy-price {
 	font-size: 20rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 .holding-right {
@@ -695,14 +699,14 @@ const goToLogin = () => {
 
 .coin-current-price {
 	font-size: 20rpx;
-	color: #909399;
+	color: var(--text-secondary);
 	font-family: 'Monaco', monospace;
 }
 
 .coin-total-value {
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #1a1a2e;
+	color: var(--text-primary);
 	font-family: 'Monaco', monospace;
 	margin-bottom: 4rpx;
 }
@@ -765,7 +769,6 @@ const goToLogin = () => {
 	opacity: 0.6;
 }
 
-/* 空状态 */
 .empty-state {
 	display: flex;
 	flex-direction: column;
@@ -776,16 +779,42 @@ const goToLogin = () => {
 
 .empty-text {
 	font-size: 30rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 	margin-bottom: 12rpx;
 }
 
 .empty-hint {
 	font-size: 24rpx;
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
-/* PC 端响应式 */
+.skeleton-state {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	padding: 20rpx 0;
+}
+
+.skeleton-card {
+	background: linear-gradient(90deg, var(--border-color) 25%, var(--text-placeholder) 50%, var(--border-color) 75%);
+	background-size: 200% 100%;
+	animation: skeleton-loading 1.5s ease-in-out infinite;
+	border-radius: 16rpx;
+}
+
+.skeleton-dashboard {
+	height: 260rpx;
+}
+
+.skeleton-list-item {
+	height: 160rpx;
+}
+
+@keyframes skeleton-loading {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
 @media (min-width: 768px) {
 	.pc-only {
 		display: flex;

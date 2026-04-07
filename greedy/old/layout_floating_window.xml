@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_floating"
+    android:paddingLeft="1dp"
+    android:paddingRight="1dp"
+    android:paddingTop="0dp"
+    android:paddingBottom="0dp">
+
+    <!-- 悬浮窗常亮按钮容器 -->
+    <LinearLayout
+        android:id="@+id/floatToggleContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/btnFloatKeepScreen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="☀ 常亮"
+            android:textSize="8sp"
+            android:textColor="#66FFFFFF"
+            android:gravity="center"
+            android:padding="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#33FFFFFF" />
+    </LinearLayout>
+
+    <!-- 价格列表容器 -->
+    <LinearLayout
+        android:id="@+id/priceContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal" />
+
+    <!-- 关闭按钮 -->
+    <TextView
+        android:id="@+id/btnClose"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="停止监控"
+        android:textSize="9sp"
+        android:textColor="#66FFFFFF"
+        android:gravity="center"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp" />
+
+</LinearLayout>

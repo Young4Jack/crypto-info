@@ -65,68 +65,63 @@ const goToPreference = () => {
 
 <style scoped>
 .settings-page {
-	min-height: 100vh;
-	background-color: #f5f7fa;
-	padding: 20rpx;
+  min-height: 100vh;
+  background-color: var(--page-bg);
+  padding: 20rpx;
 }
 
 .settings-container {
-	width: 100%;
-	max-width: 800px;
-	margin: 0 auto;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .menu-group {
-	background-color: #ffffff;
-	border-radius: 16rpx;
-	overflow: hidden;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+  background-color: var(--card-bg);
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
 .menu-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 28rpx 30rpx;
-	border-bottom: 2rpx solid #f0f2f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 30rpx;
+  border-bottom: 2rpx solid var(--border-color);
 }
 
 .menu-item:last-child {
-	border-bottom: none;
+  border-bottom: none;
 }
 
 .menu-item:active {
-	background-color: #f5f7fa;
+  background-color: var(--page-bg);
 }
 
 .menu-left {
-	display: flex;
-	align-items: center;
-	gap: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
 }
 
 .menu-icon {
-	font-size: 36rpx;
+  font-size: 36rpx;
 }
 
 .menu-label {
-	font-size: 30rpx;
-	color: #1a1a2e;
+  font-size: 30rpx;
+  color: var(--text-primary);
 }
 
 .menu-right {
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.menu-value {
-	font-size: 24rpx;
-	color: #c0c4cc;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .menu-arrow {
-	font-size: 36rpx;
-	color: #c0c4cc;
+  font-size: 36rpx;
+  color: var(--text-tertiary);
 }
 </style>

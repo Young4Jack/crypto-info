@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app'
 import { initConfig } from '@/utils/config'
+import { useTheme } from '@/composables/useDarkMode'
 
 const handleResize = () => {
 	// #ifdef H5
@@ -16,6 +17,8 @@ onLaunch(async () => {
 	console.log('App Launch')
 	// 初始化全局配置（API 域名、WS 域名）
 	await initConfig()
+	// 应用用户选择的主题
+	useTheme()
 	// #ifdef H5
 	handleResize()
 	window.addEventListener('resize', handleResize)
@@ -24,16 +27,48 @@ onLaunch(async () => {
 </script>
 
 <style>
+/* ========== 全局 CSS 变量主题系统 ========== */
 page {
-	background-color: #f5f7fa;
+	background-color: var(--page-bg, #f5f7fa);
+}
+
+/* 浅色主题（默认） */
+:root {
+	--page-bg: #f5f7fa;
+	--card-bg: #ffffff;
+	--text-primary: #1a1a2e;
+	--text-secondary: #606266;
+	--text-tertiary: #909399;
+	--text-placeholder: #c0c4cc;
+	--border-color: #dcdfe6;
+	--card-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+	--header-bg: #ffffff;
+	--input-bg: #ffffff;
+}
+
+/* 深色主题 */
+.dark {
+	--page-bg: #0f1419;
+	--card-bg: #1a1f2e;
+	--text-primary: #e8eaed;
+	--text-secondary: #9aa0a6;
+	--text-tertiary: #5f6368;
+	--text-placeholder: #3c4043;
+	--border-color: #2d333b;
+	--card-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.3);
+	--header-bg: #1a1f2e;
+	--input-bg: #22272e;
 }
 
 /* 禁止 html/body 产生额外滚动容器 */
 html, body {
 	margin: 0;
 	padding: 0;
+	overflow-x: hidden;
 	overflow-y: auto;
 	height: 100%;
+	width: 100%;
+	max-width: 100vw;
 }
 
 /* 全局隐藏左侧导航栏滚动条 + 强制色块延伸 */
@@ -54,4 +89,53 @@ html, body {
 	margin: 0 !important;
 	padding: 0 !important;
 }
+
+/* ========== H5 端底部导航栏深色模式适配 ========== */
+/* #ifdef H5 */
+.dark .uni-tabbar {
+	background-color: #1a1f2e !important;
+	border-top-color: #2d333b !important;
+}
+
+.dark .uni-tabbar .uni-tabbar-item .uni-tabbar-item-icon image {
+	filter: brightness(0.6) invert(1);
+	opacity: 0.7;
+	transition: all 0.3s;
+}
+
+.dark .uni-tabbar .uni-tabbar-item.uni-tabbar-item-selected .uni-tabbar-item-icon image {
+	filter: brightness(1) invert(1);
+	opacity: 1;
+}
+
+.dark .uni-tabbar .uni-tabbar-item .uni-tabbar-item-text {
+	color: #5f6368 !important;
+}
+
+.dark .uni-tabbar .uni-tabbar-item.uni-tabbar-item-selected .uni-tabbar-item-text {
+	color: #409EFF !important;
+}
+
+/* H5 端导航栏深色模式 */
+.dark .uni-page-head {
+	background-color: var(--card-bg) !important;
+}
+
+.dark .uni-page-head .uni-page-head__title,
+.dark .uni-page-head .uni-page-head__inner .uni-page-head__title,
+.dark .uni-page-head .uni-title {
+	color: var(--text-primary) !important;
+}
+
+.dark .uni-page-head .uni-page-head__content {
+	color: var(--text-primary) !important;
+}
+
+/* 修复全局横向滚动 */
+html, body {
+	overflow-x: hidden;
+	width: 100%;
+	max-width: 100vw;
+}
+/* #endif */
 </style>

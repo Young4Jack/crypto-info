@@ -1,23 +1,23 @@
 {
-  "name": "crypto-uni-poc",
-  "appid": "",
-  "description": "Crypto-info uni-app POC",
-  "versionName": "0.0.1",
-  "versionCode": "100",
-  "transformPx": false,
-  "h5": {
-    "devServer": {
-      "proxy": {
-        "/api": {
-          "target": "http://127.0.0.1:8000",
-          "changeOrigin": true,
-          "ws": true
+    "name" : "cryptoBOX",
+    "appid" : "__UNI__4D56031",
+    "description" : "CryptBOX uniapp",
+    "versionName" : "0.0.1",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "h5" : {
+        "devServer" : {
+            "proxy" : {
+                "/api" : {
+                    "target" : "http://127.0.0.1:8000",
+                    "changeOrigin" : true,
+                    "ws" : true
+                }
+            }
+        },
+        "title" : "cryptoBOX",
+        "router" : {
+            "mode" : "history"
         }
-      }
-    },
-    "title": "Crypto-info",
-    "router": {
-      "mode": "history"
     }
-  }
 }

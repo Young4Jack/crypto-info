@@ -62,14 +62,15 @@ async function tryCurrentDomain(): Promise<boolean> {
 						wsBase.value = ws
 						resolve(true)
 					} else {
-						// 请求成功但没返回 base_url，保持 apiBase 为空（走相对路径）
-						resolve(true)
+						// 请求成功但没返回 base_url，降级到优先级 2（读取环境变量）
+						resolve(false)
 					}
 				} else {
 					resolve(false)
 				}
 			},
 			fail: () => {
+				// 静默失败：本地后端未启动时必然触发，不影响降级到优先级 2
 				resolve(false)
 			},
 		})
@@ -83,6 +84,7 @@ async function tryCurrentDomain(): Promise<boolean> {
 // 优先级 2：环境变量兜底（生产环境域名默认 https）
 function loadFromEnv() {
 	const base = (import.meta as any).env?.VITE_API_BASE || ''
+	//console.log('[Config] loadFromEnv -> VITE_API_BASE:', base)
 	if (base) {
 		const { http, ws } = normalizeUrl(base, 'https')
 		apiBase.value = http

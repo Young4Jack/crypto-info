@@ -205,7 +205,7 @@ const onSubmit = async () => {
 <style scoped>
 .preference-page {
 	min-height: 100vh;
-	background-color: #f5f7fa;
+	background-color: var(--page-bg);
 	padding: 20rpx;
 }
 
@@ -220,7 +220,7 @@ const onSubmit = async () => {
 }
 
 .config-card {
-	background-color: #ffffff;
+	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 30rpx;
 	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
@@ -229,7 +229,7 @@ const onSubmit = async () => {
 .card-title {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1a1a2e;
+	color: var(--text-primary);
 	margin-bottom: 24rpx;
 }
 
@@ -242,9 +242,9 @@ const onSubmit = async () => {
 }
 
 .form-label {
-	font-size: 26rpx;
-	font-weight: 500;
-	color: #303133;
+ 	font-size: 26rpx;
+ 	font-weight: 500;
+ 	color: var(--text-primary);
 	margin-bottom: 12rpx;
 	display: block;
 }
@@ -253,12 +253,12 @@ const onSubmit = async () => {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	box-sizing: border-box;
-	background-color: #ffffff;
+	background-color: var(--input-bg);
 }
 
 .form-input:focus {
@@ -269,29 +269,29 @@ const onSubmit = async () => {
 	width: 100%;
 	height: 80rpx;
 	padding: 0 20rpx;
-	border: 2rpx solid #dcdfe6;
+	border: 2rpx solid var(--border-color);
 	border-radius: 8rpx;
 	font-size: 28rpx;
-	color: #303133;
+	color: var(--text-primary);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	box-sizing: border-box;
-	background-color: #ffffff;
+	background-color: var(--input-bg);
 }
 
 .picker-text {
-	color: #303133;
+	color: var(--text-primary);
 }
 
 .picker-text:empty::before {
 	content: '请选择';
-	color: #c0c4cc;
+	color: var(--text-tertiary);
 }
 
 .picker-arrow {
 	font-size: 24rpx;
-	color: #909399;
+	color: var(--text-tertiary);
 }
 
 .switch-row {
@@ -299,7 +299,7 @@ const onSubmit = async () => {
 	justify-content: space-between;
 	align-items: center;
 	padding: 16rpx 0;
-	border-bottom: 2rpx solid #f0f2f5;
+	border-bottom: 2rpx solid var(--border-color);
 }
 
 .switch-row:last-child {
@@ -307,8 +307,8 @@ const onSubmit = async () => {
 }
 
 .switch-label {
-	font-size: 28rpx;
-	color: #1a1a2e;
+ 	font-size: 28rpx;
+ 	color: var(--text-primary);
 }
 
 .submit-btn {
