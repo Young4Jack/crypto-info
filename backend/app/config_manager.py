@@ -19,11 +19,6 @@ class ConfigManager:
                 "api_key": "",
                 "api_secret": ""
             },
-            "notification_settings": {
-                "api_url": "",
-                "auth_token": "",
-                "channel": "email"
-            },
             "notification_channels": [],
             "system_settings": {
                 "refresh_interval": 5,
@@ -79,17 +74,6 @@ class ConfigManager:
         """保存API设置"""
         config = self.load_config()
         config["api_settings"] = api_settings
-        return self.save_config(config)
-    
-    def get_notification_settings(self) -> Dict[str, Any]:
-        """获取通知设置"""
-        config = self.load_config()
-        return config.get("notification_settings", self.default_config["notification_settings"])
-    
-    def save_notification_settings(self, notification_settings: Dict[str, Any]) -> bool:
-        """保存通知设置"""
-        config = self.load_config()
-        config["notification_settings"] = notification_settings
         return self.save_config(config)
     
     def _migrate_notification_channels(self, config: Dict[str, Any]) -> Dict[str, Any]:

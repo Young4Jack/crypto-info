@@ -36,7 +36,7 @@
                 <el-table-column prop="api_url" label="API 地址" show-overflow-tooltip />
                 <el-table-column label="频道" width="150">
                   <template #default="{ row }">
-                    <el-tag v-for="g in row.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
+                    <el-tag v-for="g in [...new Set(row.groups)]" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="默认" width="60" align="center">
@@ -69,7 +69,7 @@
                   <div class="channel-field">
                     <span class="channel-field-label">频道</span>
                     <span class="channel-field-value">
-                      <el-tag v-for="g in ch.groups" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
+                      <el-tag v-for="g in [...new Set(ch.groups)]" :key="g" size="small" style="margin: 2px;">{{ g }}</el-tag>
                     </span>
                   </div>
                 </div>
