@@ -280,19 +280,8 @@ const chartOption = computed(() => {
 				// #endif
 
 				// #ifndef H5
-				// App端：不用 div 标签，只用 span + br 实现多行
-				return `
-					<span style="font-family: Monaco, monospace; font-size: 12px; color: ${dark ? '#d0d0e0' : '#303133'};">
-						<span style="color: ${tooltipLabel}; font-weight: bold;">${timeStr}</span><br/>
-						<span>开盘: ${formatPrice(openVal)}</span><br/>
-						<span>最高: <span style="color: ${upColor};">${formatPrice(highVal)}</span></span><br/>
-						<span>最低: <span style="color: ${downColor};">${formatPrice(lowVal)}</span></span><br/>
-						<span>收盘: <span style="color: ${color}; font-weight: bold;">${formatPrice(closeVal)}</span></span><br/>
-						<span style="border-top: 1px solid ${tooltipBorder};">涨跌幅: <span style="color: ${color};">${sign}${change}%</span></span><br/>
-						<span>振幅: ${amplitude}%</span><br/>
-						<span>成交量: ${volVal.toFixed(2)}</span>
-					</span>
-				`
+				// App端：lime-echart 不支持 HTML，使用纯文本（换行符分隔）
+				return `时间: ${timeStr}\n开盘: ${formatPrice(openVal)}\n最高: ${formatPrice(highVal)}\n最低: ${formatPrice(lowVal)}\n收盘: ${formatPrice(closeVal)}\n涨跌幅: ${sign}${change}%\n振幅: ${amplitude}%\n成交量: ${volVal.toFixed(2)}`
 				// #endif
 			}
 		},

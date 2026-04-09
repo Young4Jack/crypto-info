@@ -108,26 +108,26 @@
 			{
 				"pagePath": "pages/market/market",
 				"text": "关注",
-				"iconPath": "/static/tab-market.svg",
-				"selectedIconPath": "/static/tab-market.svg"
+				"iconPath": "static/tab-market.png",
+				"selectedIconPath": "static/tab-market-active.png"
 			},
 			{
 				"pagePath": "pages/alert/alert",
 				"text": "预警",
-				"iconPath": "/static/tab-alert.svg",
-				"selectedIconPath": "/static/tab-alert.svg"
+				"iconPath": "static/tab-alert.png",
+				"selectedIconPath": "static/tab-alert-active.png"
 			},
 			{
 				"pagePath": "pages/assets/assets",
 				"text": "资产",
-				"iconPath": "/static/tab-assets.svg",
-				"selectedIconPath": "/static/tab-assets.svg"
+				"iconPath": "static/tab-assets.png",
+				"selectedIconPath": "static/tab-assets-active.png"
 			},
 			{
 				"pagePath": "pages/mine/mine",
 				"text": "我的",
-				"iconPath": "/static/tab-mine.svg",
-				"selectedIconPath": "/static/tab-mine.svg"
+				"iconPath": "static/tab-mine.png",
+				"selectedIconPath": "static/tab-mine-active.png"
 			}
 		]
 	},

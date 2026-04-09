@@ -1137,7 +1137,15 @@ GET /api/system-settings/public
   "default_dark_mode": false,
   "backend_port": 8000,
   "frontend_port": 5173,
-  "timezone": "Asia/Shanghai"
+  "timezone": "Asia/Shanghai",
+  "current_pricing_currency": "CNY",
+  "available_currencies": ["USD", "CNY", "EUR", "JPY"],
+  "exchange_rates": {
+    "CNY": 6.84,
+    "EUR": 0.86,
+    "JPY": 158.5
+  },
+  "exchange_rates_date": "2026-04-09"
 }
 ```
 
@@ -1161,7 +1169,9 @@ POST /api/system-settings/
   "enable_logging": true,
   "default_dark_mode": false,
   "api_shared_secret": "your_secret",
-  "timezone": "Asia/Shanghai"
+  "timezone": "Asia/Shanghai",
+  "current_pricing_currency": "CNY",
+  "available_currencies": ["USD", "CNY", "EUR", "JPY"]
 }
 ```
 
@@ -1195,6 +1205,8 @@ PUT /api/system-settings/
 | default_dark_mode | bool | 默认暗黑模式 |
 | api_shared_secret | string | API共享密钥 |
 | timezone | string | 时区 |
+| current_pricing_currency | string | 当前计价货币 (USD/CNY/EUR/JPY) |
+| available_currencies | array | 支持的货币列表 |
 
 ### 13.5 删除系统设置
 
@@ -1203,6 +1215,28 @@ DELETE /api/system-settings/
 ```
 
 **认证：** 需要 `Authorization: Bearer <token>` 或 `X-API-Secret: <secret>`
+
+### 13.6 手动刷新汇率
+
+```
+POST /api/system-settings/refresh-exchange-rates
+```
+
+**认证：** 需要 `Authorization: Bearer <token>` 或 `X-Shared-Secret: <secret>`
+
+**说明：** 强制重新获取汇率数据。汇率每天自动更新一次，此接口用于手动刷新。
+
+**成功响应 (200)：**
+```json
+{
+  "exchange_rates": {
+    "CNY": 6.84,
+    "EUR": 0.86,
+    "JPY": 158.5
+  },
+  "exchange_rates_date": "2026-04-09"
+}
+```
 
 ---
 

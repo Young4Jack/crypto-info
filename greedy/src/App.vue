@@ -95,6 +95,29 @@ html, body {
 	padding: 0 !important;
 }
 
+/* ========== App 端底部导航栏样式适配 ========== */
+/* #ifndef H5 */
+.uni-tabbar {
+	background-color: #ffffff !important;
+	border-top: 1px solid #e4e7ed !important;
+}
+
+.uni-tabbar-item .uni-tabbar-item-icon {
+	display: none !important;
+}
+
+.uni-tabbar-item .uni-tabbar-item-text {
+	font-size: 14px !important;
+	color: #606266 !important;
+	font-weight: 500;
+}
+
+.uni-tabbar-item-selected .uni-tabbar-item-text {
+	color: #409EFF !important;
+	font-weight: 700 !important;
+}
+/* #endif */
+
 /* ========== H5 端底部导航栏深色模式适配 ========== */
 /* #ifdef H5 */
 .dark .uni-tabbar {

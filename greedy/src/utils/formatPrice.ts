@@ -57,7 +57,11 @@ export const formatPriceRaw = (price: number): string => {
 
 // 数字格式化（无货币符号，用于资产页面总计等）
 export const formatNumber = (n: number): string => {
-	if (n >= 1000) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-	if (n >= 1) return n.toFixed(2)
-	return n.toFixed(2)
+	if (n == null || isNaN(n)) return '0.00'
+	// 处理极大或极小的数，避免精度问题
+	if (!isFinite(n)) return '0.00'
+	// 保留2位小数
+	const fixed = n.toFixed(2)
+	// 移除尾部 .00
+	return fixed.replace(/\.00$/, '')
 }

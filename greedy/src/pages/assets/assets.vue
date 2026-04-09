@@ -367,7 +367,9 @@ const formatNumber = (n: number): string => {
 }
 
 const getItemPnl = (item: AssetItem): number => {
-	return (item.current_price - item.buy_price) * item.quantity
+	// 使用 Math.round 消除浮点精度问题
+	const pnl = (item.current_price - item.buy_price) * item.quantity
+	return Math.round(pnl * 100) / 100
 }
 
 const getShortSymbol = (symbol: string): string => {
