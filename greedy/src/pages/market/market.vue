@@ -481,22 +481,21 @@ onPullDownRefresh(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 10rpx 28rpx;
-	border-radius: 32rpx;
-	background-color: var(--text-primary);
-	box-shadow: 0 2rpx 8rpx rgba(26, 26, 46, 0.2);
+	min-width: 100rpx;
+	height: 56rpx;
+	padding: 0 24rpx;
+	border-radius: 28rpx;
+	background-color: #ecf5ff;
 }
 
 .manage-toggle:active {
-	opacity: 0.8;
-	transform: scale(0.96);
+	background-color: #d9ecff;
 }
 
 .manage-text {
 	font-size: 24rpx;
-	color: var(--page-bg);
-	font-weight: 600;
-	letter-spacing: 2rpx;
+	color: #409eff;
+	font-weight: 500;
 }
 
 /* 状态区 */

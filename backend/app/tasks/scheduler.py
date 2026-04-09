@@ -242,6 +242,9 @@ async def price_check_job():
                         threshold_price=notify_data['threshold_price'],
                         trigger_price=notify_data['current_price'],
                         status=history_status,
+                        notification_channel=notify_data.get('notification_channel'),
+                        notification_group=notify_data.get('notification_group'),
+                        webhook_url=channel_config.get('api_url') if channel_config else None,
                         notification_sent=notification_sent,
                         created_at=now_aware
                     )

@@ -403,7 +403,7 @@ async def delete_alert_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """删除预警规则"""
+    """删除预警规则（保留历史记录，alert_id 置空）"""
     # 获取预警规则
     alert = db.query(PriceAlert).filter(
         PriceAlert.id == alert_id,
@@ -417,6 +417,10 @@ async def delete_alert_rule(
     crypto = db.query(Cryptocurrency).filter(
         Cryptocurrency.id == alert.crypto_id
     ).first()
+    
+    # 将关联的历史记录的 alert_id 置空（保留历史）
+    from app.models.alert_history import AlertHistory
+    db.query(AlertHistory).filter(AlertHistory.alert_id == alert_id).update({"alert_id": None})
     
     # 删除预警规则
     db.delete(alert)
@@ -436,5 +440,5 @@ async def delete_alert_rule(
             db.commit()
             return {"message": "记录及冗余币种已删除"}
     
-    return {"message": "记录已删除"}
+    return {"message": "记录已删除（历史记录已保留）"}
 

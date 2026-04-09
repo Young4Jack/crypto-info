@@ -5,11 +5,21 @@
 			<view class="page-header">
 				<text class="header-title">预警中心</text>
 				<view class="header-actions">
-					<view v-if="isLoggedIn && alertRules.length > 0" class="header-btn" @tap="toggleManageMode">
-						<text class="header-btn-text">{{ showActions ? '完成' : '管理' }}</text>
+					<!-- 刷新按钮（始终可见） -->
+					<view class="header-action-btn" @tap="fetchAlertList">
+						<view class="action-icon-wrap">
+							<text class="action-icon" :class="{ 'icon-spin': loading }">⟳</text>
+						</view>
 					</view>
-					<view v-if="isLoggedIn" class="header-btn primary" @tap="toggleAddForm">
-						<text class="header-btn-text">{{ showAddForm ? '返回' : (editingId ? '编辑' : '添加') }}</text>
+					<!-- 添加按钮（仅登录态可见） -->
+					<view v-if="isLoggedIn" class="header-action-btn" @tap="toggleAddForm">
+						<view class="action-icon-wrap action-icon-primary">
+							<text class="action-icon">＋</text>
+						</view>
+					</view>
+					<!-- 管理模式切换（仅登录态可见） -->
+					<view v-if="isLoggedIn && alertRules.length > 0" class="manage-toggle" @tap="toggleManageMode">
+						<text class="manage-text">{{ showActions ? '完成' : '管理' }}</text>
 					</view>
 				</view>
 			</view>
@@ -126,7 +136,7 @@
 							<input
 								class="form-input"
 								type="number"
-								placeholder="最小 5"
+								placeholder="最小 1"
 								v-model="form.interval_minutes"
 							/>
 						</view>
@@ -414,7 +424,7 @@ const openEdit = (item: AlertItem) => {
 	form.value.notification_group = ''
 
 	// 调试：打印原始数据
-	console.log('[openEdit] 原始 item:', JSON.stringify(item))
+	//console.log('[openEdit] 原始 item:', JSON.stringify(item))
 
 	// 匹配渠道名称
 	const ci = channels.value.findIndex((c) => c.name === form.value.notification_channel)
@@ -493,14 +503,14 @@ const fetchBasePrice = async () => {
 		return
 	}
 	basePriceLoading.value = true
-	console.log('[fetchBasePrice] 开始请求, symbol:', symbol)
+	//console.log('[fetchBasePrice] 开始请求, symbol:', symbol)
 	try {
 		const res = await klinesApi.getKlines(symbol, '1m', 1)
-		console.log('[fetchBasePrice] 请求返回, res:', JSON.stringify(res))
+		//console.log('[fetchBasePrice] 请求返回, res:', JSON.stringify(res))
 		const body = res.data as any
-		console.log('[fetchBasePrice] body:', JSON.stringify(body))
+		//console.log('[fetchBasePrice] body:', JSON.stringify(body))
 		const klines = body?.data?.klines || body?.klines || []
-		console.log('[fetchBasePrice] klines:', JSON.stringify(klines))
+		//console.log('[fetchBasePrice] klines:', JSON.stringify(klines))
 		if (Array.isArray(klines) && klines.length > 0) {
 			const close = klines[0].close
 			if (close != null) {
@@ -648,7 +658,7 @@ const submitAlert = async () => {
 	if (form.value.is_continuous) {
 		payload.is_continuous = true
 	}
-	payload.interval_minutes = parseInt(form.value.interval_minutes, 10) || 5
+	payload.interval_minutes = parseInt(form.value.interval_minutes, 10) || 1
 	payload.max_notifications = parseInt(form.value.max_notifications, 10) || 1
 
 	if (form.value.notification_channel.trim()) {
@@ -809,39 +819,80 @@ const goToLogin = () => {
 .header-actions {
 	display: flex;
 	align-items: center;
-	gap: 20rpx;
+	gap: 16rpx;
 }
 
-.header-btn {
+.header-action-btn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 120rpx;
-	height: 60rpx;
-	padding: 0 28rpx;
-	border-radius: 30rpx;
-	font-size: 26rpx;
-	font-weight: 500;
 }
 
-.header-btn {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	border: none;
+.header-action-btn:active {
+	transform: scale(0.92);
+}
+
+.action-icon-wrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background-color: var(--page-bg);
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.action-icon-wrap:active {
+	background-color: var(--text-placeholder);
+}
+
+.action-icon {
+	font-size: 36rpx;
+	color: #666;
+	font-weight: bold;
+}
+
+.action-icon-primary {
+	background-color: #409eff;
+}
+
+.action-icon-primary .action-icon {
 	color: #fff;
 }
 
-.header-btn.primary {
-	background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+.action-icon-primary:active {
+	background-color: #66b1ff;
 }
 
-/* 添加按钮 */
-.add-btn {
+.icon-spin {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.manage-toggle {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: #409eff;
-	border-radius: 12rpx;
-	padding: 16rpx 32rpx;
+	min-width: 100rpx;
+	height: 56rpx;
+	padding: 0 24rpx;
+	border-radius: 28rpx;
+	background-color: #ecf5ff;
+}
+
+.manage-toggle:active {
+	background-color: #d9ecff;
+}
+
+.manage-text {
+	font-size: 24rpx;
+	color: #409eff;
+	font-weight: 500;
 }
 
 .add-btn:active {
@@ -1162,19 +1213,20 @@ const goToLogin = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 64rpx;
-	border-radius: 10rpx;
-	font-size: 26rpx;
+	height: 56rpx;
+	border-radius: 6rpx;
+	font-size: 24rpx;
+	font-weight: 500;
 }
 
 .action-btn.edit {
-	background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-	color: #fff;
+	background-color: #ecf5ff;
+	color: #409eff;
 }
 
 .action-btn.delete {
-	background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-	color: #fff;
+	background-color: #fef0f0;
+	color: #f56c6c;
 }
 
 /* 空状态 */

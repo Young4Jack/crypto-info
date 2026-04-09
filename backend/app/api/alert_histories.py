@@ -15,13 +15,16 @@ router = APIRouter(prefix="/api/alert-histories", tags=["预警历史"])
 class AlertHistoryResponse(BaseModel):
     """预警历史响应"""
     id: int
-    alert_id: int
+    alert_id: Optional[int] = None
     crypto_symbol: str
     crypto_name: str
     alert_type: str
     threshold_price: float
     trigger_price: float
     status: str
+    notification_channel: Optional[str] = None
+    notification_group: Optional[str] = None
+    webhook_url: Optional[str] = None
     notification_sent: Optional[str] = None
     created_at: str
 
@@ -59,6 +62,9 @@ async def get_alert_histories(
             threshold_price=history.threshold_price,
             trigger_price=history.trigger_price,
             status=history.status.value,
+            notification_channel=history.notification_channel,
+            notification_group=history.notification_group,
+            webhook_url=history.webhook_url,
             notification_sent=history.notification_sent.isoformat() if history.notification_sent else None,
             created_at=history.created_at.isoformat() if history.created_at else None
         ))

@@ -1,5 +1,5 @@
 """预警历史模型"""
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Boolean, Text
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -17,13 +17,16 @@ class AlertHistory(Base):
     __tablename__ = "alert_histories"
     
     id = Column(Integer, primary_key=True, index=True)
-    alert_id = Column(Integer, ForeignKey("price_alerts.id"), nullable=False)
+    alert_id = Column(Integer, ForeignKey("price_alerts.id"), nullable=True)  # 允许为NULL，预警删除后保留历史
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     crypto_id = Column(Integer, ForeignKey("cryptocurrencies.id"), nullable=False)
     alert_type = Column(String(20), nullable=False)  # above/below
     threshold_price = Column(Float, nullable=False)
     trigger_price = Column(Float, nullable=False)  # 触发时的实际价格
     status = Column(Enum(AlertHistoryStatus), default=AlertHistoryStatus.TRIGGERED)
+    notification_channel = Column(String(50), nullable=True)  # 通知渠道名称
+    notification_group = Column(String(50), nullable=True)  # 通知频道/群组
+    webhook_url = Column(Text, nullable=True)  # 推送地址
     notification_sent = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(config_manager.get_timezone()))
     
