@@ -48,6 +48,17 @@
 							<text class="menu-arrow">›</text>
 						</view>
 					</view>
+					<!-- #ifdef APP-PLUS -->
+					<view class="menu-item" @tap="goToMonitor">
+						<view class="menu-left">
+							<text class="menu-icon">🖥️</text>
+							<text class="menu-label">悬浮窗监控</text>
+						</view>
+						<view class="menu-right">
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+					<!-- #endif -->
 				</view>
 
 				<view class="menu-group">
@@ -261,6 +272,15 @@ const goToSecurity = () => {
 const goToSettings = () => {
 	uni.navigateTo({
 		url: '/pages/settings/index',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
+}
+
+const goToMonitor = () => {
+	uni.navigateTo({
+		url: '/pages/mine/monitor',
 		fail: () => {
 			uni.showToast({ title: '页面跳转失败', icon: 'none' })
 		},

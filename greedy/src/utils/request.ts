@@ -52,7 +52,9 @@ function resolveUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url
   const base = apiBase.value.replace(/\/$/, '')
   const path = url.startsWith('/') ? url : `/${url}`
-  return base ? `${base}${path}` : path
+  const fullUrl = base ? `${base}${path}` : path
+  // console.log('[Request] resolveUrl:', url, '->', fullUrl, '| apiBase:', apiBase.value)
+  return fullUrl
 }
 
 function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {

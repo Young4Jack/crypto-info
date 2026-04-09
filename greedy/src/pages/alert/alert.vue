@@ -4,8 +4,13 @@
 			<!-- 页面头部 -->
 			<view class="page-header">
 				<text class="header-title">预警中心</text>
-				<view v-if="isLoggedIn" class="add-btn pc-only" @tap="toggleAddForm">
-					<text class="btn-text">{{ editingId ? '编辑预警' : '+ 添加预警' }}</text>
+				<view class="header-actions">
+					<view v-if="isLoggedIn && alertRules.length > 0" class="header-btn" @tap="toggleManageMode">
+						<text class="header-btn-text">{{ showActions ? '完成' : '管理' }}</text>
+					</view>
+					<view v-if="isLoggedIn" class="header-btn primary" @tap="toggleAddForm">
+						<text class="header-btn-text">{{ showAddForm ? '返回' : (editingId ? '编辑' : '添加') }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -87,7 +92,7 @@
 								<text class="base-price-hint">获取中...</text>
 							</view>
 							<view v-else-if="basePriceAutoFetched" class="base-price-hint-wrap" @tap="onBasePriceFill">
-								<text class="base-price-hint">已自动获取: ${{ autoBasePrice }}</text>
+								<text class="base-price-hint">已自动获取: ${{ formatPrice(autoBasePrice) }}</text>
 							</view>
 							<view v-else class="base-price-hint-wrap" @tap="fetchBasePrice">
 								<text class="base-price-hint fetch-btn">手动获取</text>
@@ -175,27 +180,46 @@
 
 				<!-- 预警规则列表 -->
 				<view v-else class="alert-list">
-					<view
-						v-for="item in alertRules"
-						:key="item.id"
-						class="alert-card"
-					>
-						<view class="rule-info" @tap="openEdit(item)">
-							<view class="rule-header">
-								<text class="rule-symbol">{{ item.crypto_symbol }}</text>
-								<view class="badges">
-									<text v-if="item.is_active" class="badge badge-active">监控中</text>
-									<text v-if="item.is_continuous" class="badge badge-continuous">持续预警</text>
-								</view>
+					<view v-for="item in alertRules" :key="item.id" class="alert-item" :class="{ 'off': !item.is_active }">
+						<view class="item-header">
+							<view class="coin-info">
+								<text class="coin">{{ item.crypto_symbol }}</text>
+								<text class="cnt-badge">{{ item.notified_count }}/{{ item.max_notifications }}</text>
 							</view>
-							<text class="rule-condition">{{ formatCondition(item) }}</text>
-							<text v-if="item.notified_count > 0" class="rule-meta">
-								已通知 {{ item.notified_count }} / {{ item.max_notifications }} 次
-							</text>
+							<switch size="small" :checked="item.is_active" color="#10B981" @change="toggleAlertActive(item)" />
 						</view>
-						<view class="rule-actions">
-							<text class="edit-btn" @tap="openEdit(item)">编辑</text>
-							<text class="delete-btn" @tap="confirmDelete(item)">删除</text>
+						<view class="item-body">
+							<view class="price-info">
+								<text class="lbl">现价</text>
+								<text class="val">${{ formatPrice(item.current_price || 0) }}</text>
+							</view>
+							<view class="price-info">
+								<text class="lbl">目标</text>
+								<text class="val tgt">
+									<text v-if="item.alert_type === 'above'">> ${{ formatPrice(item.threshold_price || 0) }}</text>
+									<text v-else-if="item.alert_type === 'below'">< ${{ formatPrice(item.threshold_price || 0) }}</text>
+									<text v-else-if="item.alert_type === 'percent_up'">
+										<text class="pct">+{{ item.threshold_value }}%</text>
+										<text class="price">${{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+									</text>
+									<text v-else-if="item.alert_type === 'percent_down'">
+										<text class="pct">-{{ item.threshold_value }}%</text>
+										<text class="price">${{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }}</text>
+									</text>
+									<text v-else-if="item.alert_type === 'amplitude'">
+										<text class="pct">±{{ item.threshold_value }}%</text>
+										<text class="amp-range">${{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }} / ${{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+									</text>
+								</text>
+							</view>
+						</view>
+						<view class="item-actions" v-if="showActions">
+							<view class="action-btn edit" @tap="openEdit(item)">
+								<text>编辑</text>
+							</view>
+							<view class="action-btn delete" @tap="confirmDelete(item)">
+								<text>删除</text>
+							</view>
 						</view>
 					</view>
 
@@ -205,11 +229,6 @@
 					</view>
 				</view>
 
-				</view>
-
-				<!-- 移动端底部按钮 -->
-				<view class="add-btn mobile-only" @tap="onMobileBtnTap">
-					<text class="btn-text">{{ showAddForm ? '返回' : '+ 添加预警' }}</text>
 				</view>
 			</view>
 		</view>
@@ -221,6 +240,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { formatPrice } from '@/utils/formatPrice'
 
 // 预警类型选项（5种）
 const alertTypeOptions = [
@@ -245,6 +265,9 @@ const alertRules = ref<AlertItem[]>([])
 
 // 表单显隐
 const showAddForm = ref(false)
+
+// 是否显示操作按钮（管理模式下显示）
+const showActions = ref(false)
 
 // 编辑中的预警 ID（null = 新建模式）
 const editingId = ref<number | null>(null)
@@ -365,6 +388,11 @@ const toggleAddForm = () => {
 	}
 }
 
+// 切换管理/完成模式
+const toggleManageMode = () => {
+	showActions.value = !showActions.value
+}
+
 // 持续预警开关
 const onContinuousChange = (event: any) => {
 	form.value.is_continuous = event.detail?.value ?? event.value ?? false
@@ -376,14 +404,17 @@ const openEdit = (item: AlertItem) => {
 	showAddForm.value = true
 	form.value.crypto_symbol = item.crypto_symbol
 	form.value.alert_type = item.alert_type
-	form.value.threshold_price = item.threshold_price ? String(item.threshold_price) : ''
-	form.value.base_price = item.base_price ? String(item.base_price) : ''
-	form.value.threshold_value = item.threshold_value ? String(item.threshold_value) : ''
+	form.value.threshold_price = item.threshold_price != null ? String(item.threshold_price) : ''
+	form.value.base_price = item.base_price != null ? String(item.base_price) : ''
+	form.value.threshold_value = item.threshold_value != null ? String(item.threshold_value) : ''
 	form.value.is_continuous = item.is_continuous || false
 	form.value.interval_minutes = item.interval_minutes ? String(item.interval_minutes) : ''
 	form.value.max_notifications = item.max_notifications ? String(item.max_notifications) : ''
 	form.value.notification_channel = ''
 	form.value.notification_group = ''
+
+	// 调试：打印原始数据
+	console.log('[openEdit] 原始 item:', JSON.stringify(item))
 
 	// 匹配渠道名称
 	const ci = channels.value.findIndex((c) => c.name === form.value.notification_channel)
@@ -603,7 +634,7 @@ const submitAlert = async () => {
 		alert_type: form.value.alert_type,
 	}
 
-	if (isSimpleType.value) {
+		if (isSimpleType.value) {
 		payload.threshold_price = parseFloat(thresholdPrice.toFixed(4))
 	} else {
 		payload.threshold_price = 0
@@ -691,9 +722,37 @@ const deleteAlert = async (id: number) => {
 	}
 }
 
+// 切换预警启用/暂停状态
+const toggleAlertActive = async (item: AlertItem) => {
+	try {
+		if (item.is_active) {
+			// 激活 → 关闭：直接暂停，不改变其他数据
+			await alertsApi.update(item.id, { is_active: false })
+			item.is_active = false
+			uni.showToast({ title: '已暂停', icon: 'success' })
+		} else {
+			// 关闭 → 激活：检查是否需要重置通知次数
+			const payload: any = { is_active: true }
+			// 如果通知次数已用完，重置为0
+			if (item.notified_count >= item.max_notifications) {
+				payload.notified_count = 0
+			}
+			await alertsApi.update(item.id, payload)
+			item.is_active = true
+			if (item.notified_count >= item.max_notifications) {
+				item.notified_count = 0
+			}
+			uni.showToast({ title: '已启用', icon: 'success' })
+		}
+		await fetchAlertList()
+	} catch (e: any) {
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+	}
+}
+
 // 格式化显示
 const formatCondition = (item: AlertItem): string => {
-	const price = (n: number) => n > 0 ? n.toLocaleString() : '--'
+	const price = (n: number) => n > 0 ? formatPrice(n) : '--'
 	switch (item.alert_type) {
 		case 'above':
 			return `高于 $${price(item.threshold_price)}`
@@ -747,6 +806,34 @@ const goToLogin = () => {
     color: var(--text-primary);
 }
 
+.header-actions {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.header-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 120rpx;
+	height: 60rpx;
+	padding: 0 28rpx;
+	border-radius: 30rpx;
+	font-size: 26rpx;
+	font-weight: 500;
+}
+
+.header-btn {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border: none;
+	color: #fff;
+}
+
+.header-btn.primary {
+	background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
 /* 添加按钮 */
 .add-btn {
 	display: flex;
@@ -769,11 +856,6 @@ const goToLogin = () => {
 
 .pc-only {
 	display: none;
-}
-
-.mobile-only {
-	display: flex;
-	margin-top: 24rpx;
 }
 
 /* 未登录态 */
@@ -980,51 +1062,119 @@ const goToLogin = () => {
 	border-radius: 6rpx;
 }
 
-.badge-active {
-	background-color: #e6f7ec;
-	color: #00c853;
+.alert-item {
+	display: flex;
+	flex-direction: column;
+	background: var(--card-bg);
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 16rpx;
+	box-shadow: var(--card-shadow);
 }
 
-.badge-continuous {
-	background-color: #ecf5ff;
-	color: #409eff;
+.alert-item.off {
+	opacity: 0.5;
 }
 
-.rule-condition {
-	font-size: 26rpx;
-	color: var(--text-secondary);
+.item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16rpx;
 }
 
-.rule-meta {
-	font-size: 22rpx;
+.coin-info {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.coin {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.cnt-badge {
+	font-size: 20rpx;
 	color: var(--text-tertiary);
+	background: var(--border-color);
+	padding: 4rpx 10rpx;
+	border-radius: 8rpx;
 }
 
-.rule-actions {
+.item-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	margin-bottom: 16rpx;
+	padding: 16rpx;
+	background: var(--page-bg);
+	border-radius: 10rpx;
+}
+
+.price-info {
 	display: flex;
 	align-items: center;
 	gap: 16rpx;
+}
+
+.lbl {
+	font-size: 22rpx;
+	color: var(--text-tertiary);
+	width: 60rpx;
 	flex-shrink: 0;
 }
 
-.edit-btn {
+.val {
 	font-size: 26rpx;
-	color: #409eff;
-	padding: 8rpx 16rpx;
+	color: var(--text-primary);
 }
 
-.edit-btn:active {
-	opacity: 0.6;
+.val.tgt {
+	color: #FA8C16;
+	font-size: 24rpx;
 }
 
-.delete-btn {
+.val.tgt .pct {
+	color: #409EFF;
+	font-weight: 700;
+}
+
+.val.tgt .price {
+	color: #FA8C16;
+	margin-left: 8rpx;
+}
+
+.amp-range {
+	color: #FA8C16;
+	font-size: 22rpx;
+	margin-left: 8rpx;
+}
+
+.item-actions {
+	display: flex;
+	gap: 12rpx;
+}
+
+.action-btn {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 64rpx;
+	border-radius: 10rpx;
 	font-size: 26rpx;
-	color: #f56c6c;
-	padding: 8rpx 16rpx;
 }
 
-.delete-btn:active {
-	opacity: 0.6;
+.action-btn.edit {
+	background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+	color: #fff;
+}
+
+.action-btn.delete {
+	background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+	color: #fff;
 }
 
 /* 空状态 */

@@ -119,9 +119,10 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { formatPrice } from '@/utils/formatPrice'
 
 interface CoinItem {
 	id: number
@@ -156,15 +157,51 @@ const calcChange = (klines: any[]): number => {
 	return parseFloat((((close - open) / open) * 100).toFixed(2))
 }
 
-const formatPrice = (price: number): string => {
-	if (price >= 1000) return price.toFixed(2)
-	if (price >= 1) return price.toFixed(4)
-	return price.toFixed(6)
+// 仅获取价格数据（后台刷新用）
+const fetchPricesOnly = async () => {
+	try {
+		const klinesRes = await klinesApi.getWatchlistKlines('1d', 2)
+		const klinesMap = new Map<string, { price: string; change: number }>()
+		const body = klinesRes.data as any
+		const raw = body?.data || body || {}
+		for (const symbol of Object.keys(raw)) {
+			const item = raw[symbol]
+			const klines = item?.klines || []
+			if (klines.length === 0) continue
+			const price = parseFloat(klines[klines.length - 1]?.close ?? 0)
+			const change = calcChange(klines)
+			klinesMap.set(symbol.toUpperCase(), {
+				price: formatPrice(price),
+				change,
+			})
+		}
+
+		// 仅更新价格，触发闪烁效果
+		for (const coin of coinList.value) {
+			const kline = klinesMap.get(coin.symbol.toUpperCase())
+			if (kline && coin.price !== kline.price) {
+				const oldPrice = parseFloat(coin.price) || 0
+				const newPrice = parseFloat(kline.price)
+				if (coin.price !== '--') {
+					coin.priceFlash = newPrice > oldPrice ? 'up' : 'down'
+					setTimeout(() => {
+						coin.priceFlash = null
+					}, 500)
+				}
+				coin.price = kline.price
+				coin.change = kline.change
+			}
+		}
+	} catch {
+		// 价格获取失败静默处理
+	}
 }
 
-const fetchData = async () => {
-	loading.value = true
-	error.value = ''
+const fetchData = async (isBackground = false) => {
+	if (!isBackground) {
+		loading.value = true
+		error.value = ''
+	}
 	try {
 		// 未登录：仅获取公开 K 线数据
 		if (!isLoggedIn.value) {
@@ -193,63 +230,34 @@ const fetchData = async () => {
 			return
 		}
 
-		// 已登录：先快速加载 watchlist（DB 数据，秒回）
-		const watchlistRes = await watchlistApi.getList()
-		const list: CoinItem[] = (watchlistRes.data || []).map((wl) => ({
-			id: wl.id,
-			symbol: wl.crypto_symbol,
-			name: wl.crypto_name || wl.crypto_symbol.replace('USDT', ''),
-			price: '--',
-			change: 0,
-			is_public: wl.is_public,
-			notes: wl.notes || '',
-		}))
-		coinList.value = list
-		loading.value = false
-
-		// 后台异步获取价格数据，不阻塞页面渲染
-		try {
-			const klinesRes = await klinesApi.getWatchlistKlines('1d', 2)
-			const klinesMap = new Map<string, { price: string; change: number }>()
-			const body = klinesRes.data as any
-			const raw = body?.data || body || {}
-			for (const symbol of Object.keys(raw)) {
-				const item = raw[symbol]
-				const klines = item?.klines || []
-				if (klines.length === 0) continue
-				const price = parseFloat(klines[klines.length - 1]?.close ?? 0)
-				const change = calcChange(klines)
-				klinesMap.set(symbol.toUpperCase(), {
-					price: formatPrice(price),
-					change,
-				})
-			}
-
-		// 合并价格数据到已有列表
-		for (const coin of coinList.value) {
-			const kline = klinesMap.get(coin.symbol.toUpperCase())
-			if (kline) {
-				// 价格变化闪动检测
-				if (coin.price !== '--' && coin.price !== kline.price) {
-					const oldPrice = parseFloat(coin.price)
-					const newPrice = parseFloat(kline.price)
-					coin.priceFlash = newPrice > oldPrice ? 'up' : 'down'
-					setTimeout(() => {
-						coin.priceFlash = null
-					}, 500)
-				}
-				coin.price = kline.price
-				coin.change = kline.change
-			}
+		// 已登录：仅首次加载时获取 watchlist 列表
+		if (!isBackground && coinList.value.length === 0) {
+			const watchlistRes = await watchlistApi.getList()
+			const raw = watchlistRes.data || []
+			const list: CoinItem[] = raw.map((wl: any) => ({
+				id: wl.id,
+				symbol: wl.crypto_symbol,
+				name: wl.crypto_name || wl.crypto_symbol.replace('USDT', ''),
+				price: '--',
+				change: 0,
+				is_public: wl.is_public,
+				notes: wl.notes || '',
+			}))
+			coinList.value = list
 		}
-		coinList.value = [...coinList.value]
-		} catch {
-			// 价格获取失败不影响列表展示
+
+		// 始终获取最新价格
+		await fetchPricesOnly()
+
+		if (!isBackground) {
+			loading.value = false
 		}
 	} catch (e: any) {
-		error.value = e?.message || '加载失败，请检查网络'
+		if (!isBackground) {
+			error.value = e?.message || '加载失败，请检查网络'
+		}
 	} finally {
-		if (loading.value) {
+		if (!isBackground && loading.value) {
 			loading.value = false
 		}
 	}
@@ -360,6 +368,10 @@ onShow(async () => {
 	await fetchData()
 	// 启动自动刷新
 	startAutoRefresh(fetchData)
+})
+
+onHide(() => {
+	stopAutoRefresh()
 })
 
 onUnmounted(() => {

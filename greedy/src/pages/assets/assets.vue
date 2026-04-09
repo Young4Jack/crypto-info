@@ -162,9 +162,10 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import { dashboardApi, assetsApi, type AssetItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { formatPrice } from '@/utils/formatPrice'
 
 const isLoggedIn = ref(false)
 const loading = ref(false)
@@ -204,6 +205,10 @@ onShow(async () => {
 	fetchDashboard()
 	// 启动自动刷新
 	startAutoRefresh(fetchAssets)
+})
+
+onHide(() => {
+	stopAutoRefresh()
 })
 
 onUnmounted(() => {
@@ -357,7 +362,8 @@ const deleteAsset = async (id: number) => {
 
 const formatNumber = (n: number): string => {
 	if (n == null || isNaN(n)) return '0.00'
-	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+	// 使用 formatPrice 格式化价格
+	return formatPrice(n).replace('.00', '')
 }
 
 const getItemPnl = (item: AssetItem): number => {

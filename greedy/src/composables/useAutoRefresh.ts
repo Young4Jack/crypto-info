@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { systemSettingsApi } from '@/api'
 
 let cachedInterval = 5
+let globalTimer: ReturnType<typeof setInterval> | null = null
 
 async function getRefreshInterval(): Promise<number> {
   try {
@@ -14,25 +15,29 @@ async function getRefreshInterval(): Promise<number> {
 }
 
 export function useAutoRefresh() {
-  const timer = ref<ReturnType<typeof setInterval> | null>(null)
   const interval = ref(cachedInterval)
+  const isRunning = ref(false)
 
-  const startAutoRefresh = async (callback: () => void | Promise<void>) => {
+  const startAutoRefresh = async (callback: (isBackground?: boolean) => void | Promise<void>) => {
+    if (isRunning.value) return
+    
     interval.value = await getRefreshInterval()
+    isRunning.value = true
     
-    await callback()
+    await callback(false)
     
-    timer.value = setInterval(async () => {
+    globalTimer = setInterval(async () => {
       interval.value = await getRefreshInterval()
-      await callback()
+      await callback(true)
     }, interval.value * 1000)
   }
 
   const stopAutoRefresh = () => {
-    if (timer.value) {
-      clearInterval(timer.value)
-      timer.value = null
+    if (globalTimer) {
+      clearInterval(globalTimer)
+      globalTimer = null
     }
+    isRunning.value = false
   }
 
   onUnmounted(() => {
