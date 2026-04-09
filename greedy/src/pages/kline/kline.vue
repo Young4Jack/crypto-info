@@ -6,11 +6,8 @@
 					<text class="back-icon">←</text>
 				</view>
 				<view class="symbol-info">
-					<text class="symbol-title">{{ currentCoin }}</text>
-					<text class="symbol-pair">{{ currentCoin }}/USDT</text>
-				</view>
-				<view class="dark-mode-btn" @tap="toggleDarkMode">
-					<text>{{ isDarkMode ? '☀️' : '🌙' }}</text>
+					<text class="symbol-title">{{ baseCoin }}/USDT</text>
+					<text class="symbol-period">{{ currentPeriodLabel }}</text>
 				</view>
 			</view>
 
@@ -59,6 +56,8 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import * as echarts from 'echarts'
 import { klinesApi } from '@/api'
 import { wsBase } from '@/utils/config'
+import { formatPrice } from '@/utils/formatPrice'
+import { useTheme } from '@/composables/useDarkMode'
 
 /** 桌面端 K 线/成交量双 grid 比例（与 ECharts 百分比布局一致） */
 const DESKTOP_CHART_GRID = {
@@ -76,14 +75,11 @@ const MOBILE_CHART_GRID = {
 // 遮罩层 touchmove 占位：用于 .prevent 阻止默认滚动穿透（函数体需存在）
 const noopTouchHandler = () => {}
 
-const isDarkMode = ref(false)
+// 使用全局主题状态，不再使用独立的深色模式按钮
+const { isDarkMode } = useTheme()
+
 const toggleDarkMode = () => {
-	isDarkMode.value = !isDarkMode.value
-	uni.setNavigationBarColor({
-		frontColor: isDarkMode.value ? '#ffffff' : '#000000',
-		backgroundColor: isDarkMode.value ? '#1a1a2e' : '#ffffff',
-		animation: { duration: 200, timingFunc: 'easeIn' }
-	})
+	// 已移除独立切换按钮，主题由全局控制
 }
 
 const chartRef = ref<any>(null)
@@ -101,6 +97,20 @@ const legendSelected = ref<Record<string, boolean>>({ K线: true, 成交量: tru
 
 // 接收 URL 传入的币种参数
 const currentCoin = ref('')
+
+// 提取基础币种（如 BTCUSDT -> BTC）
+const baseCoin = computed(() => {
+	if (!currentCoin.value) return ''
+	if (currentCoin.value.endsWith('USDT')) {
+		return currentCoin.value.slice(0, -4)
+	}
+	return currentCoin.value
+})
+
+// 当前周期中文显示
+const currentPeriodLabel = computed(() => {
+	return intervalLabelMap[selectedInterval.value] || selectedInterval.value
+})
 
 let socketTask: UniApp.SocketTask | null = null
 
@@ -162,10 +172,10 @@ const realtimeObj = computed(() => {
 
 	return {
 		time: timeStr,
-		open: open.toFixed(2),
-		high: parseFloat(data.high).toFixed(2),
-		low: parseFloat(data.low).toFixed(2),
-		close: close.toFixed(2),
+		open: formatPrice(open),
+		high: formatPrice(parseFloat(data.high)),
+		low: formatPrice(parseFloat(data.low)),
+		close: formatPrice(close),
 		changePercent: changePercent,
 		amplitude: open ? (((parseFloat(data.high) - parseFloat(data.low)) / open) * 100).toFixed(2) : '--',
 		volume: parseFloat(data.volume).toFixed(2)
@@ -231,7 +241,7 @@ const chartOption = computed(() => {
 			backgroundColor: tooltipBg,
 			borderColor: tooltipBorder,
 			textStyle: { color: dark ? '#d0d0e0' : '#303133', fontSize: 12 },
-			// 还原原版富文本悬浮窗
+			// @update: app端不支持HTML，使用纯文本格式避免显示原始标签
 			formatter: (params: any) => {
 				const kline = params[0]
 				if (!kline) return ''
@@ -247,24 +257,11 @@ const chartOption = computed(() => {
 				const volVal = parseFloat(data.volume)
 
 				const change = openVal ? (((closeVal - openVal) / openVal) * 100).toFixed(2) : '0.00'
-				const amplitude = openVal ? (((highVal - lowVal) / openVal) * 100).toFixed(2) : '0.00'
-				const color = closeVal >= openVal ? upColor : downColor
+				const amplitude = openVal ? (((highVal - lowVal) / openVal) * 100).toFixed(2) : '--'
 				const sign = closeVal >= openVal ? '+' : ''
 
-				return `
-					<div style="font-family: Monaco, monospace; font-size: 12px; min-width: 140px;">
-						<div style="color: ${tooltipLabel}; margin-bottom: 8px; font-weight: bold;">${timeStr}</div>
-						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>开盘</span> <span>${openVal.toFixed(4)}</span></div>
-						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最高</span> <span style="color: ${upColor};">${highVal.toFixed(4)}</span></div>
-						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最低</span> <span style="color: ${downColor};">${lowVal.toFixed(4)}</span></div>
-						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>收盘</span> <span style="color: ${color}; font-weight: bold;">${closeVal.toFixed(4)}</span></div>
-						<div style="display: flex; justify-content: space-between; border-top: 1px solid ${tooltipBorder}; margin-top: 6px; padding-top: 6px;">
-							<span>涨跌幅</span> <span style="color: ${color};">${sign}${change}%</span>
-						</div>
-						<div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>振幅</span> <span>${amplitude}%</span></div>
-						<div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>成交量</span> <span>${volVal.toFixed(2)}</span></div>
-					</div>
-				`
+				// 纯文本格式，兼容App端
+				return `时间: ${timeStr}\n开盘: ${formatPrice(openVal)}\n最高: ${formatPrice(highVal)}\n最低: ${formatPrice(lowVal)}\n收盘: ${formatPrice(closeVal)}\n涨跌幅: ${sign}${change}%\n振幅: ${amplitude}%\n成交量: ${volVal.toFixed(2)}`
 			}
 		},
 		legend: {
@@ -463,6 +460,7 @@ onUnmounted(() => {
 	background-color: #f5f7fa;
 	display: flex;
 	flex-direction: column;
+	padding-top: var(--status-bar-height, 0px);
 }
 
 .page-header {
@@ -508,9 +506,13 @@ onUnmounted(() => {
 	font-family: 'Monaco', monospace;
 }
 
-.symbol-pair {
+.symbol-period {
 	font-size: 24rpx;
 	color: #909399;
+	padding: 4rpx 12rpx;
+	background: #f0f2f5;
+	border-radius: 6rpx;
+	font-weight: 500;
 }
 
 .dark-mode-btn {
@@ -666,8 +668,9 @@ onUnmounted(() => {
 	color: #e0e0f0;
 }
 
-.page-container.dark-mode .symbol-pair {
+.page-container.dark-mode .symbol-period {
 	color: #8080a0;
+	background: #2a2a3e;
 }
 
 .page-container.dark-mode .back-icon {

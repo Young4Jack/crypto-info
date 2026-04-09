@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app'
 import { initConfig } from '@/utils/config'
-import { useTheme } from '@/composables/useDarkMode'
+import { useTheme, initTheme } from '@/composables/useDarkMode'
 
 const handleResize = () => {
 	// #ifdef H5
@@ -17,6 +17,8 @@ onLaunch(async () => {
 	console.log('App Launch')
 	// 初始化全局配置（API 域名、WS 域名）
 	await initConfig()
+	// 初始化主题（在 apiBase 设置完成之后）
+	initTheme()
 	// 应用用户选择的主题
 	useTheme()
 	// #ifdef H5

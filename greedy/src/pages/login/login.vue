@@ -289,11 +289,11 @@ const handleLogin = async () => {
 
 .form-input {
 	width: 100%;
-	height: 88rpx;
+	height: 96rpx;
 	padding: 0 24rpx;
 	border: 2rpx solid var(--border-color);
 	border-radius: 12rpx;
-	font-size: 28rpx;
+	font-size: 32rpx;
 	color: var(--text-primary);
 	background-color: var(--input-bg);
 	box-sizing: border-box;
@@ -315,8 +315,8 @@ const handleLogin = async () => {
 }
 
 .captcha-image {
-	width: 200rpx;
-	height: 88rpx;
+	width: 220rpx;
+	height: 96rpx;
 	border-radius: 8rpx;
 	border: 2rpx solid var(--border-color);
 	flex-shrink: 0;

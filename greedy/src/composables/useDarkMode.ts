@@ -75,7 +75,7 @@ function applyTheme(dark: boolean) {
   try {
     uni.setTabBarStyle({
       backgroundColor: dark ? '#1a1a2e' : '#ffffff',
-      color: '#999999',
+      color: dark ? '#5f6368' : '#606266',
       selectedColor: '#409EFF',
       borderStyle: dark ? 'white' as const : 'black' as const
     })
@@ -92,14 +92,17 @@ function applyTheme(dark: boolean) {
 
 // 同步主题到后端配置
 async function syncThemeToBackend(mode: ThemeMode, dark: boolean) {
+  // 检查是否已登录，未登录则跳过
+  const token = uni.getStorageSync('token')
+  if (!token) return
+  
   try {
     // 仅在用户选择明确模式（light/dark）时同步，system 模式不同步
     if (mode === 'system') return
     
     await put('/api/system-settings/', { default_dark_mode: dark })
-    // console.log('[Theme] 同步到后端成功:', { mode, default_dark_mode: dark })
   } catch (e) {
-    // console.warn('[Theme] 同步到后端失败:', e)
+    // 忽略同步失败
   }
 }
 
@@ -134,9 +137,13 @@ async function initThemeFromBackend() {
   }
 }
 
-// 初始化
-initThemeFromBackend()
+// 初始化（不在 setup 中同步调用，由 App.vue 延迟调用）
+// initThemeFromBackend()
 setupSystemListener()
+
+export function initTheme() {
+  initThemeFromBackend()
+}
 
 // 监听 themeMode 变化，自动应用
 watch(themeMode, (mode) => {

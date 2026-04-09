@@ -51,6 +51,13 @@
 			}
 		},
 		{
+			"path": "pages/mine/monitor",
+			"style": {
+				"navigationBarTitleText": "悬浮窗监控",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
 			"path": "pages/mine/security",
 			"style": {
 				"navigationBarTitleText": "账户安全",
@@ -93,7 +100,7 @@
 		"backgroundColor": "#F5F7FA"
 	},
 	"tabBar": {
-		"color": "#999999",
+		"color": "#606266",
 		"selectedColor": "#409EFF",
 		"backgroundColor": "#FFFFFF",
 		"borderStyle": "black",
