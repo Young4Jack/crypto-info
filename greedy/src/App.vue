@@ -2,6 +2,7 @@
 import { onLaunch } from '@dcloudio/uni-app'
 import { initConfig } from '@/utils/config'
 import { useTheme, initTheme } from '@/composables/useDarkMode'
+import { initCurrencyService } from '@/utils/exchangeRate'
 
 const handleResize = () => {
 	// #ifdef H5
@@ -21,6 +22,8 @@ onLaunch(async () => {
 	initTheme()
 	// 应用用户选择的主题
 	useTheme()
+	// 初始化汇率服务
+	initCurrencyService()
 	// #ifdef H5
 	handleResize()
 	window.addEventListener('resize', handleResize)

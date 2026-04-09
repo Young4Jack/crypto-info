@@ -78,7 +78,7 @@
 							<text class="menu-label">计价货币</text>
 						</view>
 						<view class="menu-right">
-							<text class="menu-value">USD</text>
+							<text class="menu-value">{{ currentCurrencyDisplay }}</text>
 							<text class="menu-arrow">›</text>
 						</view>
 					</view>
@@ -146,12 +146,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { authApi } from '@/api'
 import { useTheme, type ThemeMode } from '@/composables/useDarkMode'
+import { getCurrentCurrency, currencySymbols, initCurrencyService } from '@/utils/exchangeRate'
 
 const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
+
+// 初始化汇率服务
+onMounted(() => {
+	initCurrencyService()
+})
+
+const currentCurrency = computed(() => getCurrentCurrency())
+const currentCurrencyDisplay = computed(() => {
+	const curr = currentCurrency.value
+	return `${curr} ${currencySymbols[curr] || ''}`
+})
 
 const showThemePicker = ref(false)
 
@@ -255,9 +267,26 @@ const handleLogout = () => {
 	})
 }
 
-// 菜单点击占位
+// 菜单点击处理
 const handleMenuTap = (type: string) => {
-	uni.showToast({ title: `${type} 功能开发中`, icon: 'none' })
+	switch (type) {
+		case 'currency':
+			uni.navigateTo({
+				url: '/pages/settings/preference',
+				fail: () => {
+					uni.showToast({ title: '页面跳转失败', icon: 'none' })
+				}
+			})
+			break
+		case 'api':
+			uni.showToast({ title: 'API 功能开发中', icon: 'none' })
+			break
+		case 'about':
+			uni.showToast({ title: '关于功能开发中', icon: 'none' })
+			break
+		default:
+			uni.showToast({ title: `${type} 功能开发中`, icon: 'none' })
+	}
 }
 
 const goToSecurity = () => {

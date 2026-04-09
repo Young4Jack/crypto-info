@@ -241,7 +241,7 @@ const chartOption = computed(() => {
 			backgroundColor: tooltipBg,
 			borderColor: tooltipBorder,
 			textStyle: { color: dark ? '#d0d0e0' : '#303133', fontSize: 12 },
-			// @update: app端不支持HTML，使用纯文本格式避免显示原始标签
+			// @update: App端不支持HTML，使用纯文本；H5端使用富文本格式
 			formatter: (params: any) => {
 				const kline = params[0]
 				if (!kline) return ''
@@ -258,10 +258,42 @@ const chartOption = computed(() => {
 
 				const change = openVal ? (((closeVal - openVal) / openVal) * 100).toFixed(2) : '0.00'
 				const amplitude = openVal ? (((highVal - lowVal) / openVal) * 100).toFixed(2) : '--'
+				const color = closeVal >= openVal ? upColor : downColor
 				const sign = closeVal >= openVal ? '+' : ''
 
-				// 纯文本格式，兼容App端
-				return `时间: ${timeStr}\n开盘: ${formatPrice(openVal)}\n最高: ${formatPrice(highVal)}\n最低: ${formatPrice(lowVal)}\n收盘: ${formatPrice(closeVal)}\n涨跌幅: ${sign}${change}%\n振幅: ${amplitude}%\n成交量: ${volVal.toFixed(2)}`
+				// #ifdef H5
+				// H5端使用富文本格式
+				return `
+					<div style="font-family: Monaco, monospace; font-size: 12px; min-width: 140px;">
+						<div style="color: ${tooltipLabel}; margin-bottom: 8px; font-weight: bold;">${timeStr}</div>
+						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>开盘</span> <span>${formatPrice(openVal)}</span></div>
+						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最高</span> <span style="color: ${upColor};">${formatPrice(highVal)}</span></div>
+						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>最低</span> <span style="color: ${downColor};">${formatPrice(lowVal)}</span></div>
+						<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>收盘</span> <span style="color: ${color}; font-weight: bold;">${formatPrice(closeVal)}</span></div>
+						<div style="display: flex; justify-content: space-between; border-top: 1px solid ${tooltipBorder}; margin-top: 6px; padding-top: 6px;">
+							<span>涨跌幅</span> <span style="color: ${color};">${sign}${change}%</span>
+						</div>
+						<div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>振幅</span> <span>${amplitude}%</span></div>
+						<div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>成交量</span> <span>${volVal.toFixed(2)}</span></div>
+					</div>
+				`
+				// #endif
+
+				// #ifndef H5
+				// App端：不用 div 标签，只用 span + br 实现多行
+				return `
+					<span style="font-family: Monaco, monospace; font-size: 12px; color: ${dark ? '#d0d0e0' : '#303133'};">
+						<span style="color: ${tooltipLabel}; font-weight: bold;">${timeStr}</span><br/>
+						<span>开盘: ${formatPrice(openVal)}</span><br/>
+						<span>最高: <span style="color: ${upColor};">${formatPrice(highVal)}</span></span><br/>
+						<span>最低: <span style="color: ${downColor};">${formatPrice(lowVal)}</span></span><br/>
+						<span>收盘: <span style="color: ${color}; font-weight: bold;">${formatPrice(closeVal)}</span></span><br/>
+						<span style="border-top: 1px solid ${tooltipBorder};">涨跌幅: <span style="color: ${color};">${sign}${change}%</span></span><br/>
+						<span>振幅: ${amplitude}%</span><br/>
+						<span>成交量: ${volVal.toFixed(2)}</span>
+					</span>
+				`
+				// #endif
 			}
 		},
 		legend: {

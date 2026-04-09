@@ -92,7 +92,7 @@
 								<text class="base-price-hint">获取中...</text>
 							</view>
 							<view v-else-if="basePriceAutoFetched" class="base-price-hint-wrap" @tap="onBasePriceFill">
-								<text class="base-price-hint">已自动获取: ${{ formatPrice(autoBasePrice) }}</text>
+								<text class="base-price-hint">已自动获取: {{ formatPrice(autoBasePrice) }}</text>
 							</view>
 							<view v-else class="base-price-hint-wrap" @tap="fetchBasePrice">
 								<text class="base-price-hint fetch-btn">手动获取</text>
@@ -191,24 +191,24 @@
 						<view class="item-body">
 							<view class="price-info">
 								<text class="lbl">现价</text>
-								<text class="val">${{ formatPrice(item.current_price || 0) }}</text>
+								<text class="val">{{ formatPrice(item.current_price || 0) }}</text>
 							</view>
 							<view class="price-info">
 								<text class="lbl">目标</text>
 								<text class="val tgt">
-									<text v-if="item.alert_type === 'above'">> ${{ formatPrice(item.threshold_price || 0) }}</text>
-									<text v-else-if="item.alert_type === 'below'">< ${{ formatPrice(item.threshold_price || 0) }}</text>
+									<text v-if="item.alert_type === 'above'">> {{ formatPrice(item.threshold_price || 0) }}</text>
+									<text v-else-if="item.alert_type === 'below'">< {{ formatPrice(item.threshold_price || 0) }}</text>
 									<text v-else-if="item.alert_type === 'percent_up'">
 										<text class="pct">+{{ item.threshold_value }}%</text>
-										<text class="price">${{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+										<text class="price">{{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
 									</text>
 									<text v-else-if="item.alert_type === 'percent_down'">
 										<text class="pct">-{{ item.threshold_value }}%</text>
-										<text class="price">${{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }}</text>
+										<text class="price">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }}</text>
 									</text>
 									<text v-else-if="item.alert_type === 'amplitude'">
 										<text class="pct">±{{ item.threshold_value }}%</text>
-										<text class="amp-range">${{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }} / ${{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+										<text class="amp-range">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }} / {{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
 									</text>
 								</text>
 							</view>

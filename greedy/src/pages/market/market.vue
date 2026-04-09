@@ -54,7 +54,7 @@
 							<text class="coin-pair">{{ coin.name }}</text>
 						</view>
 						<view class="coin-right">
-							<text class="price-value">${{ coin.price }}</text>
+							<text class="price-value">{{ coin.price }}</text>
 							<text :class="['price-change', coin.change >= 0 ? 'up' : 'down']">
 								{{ coin.change >= 0 ? '+' : '' }}{{ coin.change }}%
 							</text>

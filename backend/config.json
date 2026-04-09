@@ -1,0 +1,50 @@
+{
+  "api_settings": {
+    "primary_api_url": "https://www.okx.com",
+    "backup_api_url": "https://api.binance.com",
+    "api_key": "",
+    "api_secret": ""
+  },
+  "notification_channels": [
+    {
+      "name": "自建",
+      "api_url": "https://push.gosu.cc/push/jacket",
+      "auth_token": "7E4DBBD5A47D61252C6D0FB4BE9770DF",
+      "is_default": true,
+      "default_group": "yes",
+      "groups": [
+        "yes",
+        "wechatapp",
+        "all",
+        "email"
+      ]
+    }
+  ],
+  "system_settings": {
+    "refresh_interval": 8,
+    "enable_captcha": true,
+    "site_title": "CryptoBOX",
+    "site_description": "数字货币价格监控和预警系统",
+    "base_url": "http://192.168.31.77:5173",
+    "log_level": "ERROR",
+    "enable_logging": true,
+    "default_dark_mode": false,
+    "api_shared_secret": "7E4DBBD5A47D61252C6D0FB4BE9770DF",
+    "timezone": "Asia/Shanghai",
+    "backend_port": 8000,
+    "frontend_port": 5173,
+    "current_pricing_currency": "USD",
+    "available_currencies": [
+      "USD",
+      "CNY",
+      "EUR",
+      "JPY"
+    ],
+    "exchange_rates": {
+      "CNY": 6.83624976,
+      "EUR": 0.85751968,
+      "JPY": 158.83022997
+    },
+    "exchange_rates_date": "2026-04-09"
+  }
+}

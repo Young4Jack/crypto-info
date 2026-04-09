@@ -1,6 +1,25 @@
 <template>
 	<view class="preference-page">
 		<view class="preference-container">
+			<!-- 计价货币 -->
+			<view class="config-card">
+				<text class="card-title">计价货币</text>
+
+				<view class="form-group">
+					<text class="form-label">选择货币</text>
+					<picker mode="selector" :range="currencyOptions" :value="currencyIndex" @change="onCurrencyChange">
+						<view class="picker-value">
+							<text class="picker-text">{{ form.current_pricing_currency }} {{ currencySymbols[form.current_pricing_currency] }}</text>
+							<text class="picker-arrow">▾</text>
+						</view>
+					</picker>
+				</view>
+
+				<view class="currency-hint">
+					<text class="hint-text">当前货币将用于价格显示（K线页面除外）</text>
+				</view>
+			</view>
+
 			<!-- 基本设置 -->
 			<view class="config-card">
 				<text class="card-title">基本设置</text>
@@ -109,10 +128,12 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { systemSettingsApi } from '@/api'
+import { currencySymbols, setCurrentCurrency } from '@/utils/exchangeRate'
 
 const TIMEZONES = ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'Europe/London', 'UTC']
 const LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
+const currencyOptions = ['USD', 'CNY', 'EUR', 'JPY']
 const timezoneOptions = TIMEZONES
 const logLevelOptions = LOG_LEVELS
 
@@ -125,9 +146,15 @@ const form = ref({
 	enable_logging: false,
 	default_dark_mode: false,
 	log_level: 'INFO',
+	current_pricing_currency: 'USD',
 })
 
 const submitting = ref(false)
+
+const currencyIndex = computed(() => {
+	const idx = currencyOptions.indexOf(form.value.current_pricing_currency)
+	return idx >= 0 ? idx : 0
+})
 
 const timezoneIndex = computed(() => {
 	const idx = TIMEZONES.indexOf(form.value.timezone)
@@ -155,9 +182,16 @@ const fetchSettings = async () => {
 		form.value.enable_logging = d.enable_logging || false
 		form.value.default_dark_mode = d.default_dark_mode || false
 		form.value.log_level = d.log_level || 'INFO'
+		form.value.current_pricing_currency = d.current_pricing_currency || 'USD'
 	} catch (e: any) {
 		uni.showToast({ title: '获取配置失败', icon: 'none' })
 	}
+}
+
+const onCurrencyChange = (event: any) => {
+	form.value.current_pricing_currency = currencyOptions[parseInt(event.detail.value)]
+	// 未登录时仅本地存储，登录后由后端保存
+	setCurrentCurrency(form.value.current_pricing_currency)
 }
 
 const onTimezoneChange = (event: any) => {
@@ -189,6 +223,7 @@ const onSubmit = async () => {
 			enable_logging: form.value.enable_logging,
 			default_dark_mode: form.value.default_dark_mode,
 			log_level: form.value.log_level || undefined,
+			current_pricing_currency: form.value.current_pricing_currency,
 		})
 		uni.showToast({ title: '偏好已保存', icon: 'success' })
 		setTimeout(() => {
@@ -242,11 +277,23 @@ const onSubmit = async () => {
 }
 
 .form-label {
- 	font-size: 26rpx;
- 	font-weight: 500;
- 	color: var(--text-primary);
+  	font-size: 26rpx;
+  	font-weight: 500;
+  	color: var(--text-primary);
 	margin-bottom: 12rpx;
 	display: block;
+}
+
+.currency-hint {
+	margin-top: 16rpx;
+	padding: 16rpx;
+	background-color: var(--page-bg);
+	border-radius: 8rpx;
+}
+
+.hint-text {
+	font-size: 24rpx;
+	color: var(--text-tertiary);
 }
 
 .form-input {

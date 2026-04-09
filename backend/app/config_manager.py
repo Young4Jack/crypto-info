@@ -32,7 +32,11 @@ class ConfigManager:
                 "api_shared_secret": "",
                 "timezone": "Asia/Shanghai",
                 "backend_port": 8000,
-                "frontend_port": 5173
+                "frontend_port": 5173,
+                "current_pricing_currency": "USD",
+                "available_currencies": ["USD", "CNY", "EUR", "JPY"],
+                "exchange_rates": {"CNY": 1, "EUR": 1, "JPY": 1},
+                "exchange_rates_date": ""
             }
         }
     

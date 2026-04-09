@@ -23,12 +23,12 @@
 					<!-- 仪表盘概览卡片 -->
 					<view v-if="dashboardLoaded" class="overview-card">
 						<text class="overview-label">总估值 (USD)</text>
-						<text class="overview-value">${{ formatNumber(dashboard.total_value) }}</text>
+						<text class="overview-value">{{ formatNumber(dashboard.total_value) }}</text>
 						<view class="pnl-row">
 							<view class="pnl-item">
 								<text class="pnl-label">累计盈亏</text>
 								<text :class="['pnl-value', dashboard.total_profit_loss >= 0 ? 'profit' : 'loss']">
-									{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}${{ formatNumber(dashboard.total_profit_loss) }}
+									{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}{{ formatNumber(dashboard.total_profit_loss) }}
 								</text>
 							</view>
 							<view class="pnl-divider"></view>
@@ -121,15 +121,15 @@
 									<view class="coin-detail">
 										<text class="coin-name">{{ item.crypto_name }}</text>
 										<text class="coin-amount">{{ item.quantity }} {{ getShortSymbol(item.crypto_symbol) }}</text>
-										<text class="coin-buy-price">成本 ${{ formatNumber(item.buy_price) }}</text>
+										<text class="coin-buy-price">成本 {{ formatNumber(item.buy_price) }}</text>
 									</view>
 								</view>
 								<view class="holding-right">
-									<text class="coin-total-value">${{ formatNumber(item.total_value) }}</text>
+									<text class="coin-total-value">{{ formatNumber(item.total_value) }}</text>
 									<view class="price-pnl-row">
-										<text class="coin-current-price">现 ${{ formatNumber(item.current_price) }}</text>
+										<text class="coin-current-price">现 {{ formatNumber(item.current_price) }}</text>
 										<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
-											{{ getItemPnl(item) >= 0 ? '+' : '' }}${{ formatNumber(getItemPnl(item)) }}
+											{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatNumber(getItemPnl(item)) }}
 										</text>
 									</view>
 									<view class="action-btns">

@@ -27,7 +27,7 @@
 					<view class="result-info">
 						<text class="result-symbol">{{ searchResult.symbol }}</text>
 						<text class="result-name">{{ searchResult.display_name }}</text>
-						<text class="result-price">${{ formatPrice(searchResult.price) }}</text>
+						<text class="result-price">{{ formatPrice(searchResult.price) }}</text>
 					</view>
 					<view
 						:class="['add-btn', isAdded ? 'added' : '']"

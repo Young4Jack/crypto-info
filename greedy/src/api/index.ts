@@ -394,6 +394,10 @@ export interface SystemSettings {
   timezone: string
   backend_port: number
   frontend_port: number
+  current_pricing_currency: string
+  available_currencies: string[]
+  exchange_rates: Record<string, number>
+  exchange_rates_date: string
 }
 
 export interface SystemSettingsPayload {
@@ -407,4 +411,6 @@ export interface SystemSettingsPayload {
   default_dark_mode?: boolean
   api_shared_secret?: string
   timezone?: string
+  current_pricing_currency?: string
+  available_currencies?: string[]
 }
