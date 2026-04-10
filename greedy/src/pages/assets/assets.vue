@@ -26,8 +26,10 @@
 					<!-- 仪表盘概览卡片 -->
 					<view v-if="dashboardLoaded" class="overview-card">
 						<text class="overview-label">总估值</text>
-						<text class="overview-value">{{ formatNumber(dashboard.total_value) }}</text>
-						<text class="cost-label">成本: {{ formatNumber(dashboard.total_cost) }}</text>
+						<view class="value-row">
+							<text class="overview-value">{{ formatNumber(dashboard.total_value) }}</text>
+							<text class="cost-label">成本: {{ formatNumber(dashboard.total_cost) }}</text>
+						</view>
 						<view class="pnl-row">
 							<view class="pnl-item">
 								<text class="pnl-label">累计盈亏</text>
@@ -494,14 +496,18 @@ const goToLogin = () => {
 	color: #ffffff;
 	font-family: 'Monaco', monospace;
 	display: block;
+}
+
+.value-row {
+	display: flex;
+	align-items: baseline;
+	gap: 16rpx;
 	margin-bottom: 30rpx;
 }
 
 .cost-label {
 	font-size: 24rpx;
 	color: rgba(255, 255, 255, 0.7);
-	margin-top: -20rpx;
-	margin-bottom: 20rpx;
 }
 
 .pnl-row {
