@@ -130,13 +130,13 @@
 									<view class="coin-detail">
 										<text class="coin-name">{{ item.crypto_name }}</text>
 										<text class="coin-amount">{{ item.quantity }} {{ getShortSymbol(item.crypto_symbol) }}</text>
-										<text class="coin-buy-price">成本 {{ formatNumber(item.buy_price) }}</text>
+										<text class="coin-buy-price">买入价: {{ formatNumber(item.buy_price) }}</text>
 									</view>
 								</view>
 								<view class="holding-right">
 									<text class="coin-total-value">{{ formatNumber(item.total_value) }}</text>
 									<view class="price-pnl-row">
-										<text class="coin-current-price">现 {{ formatNumber(item.current_price) }}</text>
+										<text class="coin-current-price">现价: {{ formatNumber(item.current_price) }}</text>
 										<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
 											{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatNumber(getItemPnl(item)) }}
 										</text>
@@ -196,8 +196,14 @@ const form = ref({
 })
 
 // 刷新全部数据（资产列表 + 仪表盘）
-const refreshAll = async () => {
+const refreshAll = async (isBackground = false) => {
+	if (!isBackground) {
+		loading.value = true
+	}
 	await Promise.all([fetchDashboard(), fetchAssets()])
+	if (!isBackground) {
+		loading.value = false
+	}
 }
 
 onShow(async () => {
@@ -212,7 +218,7 @@ onShow(async () => {
 	// 并发加载资产列表和仪表盘数据
 	await Promise.all([fetchAssets(), fetchDashboard()])
 	// 启动自动刷新（同时刷新 assets 和 dashboard）
-	startAutoRefresh(refreshAll)
+	startAutoRefresh(() => refreshAll(true))
 })
 
 onHide(() => {
