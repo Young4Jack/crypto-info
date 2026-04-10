@@ -20,6 +20,9 @@
 
 				<!-- 已加载完成 -->
 				<view v-else>
+					<!-- Dashboard 骨架屏 -->
+					<view v-if="!dashboardLoaded" class="skeleton-dashboard"></view>
+
 					<!-- 仪表盘概览卡片 -->
 					<view v-if="dashboardLoaded" class="overview-card">
 						<text class="overview-label">总估值 (USD)</text>
@@ -46,7 +49,13 @@
 						<text class="header-title">持有资产</text>
 						<view class="header-actions">
 							<text class="header-count">共 {{ assets.length }} 个</text>
-							<view class="add-btn pc-only" @tap="toggleForm">
+							<!-- 刷新按钮 -->
+							<view class="header-action-btn" @tap="refreshAll">
+								<view class="action-icon-wrap">
+									<text class="action-icon" :class="{ 'icon-spin': loading }">⟳</text>
+								</view>
+							</view>
+							<view class="add-btn" @tap="toggleForm">
 								<text class="btn-text">+ 添加资产</text>
 							</view>
 						</view>
@@ -149,11 +158,6 @@
 							</view>
 						</view>
 					</scroll-view>
-
-					<!-- 移动端底部按钮 -->
-					<view class="add-btn mobile-only" @tap="onMobileBtnTap">
-						<text class="btn-text">{{ showForm ? '返回' : '+ 添加资产' }}</text>
-					</view>
 				</view>
 			</view>
 		</view>
@@ -162,7 +166,7 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
+import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { dashboardApi, assetsApi, type AssetItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { formatPrice } from '@/utils/formatPrice'
@@ -191,6 +195,11 @@ const form = ref({
 	notes: '',
 })
 
+// 刷新全部数据（资产列表 + 仪表盘）
+const refreshAll = async () => {
+	await Promise.all([fetchDashboard(), fetchAssets()])
+}
+
 onShow(async () => {
 	const token = uni.getStorageSync('token')
 	if (!token) {
@@ -200,11 +209,10 @@ onShow(async () => {
 		return
 	}
 	isLoggedIn.value = true
-	// 资产列表优先加载，仪表盘数据异步后台加载不阻塞页面
-	await fetchAssets()
-	fetchDashboard()
-	// 启动自动刷新
-	startAutoRefresh(fetchAssets)
+	// 并发加载资产列表和仪表盘数据
+	await Promise.all([fetchAssets(), fetchDashboard()])
+	// 启动自动刷新（同时刷新 assets 和 dashboard）
+	startAutoRefresh(refreshAll)
 })
 
 onHide(() => {
@@ -213,6 +221,12 @@ onHide(() => {
 
 onUnmounted(() => {
 	stopAutoRefresh()
+})
+
+// 下拉刷新
+onPullDownRefresh(async () => {
+	await refreshAll()
+	uni.stopPullDownRefresh()
 })
 
 const fetchDashboard = async () => {
@@ -225,7 +239,7 @@ const fetchDashboard = async () => {
 		}
 		dashboardLoaded.value = true
 	} catch (e: any) {
-		console.error('获取仪表盘数据失败', e)
+		console.error('获取仪表盘数据失败', e, e?.message)
 		dashboardLoaded.value = true
 	}
 }
@@ -236,7 +250,7 @@ const fetchAssets = async () => {
 		const res = await assetsApi.getList()
 		assets.value = res.data || []
 	} catch (e: any) {
-		console.error('获取资产列表失败', e)
+		console.error('获取资产列表失败', e, e?.message)
 	} finally {
 		loading.value = false
 	}
@@ -263,16 +277,6 @@ const toggleForm = () => {
 	if (!showForm.value) {
 		editingId.value = null
 		resetForm()
-	}
-}
-
-const onMobileBtnTap = () => {
-	if (showForm.value) {
-		editingId.value = null
-		showForm.value = false
-		resetForm()
-	} else {
-		toggleForm()
 	}
 }
 
@@ -362,8 +366,8 @@ const deleteAsset = async (id: number) => {
 
 const formatNumber = (n: number): string => {
 	if (n == null || isNaN(n)) return '0.00'
-	// 使用 formatPrice 格式化价格
-	return formatPrice(n).replace('.00', '')
+	// 使用 formatPrice 格式化价格，$.00$ 确保只替换结尾的小数部分
+	return formatPrice(n).replace(/\.00$/, '')
 }
 
 const getItemPnl = (item: AssetItem): number => {
@@ -448,6 +452,15 @@ const goToLogin = () => {
 	font-weight: 500;
 }
 
+.skeleton-dashboard {
+	height: 200rpx;
+	border-radius: 24rpx;
+	margin-bottom: 30rpx;
+	background: linear-gradient(90deg, var(--border-color) 25%, var(--text-placeholder) 50%, var(--border-color) 75%);
+	background-size: 200% 100%;
+	animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
 .overview-card {
 	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	border-radius: 24rpx;
@@ -527,6 +540,46 @@ const goToLogin = () => {
 	display: flex;
 	align-items: center;
 	gap: 16rpx;
+}
+
+.header-action-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.header-action-btn:active {
+	transform: scale(0.92);
+}
+
+.action-icon-wrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background-color: var(--page-bg);
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.action-icon-wrap:active {
+	background-color: var(--text-placeholder);
+}
+
+.action-icon {
+	font-size: 36rpx;
+	color: #666;
+	font-weight: bold;
+}
+
+.icon-spin {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
 }
 
 .header-count {

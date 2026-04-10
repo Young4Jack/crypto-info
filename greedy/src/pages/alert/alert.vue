@@ -247,9 +247,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
-import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { formatPrice } from '@/utils/formatPrice'
 
 // 预警类型选项（5种）
@@ -267,8 +266,6 @@ const isLoggedIn = ref(false)
 // 加载状态
 const loading = ref(false)
 const submitting = ref(false)
-
-const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
 // 预警列表
 const alertRules = ref<AlertItem[]>([])
@@ -332,17 +329,17 @@ onShow(async () => {
 		return
 	}
 	isLoggedIn.value = true
-	// 并行加载预警列表和通知渠道
+	// 加载预警列表和通知渠道
 	await fetchAlertList()
 	if (channels.value.length === 0) {
 		fetchChannels()
 	}
-	// 启动自动刷新
-	startAutoRefresh(fetchAlertList)
 })
 
-onUnmounted(() => {
-	stopAutoRefresh()
+// 下拉刷新
+onPullDownRefresh(async () => {
+	await fetchAlertList()
+	uni.stopPullDownRefresh()
 })
 
 // 获取通知渠道

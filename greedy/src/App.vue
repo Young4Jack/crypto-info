@@ -99,7 +99,12 @@ html, body {
 /* #ifndef H5 */
 .uni-tabbar {
 	background-color: #ffffff !important;
-	border-top: 1px solid #e4e7ed !important;
+	border-top: none !important;
+	box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.08) !important;
+}
+
+.uni-tabbar-item {
+	flex: 1 !important;
 }
 
 .uni-tabbar-item .uni-tabbar-item-icon {
@@ -107,42 +112,81 @@ html, body {
 }
 
 .uni-tabbar-item .uni-tabbar-item-text {
-	font-size: 14px !important;
-	color: #606266 !important;
-	font-weight: 500;
+	font-size: 12px !important;
+	color: #8E8E93 !important;
+	font-weight: 400;
+	padding-top: 2rpx;
 }
 
 .uni-tabbar-item-selected .uni-tabbar-item-text {
 	color: #409EFF !important;
-	font-weight: 700 !important;
+	font-weight: 500 !important;
+}
+
+/* 中间 item 特殊高亮 */
+.uni-tabbar-item:nth-child(2).uni-tabbar-item-selected .uni-tabbar-item-text {
+	color: #FF6B6B !important;
+}
+
+.uni-tabbar-item::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	right: 0;
+	transform: translateY(-50%);
+	height: 24rpx;
+	width: 1rpx;
+	background: #E8E8E8;
+}
+
+.uni-tabbar-item:last-child::after {
+	display: none;
 }
 /* #endif */
 
-/* ========== H5 端底部导航栏深色模式适配 ========== */
+/* ========== H5 端底部导航栏 ========== */
 /* #ifdef H5 */
+.uni-tabbar {
+	background-color: #ffffff !important;
+	border-top: none !important;
+	box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.05) !important;
+	transition: all 0.3s ease;
+}
+
+.uni-tabbar-item {
+	flex: 1 !important;
+	transition: all 0.2s ease;
+}
+
+.uni-tabbar .uni-tabbar-item .uni-tabbar-item-text {
+	font-size: 12px !important;
+	color: #8E8E93 !important;
+	font-weight: 400;
+}
+
+.uni-tabbar .uni-tabbar-item-selected .uni-tabbar-item-text {
+	color: #409EFF !important;
+	font-weight: 500 !important;
+}
+
+/* 深色模式 H5 */
 .dark .uni-tabbar {
 	background-color: #1a1f2e !important;
-	border-top-color: #2d333b !important;
-}
-
-.dark .uni-tabbar .uni-tabbar-item .uni-tabbar-item-icon image {
-	filter: brightness(0.6) invert(1);
-	opacity: 0.7;
-	transition: all 0.3s;
-}
-
-.dark .uni-tabbar .uni-tabbar-item.uni-tabbar-item-selected .uni-tabbar-item-icon image {
-	filter: brightness(1) invert(1);
-	opacity: 1;
+	box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.4) !important;
 }
 
 .dark .uni-tabbar .uni-tabbar-item .uni-tabbar-item-text {
-	color: #5f6368 !important;
+	color: #8E8E93 !important;
 }
 
-.dark .uni-tabbar .uni-tabbar-item.uni-tabbar-item-selected .uni-tabbar-item-text {
+.dark .uni-tabbar .uni-tabbar-item-selected .uni-tabbar-item-text {
 	color: #409EFF !important;
 }
+
+.dark .uni-tabbar-item::after {
+	background: #2d333b !important;
+}
+/* #endif */
 
 /* H5 端导航栏深色模式 */
 .dark .uni-page-head {
@@ -158,12 +202,4 @@ html, body {
 .dark .uni-page-head .uni-page-head__content {
 	color: var(--text-primary) !important;
 }
-
-/* 修复全局横向滚动 */
-html, body {
-	overflow-x: hidden;
-	width: 100%;
-	max-width: 100vw;
-}
-/* #endif */
 </style>

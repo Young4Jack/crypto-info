@@ -18,14 +18,14 @@
 			"path": "pages/alert/alert",
 			"style": {
 				"navigationBarTitleText": "预警中心",
-				"enablePullDownRefresh": false
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/assets/assets",
 			"style": {
 				"navigationBarTitleText": "资产列表",
-				"enablePullDownRefresh": false
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -100,27 +100,27 @@
 		"backgroundColor": "#F5F7FA"
 	},
 	"tabBar": {
-		"color": "#606266",
+		"color": "#8E8E93",
 		"selectedColor": "#409EFF",
 		"backgroundColor": "#FFFFFF",
-		"borderStyle": "black",
+		"borderStyle": "white",
 		"fontSize": "12px",
 		"list": [
 			{
 				"pagePath": "pages/market/market",
-				"text": "⭐ 关注"
+				"text": "关注"
 			},
 			{
 				"pagePath": "pages/alert/alert",
-				"text": "🔔 预警"
+				"text": "预警"
 			},
 			{
 				"pagePath": "pages/assets/assets",
-				"text": "💰 资产"
+				"text": "资产"
 			},
 			{
 				"pagePath": "pages/mine/mine",
-				"text": "👤 我的"
+				"text": "我的"
 			}
 		]
 	},

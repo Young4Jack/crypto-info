@@ -72,7 +72,7 @@
 							<text class="menu-arrow">›</text>
 						</view>
 					</view>
-					<view class="menu-item" @tap="handleMenuTap('currency')">
+					<view class="menu-item" @tap="showCurrencyPicker = true">
 						<view class="menu-left">
 							<text class="menu-icon">💱</text>
 							<text class="menu-label">计价货币</text>
@@ -141,6 +141,28 @@
 					</view>
 				</view>
 			</view>
+
+			<!-- 计价货币选择弹窗 -->
+			<view v-if="showCurrencyPicker" class="modal-overlay" @tap="showCurrencyPicker = false">
+				<view class="modal-content" @tap.stop>
+					<view class="modal-header">
+						<text class="modal-title">选择计价货币</text>
+						<text class="modal-close" @tap="showCurrencyPicker = false">×</text>
+					</view>
+					<view class="theme-options">
+						<view
+							v-for="opt in currencyOptions"
+							:key="opt.value"
+							class="theme-option"
+							:class="{ active: currentCurrency === opt.value }"
+							@tap="selectCurrency(opt.value)"
+						>
+							<text class="theme-label">{{ opt.label }}</text>
+							<text v-if="currentCurrency === opt.value" class="theme-check">✓</text>
+						</view>
+					</view>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
@@ -148,24 +170,54 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { authApi } from '@/api'
+import { authApi, systemSettingsApi } from '@/api'
 import { useTheme, type ThemeMode } from '@/composables/useDarkMode'
-import { getCurrentCurrency, currencySymbols, initCurrencyService } from '@/utils/exchangeRate'
+import { getCurrentCurrency, setCurrentCurrency, currencySymbols, initCurrencyService } from '@/utils/exchangeRate'
 
 const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
+
+// 登录状态
+const isLoggedIn = ref(false)
 
 // 初始化汇率服务
 onMounted(() => {
 	initCurrencyService()
+	// 检查登录状态
+	const token = uni.getStorageSync('token')
+	isLoggedIn.value = !!token
 })
 
-const currentCurrency = computed(() => getCurrentCurrency())
+// 页面显示时刷新登录状态
+onShow(() => {
+	const token = uni.getStorageSync('token')
+	isLoggedIn.value = !!token
+	if (isLoggedIn.value) {
+		fetchCurrencyFromBackend()
+	}
+})
+
+// 从后端获取计价货币
+const fetchCurrencyFromBackend = async () => {
+	try {
+		const res = await systemSettingsApi.getFull()
+		const backendCurrency = res.data.current_pricing_currency
+		if (backendCurrency) {
+			setCurrentCurrency(backendCurrency)
+			currentCurrency.value = backendCurrency
+		}
+	} catch (e) {
+		console.error('获取后端货币设置失败', e)
+	}
+}
+
+const currentCurrency = ref(getCurrentCurrency())
 const currentCurrencyDisplay = computed(() => {
 	const curr = currentCurrency.value
 	return `${curr} ${currencySymbols[curr] || ''}`
 })
 
 const showThemePicker = ref(false)
+const showCurrencyPicker = ref(false)
 
 const currentThemeLabel = computed(() => getThemeLabel(themeMode.value))
 
@@ -175,13 +227,37 @@ const themeOptions = [
   { value: 'system' as ThemeMode, label: '跟随系统' },
 ]
 
+const currencyOptions = [
+  { value: 'USD', label: '美元 ($)' },
+  { value: 'CNY', label: '人民币 (¥)' },
+  { value: 'EUR', label: '欧元 (€)' },
+  { value: 'JPY', label: '日元 (¥)' },
+]
+
 const selectTheme = (mode: ThemeMode) => {
   setTheme(mode)
   showThemePicker.value = false
 }
 
-// 登录状态
-const isLoggedIn = ref(false)
+const selectCurrency = async (currency: string) => {
+	// 先更新本地
+	setCurrentCurrency(currency)
+	currentCurrency.value = currency
+	
+	// 如果已登录，保存到后端
+	if (isLoggedIn.value) {
+		try {
+			await systemSettingsApi.update({
+				current_pricing_currency: currency
+			})
+			uni.showToast({ title: '已保存', icon: 'success' })
+		} catch (e: any) {
+			uni.showToast({ title: e?.message || '保存失败', icon: 'none' })
+		}
+	}
+	
+	showCurrencyPicker.value = false
+}
 
 // 加载状态
 const loading = ref(false)
