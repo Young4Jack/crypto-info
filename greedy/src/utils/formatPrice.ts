@@ -21,10 +21,18 @@ export const formatPrice = (price: number, targetCurrency?: string): string => {
 	} else if (finalPrice >= 1) {
 		formatted = finalPrice.toFixed(4)
 	} else {
-		// 小于1的数字正常显示
-		formatted = finalPrice.toFixed(8).replace(/(\.0+)|(0+$)/, '')
-		if (!formatted || formatted === '0') {
-			formatted = '0.00'
+		const fixed = finalPrice.toFixed(12).replace(/\.?0+$/, '')
+		if (finalPrice > 0 && finalPrice < 1 && fixed.length > 8) {
+			const match = fixed.match(/^0\.0+(\d)/)
+			if (match) {
+				const zeros = fixed.indexOf(match[1]) - 2
+				const rest = fixed.substring(fixed.indexOf(match[1]))
+				formatted = `0.0{${zeros}}${rest}`
+			} else {
+				formatted = fixed || '0.00'
+			}
+		} else {
+			formatted = fixed || '0.00'
 		}
 	}
 	
