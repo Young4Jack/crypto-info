@@ -200,7 +200,7 @@ const refreshAll = async (isBackground = false) => {
 	if (!isBackground) {
 		loading.value = true
 	}
-	await Promise.all([fetchDashboard(), fetchAssets()])
+	await Promise.all([fetchDashboard(), fetchAssets(isBackground)])
 	if (!isBackground) {
 		loading.value = false
 	}
@@ -250,15 +250,19 @@ const fetchDashboard = async () => {
 	}
 }
 
-const fetchAssets = async () => {
-	loading.value = true
+const fetchAssets = async (isBackground = false) => {
+	if (!isBackground) {
+		loading.value = true
+	}
 	try {
 		const res = await assetsApi.getList()
 		assets.value = res.data || []
 	} catch (e: any) {
 		console.error('获取资产列表失败', e, e?.message)
 	} finally {
-		loading.value = false
+		if (!isBackground) {
+			loading.value = false
+		}
 	}
 }
 
