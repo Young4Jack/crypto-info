@@ -132,6 +132,7 @@ async def get_dashboard_summary(
     # 8. 返回仪表盘数据（新闻功能已移除）
     return {
         "total_value": round(total_value, 2),
+        "total_cost": round(total_buy_value, 2),
         "total_profit_loss": round(total_profit_loss, 2),
         "total_profit_loss_percentage": round(total_profit_loss_percentage, 2),
         "active_alerts_count": active_alerts_count,

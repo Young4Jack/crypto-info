@@ -630,6 +630,7 @@ GET /api/dashboard/summary
 ```json
 {
   "total_value": 100000.0,
+  "total_cost": 95000.0,
   "total_profit_loss": 5000.0,
   "total_profit_loss_percentage": 5.26,
   "active_alerts_count": 3,
