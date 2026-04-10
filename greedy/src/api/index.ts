@@ -270,6 +270,7 @@ export interface DashboardAlertItem {
 // 仪表盘综合数据响应
 export interface DashboardSummaryResponse {
   total_value: number
+  total_cost: number
   total_profit_loss: number
   total_profit_loss_percentage: number
   active_alerts_count: number

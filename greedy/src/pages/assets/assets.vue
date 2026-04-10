@@ -25,8 +25,9 @@
 
 					<!-- 仪表盘概览卡片 -->
 					<view v-if="dashboardLoaded" class="overview-card">
-						<text class="overview-label">总估值 (USD)</text>
+						<text class="overview-label">总估值</text>
 						<text class="overview-value">{{ formatNumber(dashboard.total_value) }}</text>
+						<text class="cost-label">成本: {{ formatNumber(dashboard.total_cost) }}</text>
 						<view class="pnl-row">
 							<view class="pnl-item">
 								<text class="pnl-label">累计盈亏</text>
@@ -182,6 +183,7 @@ const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
 const dashboard = ref({
 	total_value: 0,
+	total_cost: 0,
 	total_profit_loss: 0,
 	total_profit_loss_percentage: 0,
 })
@@ -240,6 +242,7 @@ const fetchDashboard = async () => {
 		const res = await dashboardApi.getSummary()
 		dashboard.value = {
 			total_value: res.data.total_value || 0,
+			total_cost: res.data.total_cost || 0,
 			total_profit_loss: res.data.total_profit_loss || 0,
 			total_profit_loss_percentage: res.data.total_profit_loss_percentage || 0,
 		}
@@ -492,6 +495,13 @@ const goToLogin = () => {
 	font-family: 'Monaco', monospace;
 	display: block;
 	margin-bottom: 30rpx;
+}
+
+.cost-label {
+	font-size: 24rpx;
+	color: rgba(255, 255, 255, 0.7);
+	margin-top: -20rpx;
+	margin-bottom: 20rpx;
 }
 
 .pnl-row {
