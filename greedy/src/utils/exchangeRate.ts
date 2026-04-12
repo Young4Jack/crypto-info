@@ -66,6 +66,10 @@ export const setCurrentCurrency = (currency: string): void => {
 			exchange_rates: { CNY: 1, EUR: 1, JPY: 1 }
 		}
 	}
+	// 非 USD 时重置 initialized 标志，以便下次 initCurrencyService 能重新获取汇率
+	if (currency !== 'USD') {
+		initialized = false
+	}
 }
 
 // 获取汇率
@@ -74,6 +78,22 @@ export const getExchangeRates = (): ExchangeRates => {
 		return cachedConfig.exchange_rates
 	}
 	return { CNY: 1, EUR: 1, JPY: 1 }
+}
+
+// 智能精度处理：根据数值大小进行合理舍入
+function smartRound(value: number): number {
+	if (value >= 1) {
+		return Math.round(value * 100) / 100
+	}
+	// 数字 < 1：找到第一个非零数字，保留该数字之后的2位
+	const str = value.toFixed(20)
+	const match = str.match(/^0\.0*([1-9])/)
+	if (match) {
+		const firstNonZeroIndex = str.indexOf(match[1])
+		const decimalPlaces = firstNonZeroIndex - 1
+		return Math.round(value * Math.pow(10, decimalPlaces + 2)) / Math.pow(10, decimalPlaces + 2)
+	}
+	return Math.round(value * 100) / 100
 }
 
 // 转换价格到指定货币
@@ -85,7 +105,9 @@ export const convertPrice = (priceUSD: number, targetCurrency: string): number =
 	const rates = getExchangeRates()
 	const rate = rates[targetCurrency as keyof ExchangeRates]
 	if (rate) {
-		return priceUSD * rate
+		// 对汇率进行智能精度处理后再转换
+		const processedRate = smartRound(rate)
+		return priceUSD * processedRate
 	}
 	return priceUSD
 }

@@ -172,7 +172,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { authApi, systemSettingsApi } from '@/api'
 import { useTheme, type ThemeMode } from '@/composables/useDarkMode'
-import { getCurrentCurrency, setCurrentCurrency, currencySymbols, initCurrencyService } from '@/utils/exchangeRate'
+import { getCurrentCurrency, setCurrentCurrency, currencySymbols, initCurrencyService, fetchCurrencyConfig } from '@/utils/exchangeRate'
 
 const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
 
@@ -180,8 +180,8 @@ const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
 const isLoggedIn = ref(false)
 
 // 初始化汇率服务
-onMounted(() => {
-	initCurrencyService()
+onMounted(async () => {
+	await initCurrencyService()
 	// 检查登录状态
 	const token = uni.getStorageSync('token')
 	isLoggedIn.value = !!token
@@ -243,6 +243,11 @@ const selectCurrency = async (currency: string) => {
 	// 先更新本地
 	setCurrentCurrency(currency)
 	currentCurrency.value = currency
+	
+	// 非 USD 时重新获取汇率
+	if (currency !== 'USD') {
+		await fetchCurrencyConfig()
+	}
 	
 	// 如果已登录，保存到后端
 	if (isLoggedIn.value) {
