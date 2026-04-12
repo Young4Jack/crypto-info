@@ -15,11 +15,14 @@ export const formatPrice = (price: number, targetCurrency?: string): string => {
 	const symbol = currencySymbols[currency] || '$'
 	
 	// 格式化数字
-	let formatted: string
-	if (finalPrice >= 1000) {
-		formatted = finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-	} else if (finalPrice >= 1) {
-		formatted = finalPrice.toFixed(4)
+		let formatted: string
+		if (finalPrice >= 1000) {
+			const fixedPrice = finalPrice.toFixed(2)
+			const parts = fixedPrice.split('.')
+			parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+			formatted = parts.join('.')
+		} else if (finalPrice >= 1) {
+		formatted = finalPrice
 	} else {
 		const fixed = finalPrice.toFixed(12).replace(/\.?0+$/, '')
 		if (finalPrice > 0 && finalPrice < 1 && fixed.length > 8) {
@@ -41,7 +44,12 @@ export const formatPrice = (price: number, targetCurrency?: string): string => {
 
 // 纯格式化（不转换货币，用于 K 线等特殊场景）
 export const formatPriceRaw = (price: number): string => {
-	if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+	if (price >= 1000) {
+		const fixedPrice = price.toFixed(2)
+		const parts = fixedPrice.split('.')
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+		return parts.join('.')
+	}
 	if (price >= 1) return price.toFixed(4)
 	const fixed = price.toFixed(12).replace(/\.?0+$/, '')
 	if (price > 0 && price < 1 && fixed.length > 8) {
@@ -53,15 +61,4 @@ export const formatPriceRaw = (price: number): string => {
 		}
 	}
 	return fixed || '0.00'
-}
-
-// 数字格式化（无货币符号，用于资产页面总计等）
-export const formatNumber = (n: number): string => {
-	if (n == null || isNaN(n)) return '0.00'
-	// 处理极大或极小的数，避免精度问题
-	if (!isFinite(n)) return '0.00'
-	// 保留2位小数
-	const fixed = n.toFixed(2)
-	// 移除尾部 .00
-	return fixed.replace(/\.00$/, '')
 }

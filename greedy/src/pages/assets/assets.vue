@@ -27,14 +27,14 @@
 					<view v-if="dashboardLoaded" class="overview-card">
 						<text class="overview-label">总估值</text>
 						<view class="value-row">
-							<text class="overview-value">{{ formatNumber(dashboard.total_value) }}</text>
-							<text class="cost-label">成本: {{ formatNumber(dashboard.total_cost) }}</text>
+							<text class="overview-value">{{ formatInteger (dashboard.total_value) }}</text>
+							<text class="cost-label">成本: {{ formatInteger (dashboard.total_cost) }}</text>
 						</view>
 						<view class="pnl-row">
 							<view class="pnl-item">
 								<text class="pnl-label">累计盈亏</text>
 								<text :class="['pnl-value', dashboard.total_profit_loss >= 0 ? 'profit' : 'loss']">
-									{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}{{ formatNumber(dashboard.total_profit_loss) }}
+									{{ dashboard.total_profit_loss >= 0 ? '+' : '' }}{{ formatInteger (dashboard.total_profit_loss) }}
 								</text>
 							</view>
 							<view class="pnl-divider"></view>
@@ -141,7 +141,7 @@
 									<view class="price-pnl-row">
 										<text class="coin-current-price">现价: {{ formatNumber(item.current_price) }}</text>
 										<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
-											{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatNumber(getItemPnl(item)) }}
+											{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatInteger (getItemPnl(item)) }}
 										</text>
 									</view>
 									<view class="action-btns">
@@ -383,6 +383,12 @@ const formatNumber = (n: number): string => {
 	if (n == null || isNaN(n)) return '0.00'
 	// 使用 formatPrice 格式化价格，$.00$ 确保只替换结尾的小数部分
 	return formatPrice(n).replace(/\.00$/, '')
+}
+
+const formatInteger = (n: number): string => {
+    if (n == null || isNaN(n)) return '0.00'
+    // 调用 formatPrice 获取带符号的结果，再手动去掉小数部分
+    return formatPrice(n).replace(/\.\d+$/, '')
 }
 
 const getItemPnl = (item: AssetItem): number => {
