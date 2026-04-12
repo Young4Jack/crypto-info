@@ -1,5 +1,5 @@
 <template>
-	<view class="alert-page">
+	<view class="alert-page" @touchstart="onTouchStart" @touchend="onTouchEnd">
 		<view class="alert-container">
 			<!-- 页面头部 -->
 			<view class="page-header">
@@ -249,6 +249,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { formatPrice } from '@/utils/formatPrice'
 
 // 预警类型选项（5种）
@@ -275,6 +276,11 @@ const showAddForm = ref(false)
 
 // 是否显示操作按钮（管理模式下显示）
 const showActions = ref(false)
+
+const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
+  () => switchToNextTab(),
+  () => switchToPrevTab()
+)
 
 // 编辑中的预警 ID（null = 新建模式）
 const editingId = ref<number | null>(null)

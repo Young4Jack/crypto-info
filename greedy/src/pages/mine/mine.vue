@@ -1,5 +1,5 @@
 <template>
-	<view class="mine-page">
+	<view class="mine-page" @touchstart="onTouchStart" @touchend="onTouchEnd">
 		<view class="mine-container">
 			<!-- 用户信息区：未登录态 -->
 			<view v-if="!isLoggedIn" class="user-profile guest-profile" @tap="goToLogin">
@@ -172,9 +172,15 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { authApi, systemSettingsApi } from '@/api'
 import { useTheme, type ThemeMode } from '@/composables/useDarkMode'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { getCurrentCurrency, setCurrentCurrency, currencySymbols, initCurrencyService, fetchCurrencyConfig } from '@/utils/exchangeRate'
 
 const { themeMode, isDarkMode, setTheme, getThemeLabel } = useTheme()
+
+const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
+  () => switchToNextTab(),
+  () => switchToPrevTab()
+)
 
 // 登录状态
 const isLoggedIn = ref(false)

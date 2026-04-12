@@ -1,5 +1,5 @@
 <template>
-	<view class="assets-page">
+	<view class="assets-page" @touchstart="onTouchStart" @touchend="onTouchEnd">
 		<view class="assets-container">
 			<!-- 未登录态 -->
 			<view v-if="!isLoggedIn" class="guest-state">
@@ -172,6 +172,7 @@ import { ref, onUnmounted } from 'vue'
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { dashboardApi, assetsApi, type AssetItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { formatPrice } from '@/utils/formatPrice'
 
 const isLoggedIn = ref(false)
@@ -182,6 +183,11 @@ const showForm = ref(false)
 const editingId = ref<number | null>(null)
 
 const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
+
+const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
+  () => switchToNextTab(),
+  () => switchToPrevTab()
+)
 
 const dashboard = ref({
 	total_value: 0,

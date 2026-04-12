@@ -1,5 +1,5 @@
 <template>
-	<view class="market-page">
+	<view class="market-page" @touchstart="onTouchStart" @touchend="onTouchEnd">
 		<view class="market-container">
 			<!-- 页面头部 -->
 			<view class="market-header">
@@ -122,6 +122,7 @@ import { ref, onUnmounted } from 'vue'
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { useSwipeTab } from '@/composables/useSwipeTab'
 import { formatPrice } from '@/utils/formatPrice'
 
 interface CoinItem {
@@ -141,6 +142,11 @@ const error = ref('')
 const isLoggedIn = ref(false)
 
 const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
+
+const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
+  () => switchToNextTab(),
+  () => switchToPrevTab()
+)
 
 const isManageMode = ref(false)
 
