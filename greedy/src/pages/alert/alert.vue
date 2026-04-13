@@ -838,9 +838,6 @@ const goToLogin = () => {
 const goToHistory = () => {
 	uni.navigateTo({
 		url: '/pages/alert/history/history',
-		fail: () => {
-			uni.showToast({ title: '页面跳转失败', icon: 'none' })
-		},
 	})
 }
 </script>
