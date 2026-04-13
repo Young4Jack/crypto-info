@@ -254,6 +254,12 @@
 							</view>
 						</view>
 						<view class="item-actions" v-if="showActions">
+							<view class="action-btn move" :class="{ disabled: index === 0 }" @tap="moveUp(index)">
+								<text>上移</text>
+							</view>
+							<view class="action-btn move" :class="{ disabled: index === alertRules.length - 1 }" @tap="moveDown(index)">
+								<text>下移</text>
+							</view>
 							<view class="action-btn edit" @tap="openEdit(item)">
 								<text>编辑</text>
 							</view>
@@ -280,6 +286,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useSortableList } from '@/composables/useSortableList'
 import { formatPrice } from '@/utils/formatPrice'
 
 // 日期格式化
@@ -321,6 +328,14 @@ const showAddForm = ref(false)
 
 // 是否显示操作按钮（管理模式下显示）
 const showActions = ref(false)
+
+// 排序保存函数
+const saveAlertOrder = async (items: { id: number; sort_order: number }[]) => {
+  await alertsApi.updateSortOrder(items)
+}
+
+// 排序功能（App 端上移/下移）
+const { moveUp, moveDown } = useSortableList(alertRules, saveAlertOrder)
 
 const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
   () => switchToNextTab(),
@@ -1311,8 +1326,18 @@ const goToHistory = () => {
 }
 
 .action-btn.delete {
-	background-color: #fef0f0;
-	color: #f56c6c;
+ 	background-color: #fef0f0;
+ 	color: #f56c6c;
+}
+
+.action-btn.move {
+ 	background-color: #409eff;
+ 	color: #ffffff;
+}
+
+.action-btn.move.disabled {
+ 	background-color: #a0cfff;
+ 	color: #ffffff;
 }
 
 /* 空状态 */

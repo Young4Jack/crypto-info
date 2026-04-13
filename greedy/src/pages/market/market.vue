@@ -184,29 +184,14 @@ const saveOrder = async (items: { id: number; sort_order: number }[]) => {
   await watchlistApi.updateSortOrder(items)
 }
 
-// H5 端拖拽排序
+// H5 端拖拽排序 + App 端上移/下移（统一使用 composable）
 // #ifdef H5
-const { initSortable, destroySortable, isDragging } = useSortableList(coinList, saveOrder)
+const { initSortable, destroySortable, isDragging, moveUp, moveDown } = useSortableList(coinList, saveOrder)
 // #endif
 
 // #ifndef H5
+const { moveUp, moveDown } = useSortableList(coinList, saveOrder)
 const isDragging = ref(false)
-const moveUp = (index: number) => {
-  if (index <= 0) return
-  const itemsCopy = [...coinList.value]
-  const item = itemsCopy.splice(index, 1)[0]
-  itemsCopy.splice(index - 1, 0, item)
-  coinList.value = itemsCopy
-  saveOrder(coinList.value.map((c, i) => ({ id: c.id, sort_order: i })))
-}
-const moveDown = (index: number) => {
-  if (index >= coinList.value.length - 1) return
-  const itemsCopy = [...coinList.value]
-  const item = itemsCopy.splice(index, 1)[0]
-  itemsCopy.splice(index + 1, 0, item)
-  coinList.value = itemsCopy
-  saveOrder(coinList.value.map((c, i) => ({ id: c.id, sort_order: i })))
-}
 // #endif
 
 const showEditModal = ref(false)

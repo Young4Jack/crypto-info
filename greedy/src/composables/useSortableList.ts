@@ -21,15 +21,23 @@ export interface SaveOrderFn {
   (items: SortOrderItem[]): Promise<void>
 }
 
+export interface UseSortableReturn<T> {
+  isDragging: Ref<boolean>
+  initSortable: (selector: string) => void
+  destroySortable: () => void
+  moveUp: (index: number) => void
+  moveDown: (index: number) => void
+}
+
 export function useSortableList<T extends { id: number }>(
   list: Ref<T[]>,
   saveOrderFn: SaveOrderFn,
   options: SortableOptions = {}
-) {
+): UseSortableReturn<T> {
   // #ifdef H5
   const sortableInstance = ref<any>(null)
   // #endif
-  
+
   const isDragging = ref(false)
 
   const defaultOptions: SortableOptions = {
@@ -41,7 +49,37 @@ export function useSortableList<T extends { id: number }>(
     ...options,
   }
 
-  const initSortable = (selector: string) => {
+  const moveUp = (index: number): void => {
+    if (index <= 0) return
+    const itemsCopy = [...list.value]
+    const item = itemsCopy.splice(index, 1)[0]
+    itemsCopy.splice(index - 1, 0, item)
+    list.value = itemsCopy as T[]
+    const sortItems = list.value.map((item, idx) => ({
+      id: item.id,
+      sort_order: idx,
+    }))
+    saveOrderFn(sortItems).catch(() => {
+      uni.showToast({ title: '排序保存失败', icon: 'none' })
+    })
+  }
+
+  const moveDown = (index: number): void => {
+    if (index >= list.value.length - 1) return
+    const itemsCopy = [...list.value]
+    const item = itemsCopy.splice(index, 1)[0]
+    itemsCopy.splice(index + 1, 0, item)
+    list.value = itemsCopy as T[]
+    const sortItems = list.value.map((item, idx) => ({
+      id: item.id,
+      sort_order: idx,
+    }))
+    saveOrderFn(sortItems).catch(() => {
+      uni.showToast({ title: '排序保存失败', icon: 'none' })
+    })
+  }
+
+  const initSortable = (selector: string): void => {
     // #ifdef H5
     if (sortableInstance.value) {
       destroySortable()
@@ -69,7 +107,7 @@ export function useSortableList<T extends { id: number }>(
           const itemsCopy = [...list.value]
           const item = itemsCopy.splice(oldIndex, 1)[0]
           itemsCopy.splice(newIndex, 0, item)
-          
+
           list.value = itemsCopy as T[]
 
           try {
@@ -78,20 +116,16 @@ export function useSortableList<T extends { id: number }>(
               sort_order: index,
             }))
             await saveOrderFn(sortItems)
-          } catch (e) {
+          } catch {
             uni.showToast({ title: '排序保存失败', icon: 'none' })
           }
         },
       })
     }, 100)
     // #endif
-    
-    // #ifdef APP-PLUS
-    uni.showToast({ title: 'App端暂不支持拖拽排序', icon: 'none' })
-    // #endif
   }
 
-  const destroySortable = () => {
+  const destroySortable = (): void => {
     // #ifdef H5
     if (sortableInstance.value) {
       sortableInstance.value.destroy()
@@ -108,5 +142,7 @@ export function useSortableList<T extends { id: number }>(
     isDragging,
     initSortable,
     destroySortable,
+    moveUp,
+    moveDown,
   }
 }

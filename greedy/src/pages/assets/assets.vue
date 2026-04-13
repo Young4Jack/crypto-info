@@ -178,6 +178,12 @@
 								</view>
 								<!-- 管理模式操作按钮 -->
 								<view v-if="isManageMode" class="item-actions">
+									<view class="action-btn move" :class="{ disabled: index === 0 }" @tap.stop="moveUp(index)">
+										<text>上移</text>
+									</view>
+									<view class="action-btn move" :class="{ disabled: index === assets.length - 1 }" @tap.stop="moveDown(index)">
+										<text>下移</text>
+									</view>
 									<view class="action-btn edit" @tap.stop="openEdit(item)">
 										<text>编辑</text>
 									</view>
@@ -205,6 +211,7 @@ import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { dashboardApi, assetsApi, type AssetItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useSortableList } from '@/composables/useSortableList'
 import { formatPrice } from '@/utils/formatPrice'
 
 const isLoggedIn = ref(false)
@@ -214,6 +221,14 @@ const dashboardLoaded = ref(false)
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
 const isManageMode = ref(false)
+
+// 排序保存函数
+const saveAssetOrder = async (items: { id: number; sort_order: number }[]) => {
+  await assetsApi.updateSortOrder(items)
+}
+
+// 排序功能（App 端上移/下移）
+const { moveUp, moveDown } = useSortableList(assets, saveAssetOrder)
 
 const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
@@ -1025,8 +1040,18 @@ const goToLogin = () => {
 }
 
 .action-btn.delete {
-	background-color: #fef0f0;
-	color: #f56c6c;
+ 	background-color: #fef0f0;
+ 	color: #f56c6c;
+}
+
+.action-btn.move {
+ 	background-color: #409eff;
+ 	color: #ffffff;
+}
+
+.action-btn.move.disabled {
+ 	background-color: #a0cfff;
+ 	color: #ffffff;
 }
 
 .empty-state {
