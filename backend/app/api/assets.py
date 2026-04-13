@@ -38,7 +38,8 @@ class AssetResponse(BaseModel):
     buy_price: float
     quantity: float
     notes: Optional[str] = None
-    total_value: float
+    cost_value: float  # 买入估值 = buy_price × quantity
+    total_value: float  # 现估值 = current_price × quantity
     current_price: float = 0.0
     sort_order: int = 0
     created_at: str
@@ -77,7 +78,8 @@ async def get_assets(
             buy_price=asset.buy_price,
             quantity=asset.quantity,
             notes=asset.notes,
-            total_value=asset.buy_price * asset.quantity,
+            cost_value=asset.buy_price * asset.quantity,
+            total_value=current_price * asset.quantity,
             current_price=current_price,
             sort_order=asset.sort_order or 0,
             created_at=asset.created_at.isoformat() if asset.created_at else None
@@ -137,6 +139,7 @@ async def get_asset(
         buy_price=asset.buy_price,
         quantity=asset.quantity,
         notes=asset.notes,
+        cost_value=asset.buy_price * asset.quantity,
         total_value=asset.buy_price * asset.quantity,
         created_at=asset.created_at.isoformat() if asset.created_at else None
     )
@@ -198,6 +201,7 @@ async def create_asset(
         buy_price=asset.buy_price,
         quantity=asset.quantity,
         notes=asset.notes,
+        cost_value=asset.buy_price * asset.quantity,
         total_value=asset.buy_price * asset.quantity,
         created_at=asset.created_at.isoformat() if asset.created_at else None
     )
@@ -233,6 +237,14 @@ async def update_asset(
         Cryptocurrency.id == asset.crypto_id
     ).first()
     
+    # 获取当前价格
+    current_price = 0.0
+    try:
+        current_prices = await fetch_crypto_prices()
+        current_price = current_prices.get(crypto.symbol, 0) if crypto else 0
+    except Exception:
+        pass
+    
     return AssetResponse(
         id=asset.id,
         crypto_id=asset.crypto_id,
@@ -241,7 +253,9 @@ async def update_asset(
         buy_price=asset.buy_price,
         quantity=asset.quantity,
         notes=asset.notes,
-        total_value=asset.buy_price * asset.quantity,
+        cost_value=asset.buy_price * asset.quantity,
+        total_value=current_price * asset.quantity,
+        current_price=current_price,
         created_at=asset.created_at.isoformat() if asset.created_at else None
     )
 

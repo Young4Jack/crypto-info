@@ -83,6 +83,11 @@ export interface WatchlistItem {
   is_public: boolean
 }
 
+export interface SortOrderItem {
+  id: number
+  sort_order: number
+}
+
 export interface WatchlistCreatePayload {
   crypto_symbol: string
   notes?: string
@@ -107,6 +112,9 @@ export const watchlistApi = {
   },
   delete: (watchlistId: number) => {
     return del(`/api/watchlist/${watchlistId}`)
+  },
+  updateSortOrder: (items: SortOrderItem[]) => {
+    return put('/api/watchlist/sort-order', { items })
   },
 }
 
@@ -151,6 +159,10 @@ export const alertsApi = {
   // 删除预警（需要鉴权）
   delete: (alertId: number) => {
     return del(`/api/alerts/${alertId}`)
+  },
+  // 批量更新排序
+  updateSortOrder: (items: SortOrderItem[]) => {
+    return put('/api/alerts/sort-order', { items })
   },
 }
 
@@ -302,7 +314,8 @@ export interface AssetItem {
   buy_price: number
   quantity: number
   notes: string
-  total_value: number
+  cost_value: number  // 买入估值
+  total_value: number  // 现估值
   current_price: number
   sort_order: number
   created_at: string
@@ -343,6 +356,10 @@ export const assetsApi = {
   // 删除资产（需要鉴权）
   delete: (assetId: number) => {
     return del(`/api/assets/${assetId}`)
+  },
+  // 批量更新排序
+  updateSortOrder: (items: SortOrderItem[]) => {
+    return put('/api/assets/sort-order', { items })
   },
 }
 

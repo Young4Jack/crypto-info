@@ -1,5 +1,11 @@
 <template>
-	<view class="market-page" @touchstart="onTouchStart" @touchend="onTouchEnd">
+	<view class="market-page" 
+		:class="{ 'disable-scroll': isDragging }" 
+		@touchstart="onTouchStart" 
+		@touchend="onTouchEnd" 
+		@touchmove="onPageTouchMove"
+		@mousemove="isDragging ? onMouseMove($event) : null"
+		@mouseup="isDragging ? onDragEnd() : null">
 		<view class="market-container">
 			<!-- 页面头部 -->
 			<view class="market-header">
@@ -40,14 +46,28 @@
 			</view>
 
 			<!-- 列表 -->
-			<view v-else class="coin-list">
+			<view v-else class="coin-list" 
+				@touchmove.stop="isDragging ? onTouchMove($event) : null" 
+				@touchend.stop="isDragging ? onDragEnd() : null">
 				<view
-					v-for="coin in coinList"
+					v-for="(coin, index) in coinList"
 					:key="coin.id"
 					class="coin-card"
-					:class="{ 'price-flash-up': coin.priceFlash === 'up', 'price-flash-down': coin.priceFlash === 'down' }"
+					:class="{ 
+						'price-flash-up': coin.priceFlash === 'up', 
+						'price-flash-down': coin.priceFlash === 'down',
+						'is-dragging': dragState && dragState.item.id === coin.id,
+						'drag-over': dragOverIndex === index && dragState && dragState.index !== index
+					}"
 					@tap="isManageMode ? null : handleCoinClick(coin.symbol)"
 				>
+					<!-- 拖拽手柄（仅管理模式显示） -->
+					<view v-if="isManageMode" class="drag-handle" 
+						@mousedown.prevent="onDragStart(index, $event)"
+						@touchstart.prevent="onDragStart(index, $event)">
+						<text class="drag-icon">⋮⋮</text>
+					</view>
+
 					<view class="coin-main">
 						<view class="coin-left">
 							<text class="coin-name">{{ coin.symbol }}</text>
@@ -114,6 +134,24 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 浮动拖拽元素 -->
+		<view v-if="isDragging && dragState" class="drag-floating" :style="getFloatingStyle()">
+			<view class="drag-floating-card">
+				<view class="coin-main">
+					<view class="coin-left">
+						<text class="coin-name">{{ dragState.item.symbol }}</text>
+						<text class="coin-pair">{{ dragState.item.name }}</text>
+					</view>
+					<view class="coin-right">
+						<text class="price-value">{{ dragState.item.price }}</text>
+						<text :class="['price-change', dragState.item.change >= 0 ? 'up' : 'down']">
+							{{ dragState.item.change >= 0 ? '+' : '' }}{{ dragState.item.change }}%
+						</text>
+					</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -123,6 +161,7 @@ import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
+import { useDraggableList } from '@/composables/useDraggableList'
 import { formatPrice } from '@/utils/formatPrice'
 
 interface CoinItem {
@@ -149,6 +188,31 @@ const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeT
 )
 
 const isManageMode = ref(false)
+
+// 页面触摸移动事件（拖拽时阻止页面滚动）
+const onPageTouchMove = (e: any) => {
+  if (isDragging.value) {
+    e.stopPropagation?.()
+  }
+}
+
+// 拖拽排序功能
+const { isDragging, dragState, dragOverIndex, onDragStart, onTouchMove, onMouseMove, onDragEnd } = useDraggableList(coinList, {
+  saveOrder: (items) => watchlistApi.updateSortOrder(items),
+  enabled: () => isLoggedIn.value && isManageMode.value,
+  realtimeReorder: true
+})
+
+// 计算浮动卡片位置（居中显示）
+const getFloatingStyle = () => {
+  if (!dragState.value) return {}
+  
+  return {
+    top: (dragState.value.currentY - 40) + 'px',
+    left: '50%',
+    transform: 'translateX(-50%)'
+  }
+}
 
 const showEditModal = ref(false)
 const editingCoin = ref<CoinItem | null>(null)
@@ -391,6 +455,79 @@ onPullDownRefresh(async () => {
 </script>
 
 <style scoped>
+/* 拖拽相关样式 */
+.disable-scroll {
+  overflow: hidden !important;
+}
+
+.coin-card {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+}
+
+.drag-over {
+  border-top: 4rpx solid #409EFF;
+  border-radius: 8rpx;
+}
+
+.drag-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background-color: transparent;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-icon {
+  font-size: 36rpx;
+  color: #909399;
+  letter-spacing: 2rpx;
+}
+
+.is-dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.drag-placeholder {
+  border: 2rpx dashed #409EFF;
+  border-radius: 12rpx;
+  background-color: rgba(64, 158, 255, 0.05);
+}
+
+/* 浮动拖拽元素 */
+.drag-floating {
+  position: fixed;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.drag-floating-card {
+  width: calc(100vw - 40rpx);
+  max-width: 600rpx;
+  background-color: var(--card-bg);
+  border-radius: 12rpx;
+  padding: 28rpx 24rpx;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
 .market-page {
  	display: flex;
  	justify-content: center;

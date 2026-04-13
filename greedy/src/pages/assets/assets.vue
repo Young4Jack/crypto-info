@@ -48,7 +48,7 @@
 					</view>
 
 					<!-- 添加资产按钮 -->
-					<view class="holdings-header">
+					<view class="assets-header">
 						<text class="header-title">持有资产</text>
 						<view class="header-actions">
 							<text class="header-count">共 {{ assets.length }} 个</text>
@@ -58,8 +58,15 @@
 									<text class="action-icon" :class="{ 'icon-spin': loading }">⟳</text>
 								</view>
 							</view>
-							<view class="add-btn" @tap="toggleForm">
-								<text class="btn-text">+ 添加资产</text>
+							<!-- 添加资产按钮 -->
+							<view class="header-action-btn" @tap="toggleForm">
+								<view class="action-icon-wrap action-icon-primary">
+									<text class="action-icon">＋</text>
+								</view>
+							</view>
+							<!-- 管理按钮 -->
+							<view class="manage-toggle" @tap="toggleManageMode">
+								<text class="manage-text">{{ isManageMode ? '完成' : '管理' }}</text>
 							</view>
 						</view>
 					</view>
@@ -120,37 +127,62 @@
 
 					<!-- 资产列表 -->
 					<scroll-view scroll-y class="holdings-scroll">
-						<view class="holdings-list">
+							<view class="holdings-list">
 							<view
 								v-for="item in assets"
 								:key="item.id"
 								class="holding-card"
 							>
-								<view class="holding-left">
-									<view class="coin-icon" :style="{ backgroundColor: getCoinColor(item.crypto_symbol) }">
-										<text class="coin-abbreviation">{{ getShortSymbol(item.crypto_symbol) }}</text>
+								<view class="holding-main">
+									<view class="holding-left">
+										<view class="coin-icon" :style="{ backgroundColor: getCoinColor(item.crypto_symbol) }">
+											<text class="coin-abbreviation">{{ getShortSymbol(item.crypto_symbol) }}</text>
+										</view>
+										<view class="coin-detail">
+											<view class="coin-name-row">
+												<text class="coin-name">{{ item.crypto_name }}</text>
+												<text class="coin-add-time">{{ formatDate(item.created_at) }}</text>
+											</view>
+											<text class="coin-amount">
+												{{ item.quantity }}<text v-if="item.notes"> ({{ item.notes }})</text>
+											</text>
+											<view class="coin-pnl-inline" :class="getItemPnl(item) >= 0 ? 'profit' : 'loss'">
+												<text class="coin-pnl-inline-text" :class="getItemPnl(item) >= 0 ? 'profit' : 'loss'">
+													{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatInteger(getItemPnl(item)) }} ({{ getItemPnlPercent(item) }}%)
+												</text>
+											</view>
+										</view>
 									</view>
-									<view class="coin-detail">
-										<text class="coin-name">{{ item.crypto_name }}</text>
-										<text class="coin-amount">{{ item.quantity }} {{ getShortSymbol(item.crypto_symbol) }}</text>
-										<text class="coin-buy-price">买入价: {{ formatNumber(item.buy_price) }}</text>
+									<view class="holding-right">
+										<view class="price-row">
+											<view class="price-item">
+												<text class="price-item-label">买入价</text>
+												<text class="price-item-value">{{ formatNumber(item.buy_price) }}</text>
+											</view>
+											<view class="price-item">
+												<text class="price-item-label">成本</text>
+												<text class="price-item-value">{{ formatNumber(item.cost_value) }}</text>
+											</view>
+										</view>
+										<view class="price-row">
+											<view class="price-item">
+												<text class="price-item-label">现价</text>
+												<text class="price-item-value">{{ formatNumber(item.current_price) }}</text>
+											</view>
+											<view class="price-item">
+												<text class="price-item-label">现值</text>
+												<text class="price-item-value">{{ formatNumber(item.total_value) }}</text>
+											</view>
+										</view>
 									</view>
 								</view>
-								<view class="holding-right">
-									<text class="coin-total-value">{{ formatNumber(item.total_value) }}</text>
-									<view class="price-pnl-row">
-										<text class="coin-current-price">现价: {{ formatNumber(item.current_price) }}</text>
-										<text :class="['coin-pnl', getItemPnl(item) >= 0 ? 'profit' : 'loss']">
-											{{ getItemPnl(item) >= 0 ? '+' : '' }}{{ formatInteger (getItemPnl(item)) }}
-										</text>
+								<!-- 管理模式操作按钮 -->
+								<view v-if="isManageMode" class="item-actions">
+									<view class="action-btn edit" @tap.stop="openEdit(item)">
+										<text>编辑</text>
 									</view>
-									<view class="action-btns">
-										<view class="edit-btn-wrap" @tap.stop="openEdit(item)">
-											<text class="edit-btn-text">编辑</text>
-										</view>
-										<view class="delete-btn-wrap" @tap.stop="confirmDelete(item)">
-											<text class="delete-btn-text">删除</text>
-										</view>
+									<view class="action-btn delete" @tap.stop="confirmDelete(item)">
+										<text>删除</text>
 									</view>
 								</view>
 							</view>
@@ -181,6 +213,7 @@ const submitting = ref(false)
 const dashboardLoaded = ref(false)
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
+const isManageMode = ref(false)
 
 const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
@@ -311,6 +344,7 @@ const resetForm = () => {
 }
 
 const openEdit = (item: AssetItem) => {
+	isManageMode.value = false
 	editingId.value = item.id
 	showForm.value = true
 	form.value.crypto_symbol = item.crypto_symbol
@@ -318,6 +352,10 @@ const openEdit = (item: AssetItem) => {
 	form.value.quantity = String(item.quantity)
 	form.value.notes = item.notes || ''
 	uni.pageScrollTo({ scrollTop: 0, duration: 200 })
+}
+
+const toggleManageMode = () => {
+	isManageMode.value = !isManageMode.value
 }
 
 const submitAsset = async () => {
@@ -397,10 +435,25 @@ const formatInteger = (n: number): string => {
     return formatPrice(n).replace(/\.\d+$/, '')
 }
 
+const formatDate = (dateStr: string): string => {
+	if (!dateStr) return ''
+	const date = new Date(dateStr)
+	const year = date.getFullYear()
+	const month = String(date.getMonth() + 1).padStart(2, '0')
+	const day = String(date.getDate()).padStart(2, '0')
+	return `${year}/${month}/${day}`
+}
+
 const getItemPnl = (item: AssetItem): number => {
 	// 使用 Math.round 消除浮点精度问题
 	const pnl = (item.current_price - item.buy_price) * item.quantity
 	return Math.round(pnl * 100) / 100
+}
+
+const getItemPnlPercent = (item: AssetItem): string => {
+	if (item.cost_value === 0) return '0.00'
+	const pct = ((item.current_price - item.buy_price) / item.buy_price) * 100
+	return pct.toFixed(2)
 }
 
 const getShortSymbol = (symbol: string): string => {
@@ -548,11 +601,11 @@ const goToLogin = () => {
 }
 
 .pnl-value.profit {
-	color: #a8ffb2;
+	color: #ffb3b3;
 }
 
 .pnl-value.loss {
-	color: #ffb3b3;
+	color: #a8ffb2;
 }
 
 .pnl-divider {
@@ -605,10 +658,25 @@ const goToLogin = () => {
 	background-color: var(--text-placeholder);
 }
 
+.action-icon-primary {
+	background-color: #409eff;
+	box-shadow: 0 4rpx 12rpx rgba(64, 158, 255, 0.3);
+}
+
+.action-icon-primary:active {
+	background-color: #3a8ee6;
+}
+
 .action-icon {
-	font-size: 36rpx;
-	color: #666;
-	font-weight: bold;
+	font-size: 40rpx;
+	font-weight: 300;
+	color: var(--text-secondary);
+	line-height: 1;
+}
+
+.action-icon-primary .action-icon {
+	color: #ffffff;
+	font-weight: 500;
 }
 
 .icon-spin {
@@ -625,26 +693,32 @@ const goToLogin = () => {
 	color: var(--text-tertiary);
 }
 
-.add-btn {
+.manage-toggle {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: #409eff;
-	border-radius: 12rpx;
-	padding: 16rpx 32rpx;
+	min-width: 100rpx;
+	height: 56rpx;
+	padding: 0 24rpx;
+	border-radius: 28rpx;
+	background-color: #ecf5ff;
 }
 
-.add-btn:active {
-	opacity: 0.8;
+.manage-toggle:active {
+	background-color: #d9ecff;
 }
 
-.pc-only {
-	display: none;
+.manage-text {
+	font-size: 24rpx;
+	color: #409eff;
+	font-weight: 500;
 }
 
-.mobile-only {
+.assets-header {
 	display: flex;
-	margin-top: 24rpx;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10rpx 0 20rpx;
 }
 
 .add-form-card {
@@ -733,12 +807,17 @@ const goToLogin = () => {
 
 .holding-card {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
+	flex-direction: column;
 	background-color: var(--card-bg);
 	border-radius: 16rpx;
 	padding: 24rpx;
 	box-shadow: var(--card-shadow);
+}
+
+.holding-main {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
 }
 
 .holding-left {
@@ -778,94 +857,174 @@ const goToLogin = () => {
 	color: var(--text-primary);
 }
 
+.coin-name-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
 .coin-amount {
 	font-size: 22rpx;
 	color: var(--text-tertiary);
 }
 
-.coin-buy-price {
+.coin-add-time {
 	font-size: 20rpx;
 	color: var(--text-tertiary);
+}
+
+.coin-meta-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 4rpx;
+}
+
+.coin-pnl-inline {
+	display: inline-flex;
+	align-items: center;
+	padding: 2rpx 8rpx;
+	border-radius: 4rpx;
+	margin-top: 4rpx;
+}
+
+.coin-pnl-inline.profit {
+	background-color: rgba(245, 108, 108, 0.1);
+}
+
+.coin-pnl-inline.loss {
+	background-color: rgba(0, 200, 83, 0.1);
+}
+
+.coin-pnl-inline-text {
+	font-size: 20rpx;
+	font-weight: 600;
+	font-family: 'Monaco', monospace;
+}
+
+.coin-pnl-inline-text.profit {
+	color: #f56c6c;
+}
+
+.coin-pnl-inline-text.loss {
+	color: #00c853;
 }
 
 .holding-right {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	gap: 6rpx;
+	gap: 8rpx;
 	flex-shrink: 0;
 }
 
-.coin-current-price {
-	font-size: 20rpx;
-	color: var(--text-secondary);
-	font-family: 'Monaco', monospace;
-}
-
-.coin-total-value {
-	font-size: 32rpx;
-	font-weight: 700;
-	color: var(--text-primary);
-	font-family: 'Monaco', monospace;
-	margin-bottom: 4rpx;
-}
-
-.price-pnl-row {
+.price-row {
 	display: flex;
 	align-items: center;
-	gap: 12rpx;
-	margin-bottom: 4rpx;
+	gap: 20rpx;
 }
 
-.coin-pnl {
-	font-size: 24rpx;
+.price-item {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2rpx;
+}
+
+.price-item-label {
+	font-size: 18rpx;
+	color: var(--text-tertiary);
+}
+
+.price-item-value {
+	font-size: 20rpx;
+	color: var(--text-primary);
+	font-family: 'Monaco', monospace;
+}
+
+.price-sep {
+	font-size: 18rpx;
+	color: var(--text-tertiary);
+}
+
+.pnl-spacer {
+	flex: 1;
+}
+
+.holding-pnl-row {
+	display: flex;
+	align-items: baseline;
+	width: 100%;
+	justify-content: flex-end;
+}
+
+.pnl-amount {
+	font-size: 28rpx;
 	font-weight: 600;
 	font-family: 'Monaco', monospace;
 }
 
-.coin-pnl.profit {
-	color: #00c853;
+.pnl-pct {
+	font-size: 22rpx;
+	font-family: 'Monaco', monospace;
+	margin-left: 8rpx;
 }
 
-.coin-pnl.loss {
-	color: #f56c6c;
-}
-
-.action-btns {
+.price-row {
 	display: flex;
-	gap: 8rpx;
-	margin-top: 4rpx;
+	align-items: center;
+	gap: 20rpx;
 }
 
-.edit-btn-wrap {
-	padding: 4rpx 12rpx;
-	border-radius: 6rpx;
-	background-color: #ecf5ff;
+.price-item {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2rpx;
 }
 
-.edit-btn-text {
+.price-item-label {
+	font-size: 18rpx;
+	color: var(--text-tertiary);
+}
+
+.price-item-value {
 	font-size: 20rpx;
+	color: var(--text-primary);
+	font-family: 'Monaco', monospace;
+}
+
+.item-actions {
+	display: flex;
+	gap: 12rpx;
+	margin-top: 16rpx;
+	padding-top: 16rpx;
+	border-top: 2rpx solid var(--border-color);
+}
+
+.action-btn {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 56rpx;
+	border-radius: 6rpx;
+	font-size: 24rpx;
+	font-weight: 500;
+}
+
+.action-btn:active {
+	opacity: 0.7;
+}
+
+.action-btn.edit {
+	background-color: #ecf5ff;
 	color: #409eff;
 }
 
-.edit-btn-wrap:active {
-	opacity: 0.6;
-}
-
-.delete-btn-wrap {
-	margin-top: 0;
-	padding: 4rpx 12rpx;
-	border-radius: 6rpx;
+.action-btn.delete {
 	background-color: #fef0f0;
-}
-
-.delete-btn-text {
-	font-size: 20rpx;
 	color: #f56c6c;
-}
-
-.delete-btn-wrap:active {
-	opacity: 0.6;
 }
 
 .empty-state {

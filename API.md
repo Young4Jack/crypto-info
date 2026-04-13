@@ -542,13 +542,21 @@ GET /api/assets/
     "buy_price": 65000.0,
     "quantity": 0.5,
     "notes": "长期持有",
-    "total_value": 32500.0,
+    "cost_value": 32500.0,
+    "total_value": 34750.0,
     "current_price": 69500.0,
     "sort_order": 0,
     "created_at": "2024-01-01T00:00:00"
   }
 ]
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| cost_value | float | 买入估值 = buy_price × quantity |
+| total_value | float | 现估值 = current_price × quantity |
+
+> **注意**：原 `total_value` 字段语义已变更，之前表示买入成本，现表示现估值。
 
 ### 4.2 获取单个资产
 
