@@ -223,6 +223,23 @@
 								</text>
 							</view>
 						</view>
+						<view class="item-meta">
+							<view class="meta-item">
+								<text class="meta-label">创建</text>
+								<text class="meta-val">{{ formatDate(item.created_at) }}</text>
+							</view>
+							<view class="meta-item">
+								<text class="meta-label">触发</text>
+								<text class="meta-val">{{ item.last_triggered_at ? formatDate(item.last_triggered_at) : '未触发' }}</text>
+							</view>
+							<view class="meta-item">
+								<text class="meta-label">间隔</text>
+								<text class="meta-val">{{ item.interval_minutes }}分钟</text>
+							</view>
+							<view class="meta-item" v-if="item.is_continuous">
+								<text class="meta-tag">持续</text>
+							</view>
+						</view>
 						<view class="item-actions" v-if="showActions">
 							<view class="action-btn edit" @tap="openEdit(item)">
 								<text>编辑</text>
@@ -251,6 +268,21 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { alertsApi, klinesApi, notificationChannelsApi, type AlertItem, type NotificationChannel } from '@/api'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { formatPrice } from '@/utils/formatPrice'
+
+// 日期格式化
+const formatDate = (dateStr: string | null): string => {
+	if (!dateStr) return '--'
+	try {
+		const date = new Date(dateStr)
+		const month = String(date.getMonth() + 1).padStart(2, '0')
+		const day = String(date.getDate()).padStart(2, '0')
+		const hour = String(date.getHours()).padStart(2, '0')
+		const min = String(date.getMinutes()).padStart(2, '0')
+		return `${month}-${day} ${hour}:${min}`
+	} catch {
+		return '--'
+	}
+}
 
 // 预警类型选项（5种）
 const alertTypeOptions = [
@@ -1160,10 +1192,40 @@ const goToLogin = () => {
 	display: flex;
 	flex-direction: column;
 	gap: 8rpx;
-	margin-bottom: 16rpx;
+	margin-bottom: 12rpx;
 	padding: 16rpx;
 	background: var(--page-bg);
 	border-radius: 10rpx;
+}
+
+.item-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+
+.meta-item {
+	display: flex;
+	align-items: center;
+	gap: 6rpx;
+}
+
+.meta-label {
+	font-size: 20rpx;
+	color: var(--text-tertiary);
+}
+
+.meta-val {
+	font-size: 20rpx;
+	color: var(--text-secondary);
+}
+
+.meta-tag {
+	font-size: 18rpx;
+	color: #fff;
+	background: #409eff;
+	padding: 2rpx 8rpx;
+	border-radius: 4rpx;
 }
 
 .price-info {
