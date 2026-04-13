@@ -1,5 +1,8 @@
 import { ref, onUnmounted, Ref } from 'vue'
+
+// #ifdef H5
 import Sortable from 'sortablejs'
+// #endif
 
 export interface SortableOptions {
   handle?: string
@@ -23,7 +26,10 @@ export function useSortableList<T extends { id: number }>(
   saveOrderFn: SaveOrderFn,
   options: SortableOptions = {}
 ) {
-  const sortableInstance = ref<Sortable | null>(null)
+  // #ifdef H5
+  const sortableInstance = ref<any>(null)
+  // #endif
+  
   const isDragging = ref(false)
 
   const defaultOptions: SortableOptions = {
@@ -36,6 +42,7 @@ export function useSortableList<T extends { id: number }>(
   }
 
   const initSortable = (selector: string) => {
+    // #ifdef H5
     if (sortableInstance.value) {
       destroySortable()
     }
@@ -53,7 +60,7 @@ export function useSortableList<T extends { id: number }>(
         onStart: () => {
           isDragging.value = true
         },
-        onEnd: async (evt) => {
+        onEnd: async (evt: any) => {
           isDragging.value = false
           const { oldIndex, newIndex } = evt
           if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
@@ -63,7 +70,6 @@ export function useSortableList<T extends { id: number }>(
           const item = itemsCopy.splice(oldIndex, 1)[0]
           itemsCopy.splice(newIndex, 0, item)
           
-          // 更新原始 ref
           list.value = itemsCopy as T[]
 
           try {
@@ -78,13 +84,20 @@ export function useSortableList<T extends { id: number }>(
         },
       })
     }, 100)
+    // #endif
+    
+    // #ifdef APP-PLUS
+    uni.showToast({ title: 'App端暂不支持拖拽排序', icon: 'none' })
+    // #endif
   }
 
   const destroySortable = () => {
+    // #ifdef H5
     if (sortableInstance.value) {
       sortableInstance.value.destroy()
       sortableInstance.value = null
     }
+    // #endif
   }
 
   onUnmounted(() => {
@@ -92,7 +105,6 @@ export function useSortableList<T extends { id: number }>(
   })
 
   return {
-    sortableInstance,
     isDragging,
     initSortable,
     destroySortable,

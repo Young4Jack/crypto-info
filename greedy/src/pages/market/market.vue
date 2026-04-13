@@ -45,17 +45,21 @@
 			<!-- 列表 -->
 			<view v-else class="coin-list">
 				<view
-					v-for="coin in coinList"
+					v-for="(coin, index) in coinList"
 					:key="coin.id"
 					class="coin-card"
 					:class="{ 
 						'price-flash-up': coin.priceFlash === 'up', 
-						'price-flash-down': coin.priceFlash === 'down'
+						'price-flash-down': coin.priceFlash === 'down',
+						'dragging': !isDragging && appIsDragging
 					}"
 					@tap="isManageMode ? null : handleCoinClick(coin.symbol)"
 				>
 					<!-- 拖拽手柄（仅管理模式显示） -->
-					<view v-if="isManageMode" class="drag-handle">
+					<view v-if="isManageMode" class="drag-handle" 
+						@touchstart="onDragStart(index, $event)"
+						@touchmove="onDragMove"
+						@touchend="onDragEnd">
 						<text class="drag-icon">⋮⋮</text>
 					</view>
 
@@ -135,6 +139,7 @@ import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useSortableList } from '@/composables/useSortableList'
+import { useAppSortableList } from '@/composables/useAppSortableList'
 import { formatPrice } from '@/utils/formatPrice'
 
 interface CoinItem {
@@ -162,12 +167,23 @@ const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeT
 
 const isManageMode = ref(false)
 
-// 使用可复用拖拽排序 composable
+// 保存排序函数
 const saveOrder = async (items: { id: number; sort_order: number }[]) => {
   await watchlistApi.updateSortOrder(items)
 }
 
+// #ifdef H5
 const { initSortable, destroySortable } = useSortableList(coinList, saveOrder)
+// #endif
+
+// #ifndef H5
+const { 
+  isDragging: appIsDragging,
+  onDragStart, 
+  onDragMove, 
+  onDragEnd 
+} = useAppSortableList(coinList, saveOrder)
+// #endif
 
 const showEditModal = ref(false)
 const editingCoin = ref<CoinItem | null>(null)
@@ -318,9 +334,13 @@ const goToLogin = () => {
 const toggleManageMode = () => {
 	isManageMode.value = !isManageMode.value
 	if (isManageMode.value) {
+		// #ifdef H5
 		setTimeout(() => initSortable('.coin-list'), 100)
+		// #endif
 	} else {
+		// #ifdef H5
 		destroySortable()
+		// #endif
 	}
 }
 
@@ -452,6 +472,12 @@ onPullDownRefresh(async () => {
   opacity: 0.8;
   background: #fff;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+/* App 端拖拽样式 */
+.dragging {
+  opacity: 0.7;
+  background: #ecf5ff;
 }
 
 .market-page {
