@@ -161,7 +161,7 @@
 											</view>
 											<view class="price-item">
 												<text class="price-item-label">成本</text>
-												<text class="price-item-value">{{ formatNumber(item.cost_value) }}</text>
+												<text class="price-item-value">{{ formatInteger(item.cost_value) }}</text>
 											</view>
 										</view>
 										<view class="price-row">
@@ -171,7 +171,7 @@
 											</view>
 											<view class="price-item">
 												<text class="price-item-label">现值</text>
-												<text class="price-item-value">{{ formatNumber(item.total_value) }}</text>
+												<text class="price-item-value">{{ formatInteger(item.total_value) }}</text>
 											</view>
 										</view>
 									</view>
