@@ -21,7 +21,7 @@ class AlertCreate(BaseModel):
     """创建预警规则请求"""
     crypto_symbol: str
     alert_type: str  # "above", "below", "amplitude", "percent_up", "percent_down"
-    threshold_price: float
+    threshold_price: Optional[float] = None
     webhook_url: Optional[str] = None
     # 新增字段
     base_price: Optional[float] = None
@@ -250,7 +250,12 @@ async def create_alert_rule(
     # 计算threshold_value（如果未指定）
     threshold_value = alert_data.threshold_value
     if threshold_value is None:
-        threshold_value = alert_data.threshold_price
+        threshold_value = alert_data.threshold_price if alert_data.threshold_price else 0
+    
+    # 计算threshold_price（如果未指定，用于简单类型）
+    threshold_price = alert_data.threshold_price
+    if threshold_price is None:
+        threshold_price = 0
     
     # 获取最大排序值+1，确保新项目排在最后
     max_sort = db.query(func.coalesce(func.max(PriceAlert.sort_order), 0)).filter(
@@ -262,7 +267,7 @@ async def create_alert_rule(
         user_id=current_user.id,
         crypto_id=crypto.id,
         alert_type=alert_type,
-        threshold_price=alert_data.threshold_price,
+        threshold_price=threshold_price,
         webhook_url=alert_data.webhook_url,
         base_price=base_price,
         threshold_value=threshold_value,
