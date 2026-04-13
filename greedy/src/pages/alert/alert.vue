@@ -222,6 +222,8 @@
 									</text>
 								</text>
 							</view>
+						</view>
+						<view class="item-footer">
 							<view class="price-info" v-if="item.base_price && item.base_price > 0">
 								<text class="lbl">基准</text>
 								<text class="val">{{ formatPrice(item.base_price) }}</text>
@@ -1205,6 +1207,13 @@ const goToLogin = () => {
 	padding: 16rpx;
 	background: var(--page-bg);
 	border-radius: 10rpx;
+}
+
+.item-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24rpx;
+	padding: 0 16rpx 16rpx;
 }
 
 .item-meta {
