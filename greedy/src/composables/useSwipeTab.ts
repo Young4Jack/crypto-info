@@ -18,25 +18,31 @@ export function useSwipeTab(
 ) {
   let startX = 0
   let startY = 0
-  const threshold = 50
+  let startTime = 0
+  const threshold = 30
+  const timeThreshold = 300
 
   const onTouchStart = (e: any) => {
     startX = e.touches[0].clientX
     startY = e.touches[0].clientY
+    startTime = Date.now()
   }
 
   const onTouchEnd = (e: any) => {
     const deltaX = e.changedTouches[0].clientX - startX
     const deltaY = e.changedTouches[0].clientY - startY
+    const deltaTime = Date.now() - startTime
 
-    if (Math.abs(deltaX) < threshold || Math.abs(deltaX) <= Math.abs(deltaY)) {
-      return
-    }
-
-    if (deltaX < 0) {
-      onSwipeLeft?.()
-    } else {
-      onSwipeRight?.()
+    // 快速滑动才触发
+    if (deltaTime > timeThreshold) return
+    
+    // 水平滑动距离足够，且水平距离大于垂直距离
+    if (Math.abs(deltaX) > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) {
+        onSwipeLeft?.()
+      } else {
+        onSwipeRight?.()
+      }
     }
   }
 

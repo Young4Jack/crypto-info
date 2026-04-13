@@ -4,7 +4,8 @@
 			"path": "pages/market/market",
 			"style": {
 				"navigationBarTitleText": "关注列表",
-				"enablePullDownRefresh": true
+				"enablePullDownRefresh": false,
+				"softinputNavBar": "none"
 			}
 		},
 		{
