@@ -199,37 +199,41 @@
 							<switch size="small" :checked="item.is_active" color="#10B981" @change="toggleAlertActive(item)" />
 						</view>
 						<view class="item-body">
-							<view class="price-info">
-								<text class="lbl">现价</text>
-								<text class="val">{{ formatPrice(item.current_price || 0) }}</text>
+							<view class="body-row">
+								<view class="price-info">
+									<text class="lbl">现价</text>
+									<text class="val">{{ formatPrice(item.current_price || 0) }}</text>
+								</view>
+								<view class="price-info">
+									<text class="lbl">基准</text>
+									<text class="val">{{ formatPrice(item.base_price || item.threshold_price || 0) }}</text>
+								</view>
+								<view class="price-info" v-if="item.notification_channel">
+									<text class="lbl">通知</text>
+									<text class="val notify">{{ item.notification_channel }}</text>
+									<text class="val" v-if="item.notification_group"> / {{ item.notification_group }}</text>
+								</view>
 							</view>
-							<view class="price-info">
-								<text class="lbl">目标</text>
-								<text class="val tgt">
-									<text v-if="item.alert_type === 'above'">> {{ formatPrice(item.threshold_price || 0) }}</text>
-									<text v-else-if="item.alert_type === 'below'">< {{ formatPrice(item.threshold_price || 0) }}</text>
-									<text v-else-if="item.alert_type === 'percent_up'">
-										<text class="pct">+{{ item.threshold_value }}%</text>
-										<text class="price">{{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+							<view class="body-row">
+								<view class="price-info">
+									<text class="lbl">目标</text>
+									<text class="val tgt">
+										<text v-if="item.alert_type === 'above'">> {{ formatPrice(item.threshold_price || 0) }}</text>
+										<text v-else-if="item.alert_type === 'below'">< {{ formatPrice(item.threshold_price || 0) }}</text>
+										<text v-else-if="item.alert_type === 'percent_up'">
+											<text class="pct">+{{ item.threshold_value }}%</text>
+											<text class="price">{{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+										</text>
+										<text v-else-if="item.alert_type === 'percent_down'">
+											<text class="pct">-{{ item.threshold_value }}%</text>
+											<text class="price">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }}</text>
+										</text>
+										<text v-else-if="item.alert_type === 'amplitude'">
+											<text class="pct">±{{ item.threshold_value }}%</text>
+											<text class="amp-range">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }} / {{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
+										</text>
 									</text>
-									<text v-else-if="item.alert_type === 'percent_down'">
-										<text class="pct">-{{ item.threshold_value }}%</text>
-										<text class="price">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }}</text>
-									</text>
-									<text v-else-if="item.alert_type === 'amplitude'">
-										<text class="pct">±{{ item.threshold_value }}%</text>
-										<text class="amp-range">{{ formatPrice((item.base_price || 0) * (1 - (item.threshold_value || 0) / 100)) }} / {{ formatPrice((item.base_price || 0) * (1 + (item.threshold_value || 0) / 100)) }}</text>
-									</text>
-								</text>
-							</view>
-							<view class="price-info" v-if="item.base_price && item.base_price > 0">
-								<text class="lbl">基准</text>
-								<text class="val">{{ formatPrice(item.base_price) }}</text>
-							</view>
-							<view class="price-info" v-if="item.notification_channel">
-								<text class="lbl">通知</text>
-								<text class="val notify">{{ item.notification_channel }}</text>
-								<text class="val" v-if="item.notification_group"> / {{ item.notification_group }}</text>
+								</view>
 							</view>
 						</view>
 						<view class="item-meta">
@@ -1199,11 +1203,17 @@ const goToLogin = () => {
 
 .item-body {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 16rpx 32rpx;
+	flex-direction: column;
+	gap: 8rpx;
 	padding: 16rpx;
 	background: var(--page-bg);
 	border-radius: 10rpx;
+}
+
+.body-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx 32rpx;
 }
 
 .item-meta {

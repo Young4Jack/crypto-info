@@ -228,24 +228,14 @@ async def create_alert_rule(
     # 创建预警规则
     alert_type = AlertType(alert_data.alert_type)
     
-    # 获取当前价格作为base_price（如果未指定）
+    # 所有类型都尝试获取当前价格作为base_price（如果未指定）
     base_price = alert_data.base_price
-    if base_price is None and alert_data.alert_type in ["amplitude", "percent_up", "percent_down"]:
+    if base_price is None:
         try:
             current_prices = await fetch_crypto_prices()
             base_price = current_prices.get(crypto.symbol, 0)
-            if not base_price:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"无法获取 {crypto.symbol} 的当前价格。振幅/涨跌预警需要基准价格，请手动输入 base_price"
-                )
-        except HTTPException:
-            raise
         except Exception:
-            raise HTTPException(
-                status_code=400, 
-                detail="价格源暂时不可用。振幅/涨跌预警需要基准价格，请稍后重试或手动输入 base_price"
-            )
+            pass  # 获取失败则保持 None
     
     # 计算threshold_value（如果未指定）
     threshold_value = alert_data.threshold_value
