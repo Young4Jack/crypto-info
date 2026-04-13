@@ -204,9 +204,9 @@
 									<text class="lbl">现价</text>
 									<text class="val">{{ formatPrice(item.current_price || 0) }}</text>
 								</view>
-								<view class="price-info" v-if="item.base_price && item.base_price > 0">
+								<view class="price-info">
 									<text class="lbl">基准</text>
-									<text class="val">{{ formatPrice(item.base_price) }}</text>
+									<text class="val">{{ formatPrice(item.base_price || item.current_price || 0) }}</text>
 								</view>
 								<view class="price-info" v-if="item.notification_channel">
 									<text class="lbl">通知</text>
