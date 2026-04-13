@@ -5,6 +5,10 @@
 			<view class="page-header">
 				<text class="header-title">预警中心</text>
 				<view class="header-actions">
+					<!-- 预警历史按钮（始终可见） -->
+					<view class="manage-toggle" @tap="goToHistory">
+						<text class="manage-text">历史</text>
+					</view>
 					<!-- 刷新按钮（始终可见） -->
 					<view class="header-action-btn" @tap="fetchAlertList">
 						<view class="action-icon-wrap">
@@ -825,6 +829,15 @@ const formatCondition = (item: AlertItem): string => {
 const goToLogin = () => {
 	uni.navigateTo({
 		url: '/pages/login/login',
+		fail: () => {
+			uni.showToast({ title: '页面跳转失败', icon: 'none' })
+		},
+	})
+}
+
+const goToHistory = () => {
+	uni.navigateTo({
+		url: '/pages/alert/history/history',
 		fail: () => {
 			uni.showToast({ title: '页面跳转失败', icon: 'none' })
 		},

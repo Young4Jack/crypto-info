@@ -23,6 +23,13 @@
 			}
 		},
 		{
+			"path": "pages/alert/history/history",
+			"style": {
+				"navigationBarTitleText": "预警历史",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
 			"path": "pages/assets/assets",
 			"style": {
 				"navigationBarTitleText": "资产列表",

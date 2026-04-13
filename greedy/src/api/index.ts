@@ -432,3 +432,37 @@ export interface SystemSettingsPayload {
   current_pricing_currency?: string
   available_currencies?: string[]
 }
+
+// ==================== 预警历史 (Alert Histories) ====================
+
+export interface AlertHistoryItem {
+  id: number
+  alert_id?: number
+  crypto_symbol: string
+  crypto_name: string
+  alert_type: string
+  threshold_price: number
+  trigger_price: number
+  status: string
+  notification_channel?: string
+  notification_group?: string
+  notification_sent?: string
+  created_at: string
+}
+
+export const alertHistoriesApi = {
+  getList: (skip = 0, limit = 30, alertId?: number) => {
+    const params: Record<string, any> = { skip, limit }
+    if (alertId) params.alert_id = alertId
+    return get<AlertHistoryItem[]>('/api/alert-histories/', params)
+  },
+  delete: (historyId: number) => {
+    return del<{ message: string }>(`/api/alert-histories/${historyId}`)
+  },
+  clear: (alertId?: number) => {
+    const url = alertId 
+      ? `/api/alert-histories/?alert_id=${alertId}`
+      : '/api/alert-histories/'
+    return del<{ message: string }>(url)
+  },
+}
