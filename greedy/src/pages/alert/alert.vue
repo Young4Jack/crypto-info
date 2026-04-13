@@ -194,7 +194,13 @@
 
 				<!-- 预警规则列表 -->
 				<view v-else class="alert-list">
-					<view v-for="item in alertRules" :key="item.id" class="alert-item" :class="{ 'off': !item.is_active }">
+					<view v-for="(item, index) in alertRules" :key="item.id" class="alert-item" :class="{ 'off': !item.is_active, 'dragging': isDragging }">
+						<!-- 拖拽手柄（仅管理模式显示，仅 H5 可用拖拽排序） -->
+						<!-- #ifdef H5 -->
+						<view v-if="showActions" class="drag-handle">
+							<text class="drag-icon">⋮⋮</text>
+						</view>
+						<!-- #endif -->
 						<view class="item-header">
 							<view class="coin-info">
 								<text class="coin">{{ item.crypto_symbol }}</text>
@@ -334,8 +340,15 @@ const saveAlertOrder = async (items: { id: number; sort_order: number }[]) => {
   await alertsApi.updateSortOrder(items)
 }
 
-// 排序功能（App 端上移/下移）
+// H5 端拖拽排序 + App 端上移/下移（统一使用 composable）
+// #ifdef H5
+const { initSortable, destroySortable, isDragging, moveUp, moveDown } = useSortableList(alertRules, saveAlertOrder)
+// #endif
+
+// #ifndef H5
 const { moveUp, moveDown } = useSortableList(alertRules, saveAlertOrder)
+const isDragging = ref(false)
+// #endif
 
 const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
   () => switchToNextTab(),
@@ -464,6 +477,15 @@ const toggleAddForm = () => {
 // 切换管理/完成模式
 const toggleManageMode = () => {
 	showActions.value = !showActions.value
+	if (showActions.value) {
+		// #ifdef H5
+		setTimeout(() => initSortable('.alert-list'), 100)
+		// #endif
+	} else {
+		// #ifdef H5
+		destroySortable()
+		// #endif
+	}
 }
 
 // 持续预警开关
@@ -1181,7 +1203,48 @@ const goToHistory = () => {
 	border-radius: 6rpx;
 }
 
+/* H5 拖拽手柄样式 */
+.drag-handle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+}
+
+.drag-icon {
+	font-size: 36rpx;
+	color: #909399;
+	letter-spacing: 2rpx;
+}
+
+:deep(.sortable-ghost) {
+	opacity: 0.4;
+	background: #f0f9ff !important;
+}
+
+:deep(.sortable-chosen) {
+	background: #ecf5ff !important;
+}
+
+:deep(.sortable-drag) {
+	opacity: 0.8;
+	background: #fff;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+/* App 端拖拽样式 */
+.dragging {
+	opacity: 0.7;
+	background: #ecf5ff;
+}
+
 .alert-item {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	background: var(--card-bg);

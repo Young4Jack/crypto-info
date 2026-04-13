@@ -129,10 +129,17 @@
 					<scroll-view scroll-y class="holdings-scroll">
 							<view class="holdings-list">
 							<view
-								v-for="item in assets"
+								v-for="(item, index) in assets"
 								:key="item.id"
 								class="holding-card"
+								:class="{ dragging: isDragging }"
 							>
+								<!-- 拖拽手柄（仅管理模式显示，仅 H5 可用拖拽排序） -->
+								<!-- #ifdef H5 -->
+								<view v-if="isManageMode" class="drag-handle">
+									<text class="drag-icon">⋮⋮</text>
+								</view>
+								<!-- #endif -->
 								<view class="holding-main">
 									<view class="holding-left">
 										<view class="coin-icon" :style="{ backgroundColor: getCoinColor(item.crypto_symbol) }">
@@ -222,14 +229,6 @@ const showForm = ref(false)
 const editingId = ref<number | null>(null)
 const isManageMode = ref(false)
 
-// 排序保存函数
-const saveAssetOrder = async (items: { id: number; sort_order: number }[]) => {
-  await assetsApi.updateSortOrder(items)
-}
-
-// 排序功能（App 端上移/下移）
-const { moveUp, moveDown } = useSortableList(assets, saveAssetOrder)
-
 const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh()
 
 const { onTouchStart, onTouchEnd, switchToNextTab, switchToPrevTab } = useSwipeTab(
@@ -245,6 +244,21 @@ const dashboard = ref({
 })
 
 const assets = ref<AssetItem[]>([])
+
+// 排序保存函数
+const saveAssetOrder = async (items: { id: number; sort_order: number }[]) => {
+  await assetsApi.updateSortOrder(items)
+}
+
+// H5 端拖拽排序 + App 端上移/下移（统一使用 composable）
+// #ifdef H5
+const { initSortable, destroySortable, isDragging, moveUp, moveDown } = useSortableList(assets, saveAssetOrder)
+// #endif
+
+// #ifndef H5
+const { moveUp, moveDown } = useSortableList(assets, saveAssetOrder)
+const isDragging = ref(false)
+// #endif
 
 const form = ref({
 	crypto_symbol: '',
@@ -371,6 +385,15 @@ const openEdit = (item: AssetItem) => {
 
 const toggleManageMode = () => {
 	isManageMode.value = !isManageMode.value
+	if (isManageMode.value) {
+		// #ifdef H5
+		setTimeout(() => initSortable('.holdings-list'), 100)
+		// #endif
+	} else {
+		// #ifdef H5
+		destroySortable()
+		// #endif
+	}
 }
 
 const submitAsset = async () => {
@@ -822,7 +845,48 @@ const goToLogin = () => {
 	padding-bottom: 20rpx;
 }
 
+/* H5 拖拽手柄样式 */
+.drag-handle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+}
+
+.drag-icon {
+	font-size: 36rpx;
+	color: #909399;
+	letter-spacing: 2rpx;
+}
+
+:deep(.sortable-ghost) {
+	opacity: 0.4;
+	background: #f0f9ff !important;
+}
+
+:deep(.sortable-chosen) {
+	background: #ecf5ff !important;
+}
+
+:deep(.sortable-drag) {
+	opacity: 0.8;
+	background: #fff;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+/* App 端拖拽样式 */
+.dragging {
+	opacity: 0.7;
+	background: #ecf5ff;
+}
+
 .holding-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	background-color: var(--card-bg);
