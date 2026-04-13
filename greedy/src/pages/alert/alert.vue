@@ -650,7 +650,6 @@ const submitAlert = async () => {
 		if (isSimpleType.value) {
 		payload.threshold_price = parseFloat(thresholdPrice.toFixed(4))
 	} else {
-		payload.threshold_price = 0
 		payload.threshold_value = parseFloat(thresholdValue.toFixed(2))
 		const baseInput = parseFloat(form.value.base_price)
 		if (baseInput && baseInput > 0) {

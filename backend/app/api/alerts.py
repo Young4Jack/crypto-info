@@ -323,10 +323,31 @@ async def update_alert_rule(
     if alert_data.webhook_url is not None:
         update_data["webhook_url"] = alert_data.webhook_url
         
-    # 【核心修改1】：同步更新阈值。防止用户修改了百分比，但后台还在用旧的百分比计算
-    if alert_data.threshold_price is not None:
-        update_data["threshold_price"] = alert_data.threshold_price
-        update_data["threshold_value"] = alert_data.threshold_price
+    # 【修复】：分别处理简单类型和非简单类型
+    current_type = alert_data.alert_type if alert_data.alert_type else alert.alert_type.value
+    
+    if current_type in ["above", "below"]:
+        # 简单类型：只更新 threshold_price
+        if alert_data.threshold_price is not None and alert_data.threshold_price > 0:
+            update_data["threshold_price"] = alert_data.threshold_price
+    else:
+        # 非简单类型 (amplitude/percent_up/percent_down)：更新 threshold_value
+        # 同时根据 base_price 计算 threshold_price（触发价）
+        if alert_data.threshold_value is not None and alert_data.threshold_value > 0:
+            update_data["threshold_value"] = alert_data.threshold_value
+            # 同步计算 threshold_price
+            base = alert.base_price or 0
+            if base > 0:
+                if current_type == "amplitude":
+                    # 振幅：取较大边的触发价
+                    update_data["threshold_price"] = base * (1 + alert_data.threshold_value / 100)
+                elif current_type == "percent_up":
+                    update_data["threshold_price"] = base * (1 + alert_data.threshold_value / 100)
+                elif current_type == "percent_down":
+                    update_data["threshold_price"] = base * (1 - alert_data.threshold_value / 100)
+        # 同时更新 base_price
+        if alert_data.base_price is not None and alert_data.base_price > 0:
+            update_data["base_price"] = alert_data.base_price
         
     # 【核心修改2】：开放编辑权限，允许更新模式、次数和间隔
     if alert_data.is_continuous is not None:
@@ -382,7 +403,16 @@ async def update_alert_rule(
         webhook_url=alert.webhook_url,
         is_active=alert.is_active,
         triggered_at=alert.triggered_at.isoformat() if alert.triggered_at else None,
-        created_at=alert.created_at.isoformat() if alert.created_at else None
+        created_at=alert.created_at.isoformat() if alert.created_at else None,
+        base_price=alert.base_price,
+        threshold_value=alert.threshold_value,
+        is_continuous=alert.is_continuous,
+        interval_minutes=alert.interval_minutes,
+        max_notifications=alert.max_notifications,
+        notified_count=alert.notified_count,
+        last_triggered_at=alert.last_triggered_at.isoformat() if alert.last_triggered_at else None,
+        notification_channel=alert.notification_channel,
+        notification_group=alert.notification_group
     )
 
 @router.delete("/all")
