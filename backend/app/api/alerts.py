@@ -321,6 +321,18 @@ async def update_alert_rule(
     # 【修复】：分别处理简单类型和非简单类型
     current_type = alert_data.alert_type if alert_data.alert_type else alert.alert_type.value
     
+    # 编辑时自动获取当前价格更新基准价（所有类型都需要）
+    if alert_data.base_price is None:
+        crypto = db.query(Cryptocurrency).filter(Cryptocurrency.id == alert.crypto_id).first()
+        if crypto:
+            try:
+                current_prices = await fetch_crypto_prices()
+                current_price = current_prices.get(crypto.symbol, 0)
+                if current_price > 0:
+                    update_data["base_price"] = current_price
+            except Exception:
+                pass
+    
     if current_type in ["above", "below"]:
         # 简单类型：只更新 threshold_price
         if alert_data.threshold_price is not None and alert_data.threshold_price > 0:
@@ -340,20 +352,9 @@ async def update_alert_rule(
                     update_data["threshold_price"] = base * (1 + alert_data.threshold_value / 100)
                 elif current_type == "percent_down":
                     update_data["threshold_price"] = base * (1 - alert_data.threshold_value / 100)
-        # 同时更新 base_price
+        # 同时更新 base_price（如果前端传了）
         if alert_data.base_price is not None and alert_data.base_price > 0:
             update_data["base_price"] = alert_data.base_price
-        elif alert_data.base_price is None and current_type not in ["above", "below"]:
-            # 编辑非简单类型时，如果前端没传 base_price，自动获取当前价格作为基准
-            crypto = db.query(Cryptocurrency).filter(Cryptocurrency.id == alert.crypto_id).first()
-            if crypto:
-                try:
-                    current_prices = await fetch_crypto_prices()
-                    current_price = current_prices.get(crypto.symbol, 0)
-                    if current_price > 0:
-                        update_data["base_price"] = current_price
-                except Exception:
-                    pass
         
     # 【核心修改2】：开放编辑权限，允许更新模式、次数和间隔
     if alert_data.is_continuous is not None:
