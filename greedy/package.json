@@ -27,6 +27,7 @@
     "echarts": "^6.0.0",
     "oh-my-opencode-linux-x64": "^3.14.0",
     "pinia": "^3.0.4",
+    "sortablejs": "^1.15.7",
     "vue": "3.5.32",
     "vue-i18n": "9.14.4"
   },
