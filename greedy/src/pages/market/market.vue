@@ -51,15 +51,12 @@
 					:class="{ 
 						'price-flash-up': coin.priceFlash === 'up', 
 						'price-flash-down': coin.priceFlash === 'down',
-						'dragging': !isDragging && appIsDragging
+						'dragging': isDragging
 					}"
 					@tap="isManageMode ? null : handleCoinClick(coin.symbol)"
 				>
-					<!-- 拖拽手柄（仅管理模式显示） -->
-					<view v-if="isManageMode" class="drag-handle" 
-						@touchstart="onDragStart(index, $event)"
-						@touchmove="onDragMove"
-						@touchend="onDragEnd">
+					<!-- 拖拽手柄（仅管理模式显示，仅 H5 可用拖拽排序） -->
+					<view v-if="isManageMode" class="drag-handle">
 						<text class="drag-icon">⋮⋮</text>
 					</view>
 
@@ -139,7 +136,6 @@ import { klinesApi, watchlistApi, type WatchlistItem } from '@/api'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useSwipeTab } from '@/composables/useSwipeTab'
 import { useSortableList } from '@/composables/useSortableList'
-import { useAppSortableList } from '@/composables/useAppSortableList'
 import { formatPrice } from '@/utils/formatPrice'
 
 interface CoinItem {
@@ -172,17 +168,13 @@ const saveOrder = async (items: { id: number; sort_order: number }[]) => {
   await watchlistApi.updateSortOrder(items)
 }
 
+// H5 端拖拽排序
 // #ifdef H5
-const { initSortable, destroySortable } = useSortableList(coinList, saveOrder)
+const { initSortable, destroySortable, isDragging } = useSortableList(coinList, saveOrder)
 // #endif
 
 // #ifndef H5
-const { 
-  isDragging: appIsDragging,
-  onDragStart, 
-  onDragMove, 
-  onDragEnd 
-} = useAppSortableList(coinList, saveOrder)
+const isDragging = ref(false)
 // #endif
 
 const showEditModal = ref(false)
@@ -426,7 +418,9 @@ onHide(() => {
 
 onUnmounted(() => {
 	stopAutoRefresh()
+	// #ifdef H5
 	destroySortable()
+	// #endif
 })
 
 onPullDownRefresh(async () => {
