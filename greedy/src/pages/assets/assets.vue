@@ -377,12 +377,14 @@ const submitAsset = async () => {
 
 	submitting.value = true
 	try {
-		const payload = {
+		const notesValue = form.value.notes.trim()
+		const payload: any = {
 			crypto_symbol: symbol,
 			buy_price: buyPrice,
 			quantity: quantity,
-			notes: form.value.notes.trim() || undefined,
 		}
+		// notes 允许为空字符串，用于清空备注
+		payload.notes = notesValue
 		if (editingId.value) {
 			await assetsApi.update(editingId.value, payload)
 			uni.showToast({ title: '资产已更新', icon: 'success' })

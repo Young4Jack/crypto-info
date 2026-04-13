@@ -226,8 +226,9 @@ async def update_asset(
         asset.buy_price = asset_data.buy_price
     if asset_data.quantity is not None:
         asset.quantity = asset_data.quantity
+    # notes 字段允许设置为空字符串来清空
     if asset_data.notes is not None:
-        asset.notes = asset_data.notes
+        asset.notes = asset_data.notes if asset_data.notes.strip() else None
     
     db.commit()
     db.refresh(asset)
