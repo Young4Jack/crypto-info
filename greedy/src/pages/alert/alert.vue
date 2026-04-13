@@ -222,6 +222,15 @@
 									</text>
 								</text>
 							</view>
+							<view class="price-info" v-if="item.base_price && item.base_price > 0">
+								<text class="lbl">基准</text>
+								<text class="val">{{ formatPrice(item.base_price) }}</text>
+							</view>
+							<view class="price-info" v-if="item.notification_channel">
+								<text class="lbl">通知</text>
+								<text class="val notify">{{ item.notification_channel }}</text>
+								<text class="val" v-if="item.notification_group"> / {{ item.notification_group }}</text>
+							</view>
 						</view>
 						<view class="item-meta">
 							<view class="meta-item">
@@ -1249,6 +1258,10 @@ const goToLogin = () => {
 .val.tgt {
 	color: #FA8C16;
 	font-size: 24rpx;
+}
+
+.val.notify {
+	color: #409eff;
 }
 
 .val.tgt .pct {
