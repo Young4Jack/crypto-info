@@ -85,20 +85,18 @@
 							/>
 							<text class="manage-switch-label">{{ coin.is_public ? '已公开' : '私有' }}</text>
 							<view class="manage-spacer"></view>
-							<!-- #ifndef H5 -->
 							<view 
 								class="manage-btn manage-btn-move" 
 								:class="{ disabled: index === 0 }"
-								@tap="moveUp(index)">
+								@tap.stop="moveUp(index)">
 								<text class="manage-btn-text">上移</text>
 							</view>
 							<view 
 								class="manage-btn manage-btn-move"
 								:class="{ disabled: index === coinList.length - 1 }"
-								@tap="moveDown(index)">
+								@tap.stop="moveDown(index)">
 								<text class="manage-btn-text">下移</text>
 							</view>
-							<!-- #endif -->
 							<view class="manage-btn manage-btn-edit" @tap="openEdit(coin)">
 								<text class="manage-btn-text">编辑</text>
 							</view>
@@ -184,15 +182,8 @@ const saveOrder = async (items: { id: number; sort_order: number }[]) => {
   await watchlistApi.updateSortOrder(items)
 }
 
-// H5 端拖拽排序 + App 端上移/下移（统一使用 composable）
-// #ifdef H5
+// 排序功能（H5拖拽 + App上移/下移，统一使用 composable）
 const { initSortable, destroySortable, isDragging, moveUp, moveDown } = useSortableList(coinList, saveOrder)
-// #endif
-
-// #ifndef H5
-const { moveUp, moveDown } = useSortableList(coinList, saveOrder)
-const isDragging = ref(false)
-// #endif
 
 const showEditModal = ref(false)
 const editingCoin = ref<CoinItem | null>(null)
