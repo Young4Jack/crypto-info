@@ -343,6 +343,17 @@ async def update_alert_rule(
         # 同时更新 base_price
         if alert_data.base_price is not None and alert_data.base_price > 0:
             update_data["base_price"] = alert_data.base_price
+        elif alert_data.base_price is None and current_type not in ["above", "below"]:
+            # 编辑非简单类型时，如果前端没传 base_price，自动获取当前价格作为基准
+            crypto = db.query(Cryptocurrency).filter(Cryptocurrency.id == alert.crypto_id).first()
+            if crypto:
+                try:
+                    current_prices = await fetch_crypto_prices()
+                    current_price = current_prices.get(crypto.symbol, 0)
+                    if current_price > 0:
+                        update_data["base_price"] = current_price
+                except Exception:
+                    pass
         
     # 【核心修改2】：开放编辑权限，允许更新模式、次数和间隔
     if alert_data.is_continuous is not None:
