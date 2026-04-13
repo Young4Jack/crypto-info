@@ -56,9 +56,11 @@
 					@tap="isManageMode ? null : handleCoinClick(coin.symbol)"
 				>
 					<!-- 拖拽手柄（仅管理模式显示，仅 H5 可用拖拽排序） -->
+					<!-- #ifdef H5 -->
 					<view v-if="isManageMode" class="drag-handle">
 						<text class="drag-icon">⋮⋮</text>
 					</view>
+					<!-- #endif -->
 
 					<view class="coin-main">
 						<view class="coin-left">
@@ -83,6 +85,20 @@
 							/>
 							<text class="manage-switch-label">{{ coin.is_public ? '已公开' : '私有' }}</text>
 							<view class="manage-spacer"></view>
+							<!-- #ifndef H5 -->
+							<view 
+								class="manage-btn manage-btn-move" 
+								:class="{ disabled: index === 0 }"
+								@tap="moveUp(index)">
+								<text class="manage-btn-text">上移</text>
+							</view>
+							<view 
+								class="manage-btn manage-btn-move"
+								:class="{ disabled: index === coinList.length - 1 }"
+								@tap="moveDown(index)">
+								<text class="manage-btn-text">下移</text>
+							</view>
+							<!-- #endif -->
 							<view class="manage-btn manage-btn-edit" @tap="openEdit(coin)">
 								<text class="manage-btn-text">编辑</text>
 							</view>
@@ -175,6 +191,22 @@ const { initSortable, destroySortable, isDragging } = useSortableList(coinList, 
 
 // #ifndef H5
 const isDragging = ref(false)
+const moveUp = (index: number) => {
+  if (index <= 0) return
+  const itemsCopy = [...coinList.value]
+  const item = itemsCopy.splice(index, 1)[0]
+  itemsCopy.splice(index - 1, 0, item)
+  coinList.value = itemsCopy
+  saveOrder(coinList.value.map((c, i) => ({ id: c.id, sort_order: i })))
+}
+const moveDown = (index: number) => {
+  if (index >= coinList.value.length - 1) return
+  const itemsCopy = [...coinList.value]
+  const item = itemsCopy.splice(index, 1)[0]
+  itemsCopy.splice(index + 1, 0, item)
+  coinList.value = itemsCopy
+  saveOrder(coinList.value.map((c, i) => ({ id: c.id, sort_order: i })))
+}
 // #endif
 
 const showEditModal = ref(false)
@@ -787,12 +819,28 @@ onPullDownRefresh(async () => {
 }
 
 .manage-btn-del .manage-btn-text {
-	color: #f56c6c;
+ 	color: #f56c6c;
+}
+
+.manage-btn-move {
+ 	background-color: #409eff;
+}
+
+.manage-btn-move .manage-btn-text {
+ 	color: #ffffff;
+}
+
+.manage-btn-move.disabled {
+ 	background-color: #a0cfff;
+}
+
+.manage-btn-move.disabled .manage-btn-text {
+ 	color: #ffffff;
 }
 
 .manage-btn-text {
-	font-size: 22rpx;
-	font-weight: 500;
+ 	font-size: 22rpx;
+ 	font-weight: 500;
 }
 
 /* 弹窗 */
