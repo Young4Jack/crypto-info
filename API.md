@@ -47,6 +47,9 @@
 
 | 日期 | 变更内容 |
 |------|----------|
+| 2026-04 | 预警创建/编辑：所有类型自动获取当前价格作为基准价，编辑时自动更新基准价 |
+| 2026-04 | 修复涨跌幅/振幅预警创建失败问题：`threshold_price` 改为可选 |
+| 2026-04 | 修复预警编辑类型切换时数据丢失问题 |
 | 2024-04 | 新增价格搜索接口 `GET /api/price-search/`（需鉴权，支持主备 failover） |
 | 2024-04 | 安全加固：通知设置、API设置接口添加认证保护 |
 | 2024-04 | 新增系统设置 `base_url`、`backend_port`、`frontend_port`、`timezone` 公开字段 |
@@ -450,11 +453,11 @@ POST /api/alerts/
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | crypto_symbol | string | 是 | 交易对符号 |
-| alert_type | string | 是 | 预警类型 |
-| threshold_price | float | 是 | 阈值价格 |
+| alert_type | string | 是 | 预警类型：`above`(涨破)、`below`(跌破)、`amplitude`(振幅)、`percent_up`(涨幅)、`percent_down`(跌幅) |
+| threshold_price | float | 否 | 阈值价格（简单类型必填，复杂类型自动计算） |
 | webhook_url | string | 否 | 通知URL（已废弃） |
-| base_price | float | 否 | 基准价格 |
-| threshold_value | float | 否 | 阈值 |
+| base_price | float | 否 | 基准价格（创建/编辑时自动获取当前价格） |
+| threshold_value | float | 否 | 阈值百分比（复杂类型必填） |
 | is_continuous | bool | 否 | 是否连续触发 |
 | interval_minutes | int | 否 | 触发间隔(分钟) |
 | max_notifications | int | 否 | 最大通知次数 |
